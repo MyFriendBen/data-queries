@@ -253,6 +253,12 @@ base_table_1 as not materialized (
         ,ss.agree_to_tos
         ,ss.referrer_code
         ,ss.referral_source
+        ,ss.utm_id
+        ,ss.utm_source
+        ,ss.utm_medium
+        ,ss.utm_campaign
+        ,ss.utm_content
+        ,ss.utm_term
         ,CASE
             WHEN ss.request_language_code='af' THEN 'Afrikaans'
             WHEN ss.request_language_code='ar' THEN 'Arabic'
