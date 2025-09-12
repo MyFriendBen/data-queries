@@ -21,36 +21,44 @@ Before proceeding with CASCADE drop, run these queries to identify ALL objects t
 
 ```sql
 -- Check all objects that depend on data_referrer_codes
+-- Note: Use text search approach since pg_depend doesn't capture all materialized view dependencies
 SELECT 
-    dependent_ns.nspname as dependent_schema,
-    dependent_view.relname as dependent_object,
-    CASE dependent_view.relkind 
-        WHEN 'v' THEN 'view'
-        WHEN 'm' THEN 'materialized view'
-        WHEN 'f' THEN 'function'
-        ELSE dependent_view.relkind::text
-    END as object_type
-FROM pg_depend 
-JOIN pg_class dependent_view ON pg_depend.objid = dependent_view.oid 
-JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid 
-WHERE pg_depend.refobjid = 'data_referrer_codes'::regclass
-AND pg_depend.deptype = 'n';
+    schemaname,
+    viewname,
+    'view' as object_type
+FROM pg_views 
+WHERE definition ILIKE '%from data_referrer_codes%' 
+   OR definition ILIKE '%join data_referrer_codes%'
+   OR definition ILIKE '%data_referrer_codes.%'
+UNION ALL
+SELECT 
+    schemaname,
+    matviewname,
+    'materialized view' as object_type  
+FROM pg_matviews 
+WHERE definition ILIKE '%from data_referrer_codes%' 
+   OR definition ILIKE '%join data_referrer_codes%'
+   OR definition ILIKE '%data_referrer_codes.%';
 
--- Check what depends on the 'data' view (including data_tenant)
+-- Check what depends on the 'data' materialized view (including data_tenant)
+-- Note: Use text search approach since pg_depend doesn't capture all materialized view dependencies
 SELECT 
-    dependent_ns.nspname as dependent_schema,
-    dependent_view.relname as dependent_object,
-    CASE dependent_view.relkind 
-        WHEN 'v' THEN 'view'
-        WHEN 'm' THEN 'materialized view'
-        WHEN 'f' THEN 'function'
-        ELSE dependent_view.relkind::text
-    END as object_type
-FROM pg_depend 
-JOIN pg_class dependent_view ON pg_depend.objid = dependent_view.oid 
-JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid 
-WHERE pg_depend.refobjid = 'data'::regclass
-AND pg_depend.deptype = 'n';
+    schemaname,
+    viewname,
+    'view' as object_type
+FROM pg_views 
+WHERE definition ILIKE '%from data%' 
+   OR definition ILIKE '%join data%'
+   OR definition ILIKE '%data.%'
+UNION ALL
+SELECT 
+    schemaname,
+    matviewname,
+    'materialized view' as object_type  
+FROM pg_matviews 
+WHERE definition ILIKE '%from data%' 
+   OR definition ILIKE '%join data%'
+   OR definition ILIKE '%data.%';
 ```
 
 **Save the output of these queries!** You'll need to know exactly what was dropped so you can recreate everything.
