@@ -1,9 +1,5 @@
 -- # This query will create a previous_benefits table
 -- This table is used as a source for Looker Studio dashboards.
-
-drop view if exists
-    data_previous_benefits
-
 create materialized view
     data_previous_benefits as
 

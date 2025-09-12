@@ -1,8 +1,4 @@
--- # This creates data_householdmembers
-
-drop materialized view if exists
-    data_householdmembers
-
+-- # This creates data_householdmember
 create materialized view
     data_householdmembers as
 
@@ -15,4 +11,3 @@ select
 from screener_householdmember sh
 left join data d on sh.screen_id=d.id
 where sh.screen_id in(d.id)
-

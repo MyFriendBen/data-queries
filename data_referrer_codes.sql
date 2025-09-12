@@ -1,10 +1,5 @@
 -- ## MANUAL UPDATE/REFRESH
 -- ## Writes a table into materialized_views to translate partner codes into proper Partner Names
-
--- # Uncomment below to refresh the materialized view
-drop materialized view if exists
-    data_referrer_codes
-
 create materialized view
     data_referrer_codes as
 
