@@ -1,8 +1,4 @@
 -- # Create the Expenses table
-
-drop materialized view if exists
-    data_expenses
-
 create materialized view
     data_expenses as
 

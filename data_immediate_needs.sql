@@ -1,8 +1,5 @@
 -- # This query will create an immediate_needs table #
--- This table is used as a source for Looker Studio dashboards.
-
-drop materialized view if exists
-    data_immediate_needs
+-- This table is used as a source for Looker Studio dashboards
 
 create materialized view
     data_immediate_needs as

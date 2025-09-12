@@ -1,8 +1,4 @@
 -- # Create the Income Stream table
-
-drop materialized view if exists
-    data_income
-
 create materialized view
     data_income as
 

@@ -1,9 +1,5 @@
 --# This query will create a current_benefits table #
 -- The table is used as a source for Looker Studio dashboards.
-
-drop materialized view if exists
-    data_currentbenefits
-
 create materialized view
     data_currentbenefits as
 

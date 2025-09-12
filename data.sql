@@ -1,10 +1,6 @@
 -- # This will create the 'data' materialized view on which the dashboards are based.
 
 -- # Get the latest eligibility snapshot for each screener
-
-drop materialized view if exists
-    data cascade
-
 create materialized view
     data as
 

@@ -1,9 +1,4 @@
 -- ## Writes a table into materialized_views to translate program codes into proper Program Names
-
--- -- # Uncomment below to refresh the materialized view
-drop materialized view if exists
-    data_programs
-
 create materialized view
     data_programs as
 
