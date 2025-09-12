@@ -16,6 +16,8 @@ from (
         ('211co', '2-1-1 Colorado'),
         ('211nc', '2-1-1 North Carolina'),
         ('achs', 'Adams County Human Services'),
+        ('achd', 'Adams County Health Department'),
+        ('achdchw', 'Adams County Health Department - Community Health Workers'),
         ('achsshare', 'Adams County Human Services'),
         ('acph', 'Arapahoe County Public Health'),
         ('acphnlp', 'Arapahoe County Public Health'),
