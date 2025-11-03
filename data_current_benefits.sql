@@ -82,6 +82,22 @@ with base as (
         ,sum(case when nc_tanf_annual > 0 then 1 else 0 end)               as nc_tanf
         ,sum(case when ncwap_annual > 0 then 1 else 0 end)               as nc_wap
         ,sum(case when nc_wic_annual > 0 then 1 else 0 end)               as nc_wic
+        ,sum(case when il_aabd_annual > 0 then 1 else 0 end)               as il_aabd
+        ,sum(case when il_aca_annual > 0 then 1 else 0 end)               as il_aca
+        ,sum(case when il_aca_adults_annual > 0 then 1 else 0 end)               as il_aca_adults
+        ,sum(case when il_all_kids_annual > 0 then 1 else 0 end)               as il_all_kids
+        ,sum(case when il_bap_annual > 0 then 1 else 0 end)               as il_bap
+        ,sum(case when il_ctc_annual > 0 then 1 else 0 end)               as il_ctc
+        ,sum(case when il_eitc_annual > 0 then 1 else 0 end)               as il_eitc
+        ,sum(case when il_family_care_annual > 0 then 1 else 0 end)               as il_family_care
+        ,sum(case when il_liheap_annual > 0 then 1 else 0 end)               as il_liheap
+        ,sum(case when il_medicaid_annual > 0 then 1 else 0 end)               as il_medicaid
+        ,sum(case when il_moms_and_babies_annual > 0 then 1 else 0 end)               as il_moms_and_babies
+        ,sum(case when il_nslp_annual > 0 then 1 else 0 end)               as il_nslp
+        ,sum(case when il_snap_annual > 0 then 1 else 0 end)               as il_snap
+        ,sum(case when il_tanf_annual > 0 then 1 else 0 end)               as il_tanf
+        ,sum(case when il_transit_reduced_fare_annual > 0 then 1 else 0 end)               as il_transit_reduced_fare
+        ,sum(case when il_wic_annual > 0 then 1 else 0 end)               as il_wic
         ,sum(case when nf_annual > 0 then 1 else 0 end)               as nf
         ,sum(case when nfp_annual > 0 then 1 else 0 end)               as nfp
         ,sum(case when nslp_annual > 0 then 1 else 0 end)               as nslp
@@ -182,6 +198,22 @@ select
         ,'NC TANF'
         ,'NC WAP'
         ,'NC WIC'
+        ,'IL AABD'
+        ,'IL ACA'
+        ,'IL ACA Adults'
+        ,'IL All Kids'
+        ,'IL BAP'
+        ,'IL CTC'
+        ,'IL EITC'
+        ,'IL Family Care'
+        ,'IL LIHEAP'
+        ,'IL Medicaid'
+        ,'IL Moms and Babies'
+        ,'IL NSLP'
+        ,'IL SNAP'
+        ,'IL TANF'
+        ,'IL Transit Reduced Fare'
+        ,'IL WIC'
         ,'NF'
         ,'MFP'
         ,'NSLP'
@@ -279,6 +311,22 @@ select
         ,nc_tanf
         ,nc_wap
         ,nc_wic
+        ,il_aabd
+        ,il_aca
+        ,il_aca_adults
+        ,il_all_kids
+        ,il_bap
+        ,il_ctc
+        ,il_eitc
+        ,il_family_care
+        ,il_liheap
+        ,il_medicaid
+        ,il_moms_and_babies
+        ,il_nslp
+        ,il_snap
+        ,il_tanf
+        ,il_transit_reduced_fare
+        ,il_wic
         ,nf
         ,nfp
         ,nslp
