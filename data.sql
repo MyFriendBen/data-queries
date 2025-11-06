@@ -153,6 +153,22 @@ latest_program_eligibility as not materialized (
          ,sum(case when spes.name_abbreviated = 'nc_tanf' then spes.estimated_value ELSE 0 end)         as nc_tanf_annual
          ,sum(case when spes.name_abbreviated = 'ncwap' then spes.estimated_value ELSE 0 end)         as ncwap_annual
          ,sum(case when spes.name_abbreviated = 'nc_wic' then spes.estimated_value ELSE 0 end)         as nc_wic_annual
+         ,sum(case when spes.name_abbreviated = 'il_aabd' then spes.estimated_value ELSE 0 end)         as il_aabd_annual
+         ,sum(case when spes.name_abbreviated = 'il_aca' then spes.estimated_value ELSE 0 end)         as il_aca_annual
+         ,sum(case when spes.name_abbreviated = 'il_aca_adults' then spes.estimated_value ELSE 0 end)         as il_aca_adults_annual
+         ,sum(case when spes.name_abbreviated = 'il_all_kids' then spes.estimated_value ELSE 0 end)         as il_all_kids_annual
+         ,sum(case when spes.name_abbreviated = 'il_bap' then spes.estimated_value ELSE 0 end)         as il_bap_annual
+         ,sum(case when spes.name_abbreviated = 'il_ctc' then spes.estimated_value ELSE 0 end)         as il_ctc_annual
+         ,sum(case when spes.name_abbreviated = 'il_eitc' then spes.estimated_value ELSE 0 end)         as il_eitc_annual
+         ,sum(case when spes.name_abbreviated = 'il_family_care' then spes.estimated_value ELSE 0 end)         as il_family_care_annual
+         ,sum(case when spes.name_abbreviated = 'il_liheap' then spes.estimated_value ELSE 0 end)         as il_liheap_annual
+         ,sum(case when spes.name_abbreviated = 'il_medicaid' then spes.estimated_value ELSE 0 end)         as il_medicaid_annual
+         ,sum(case when spes.name_abbreviated = 'il_moms_and_babies' then spes.estimated_value ELSE 0 end)         as il_moms_and_babies_annual
+         ,sum(case when spes.name_abbreviated = 'il_nslp' then spes.estimated_value ELSE 0 end)         as il_nslp_annual
+         ,sum(case when spes.name_abbreviated = 'il_snap' then spes.estimated_value ELSE 0 end)         as il_snap_annual
+         ,sum(case when spes.name_abbreviated = 'il_tanf' then spes.estimated_value ELSE 0 end)         as il_tanf_annual
+         ,sum(case when spes.name_abbreviated = 'il_transit_reduced_fare' then spes.estimated_value ELSE 0 end)         as il_transit_reduced_fare_annual
+         ,sum(case when spes.name_abbreviated = 'il_wic' then spes.estimated_value ELSE 0 end)         as il_wic_annual
          ,sum(case when spes.name_abbreviated = 'nf' then spes.estimated_value ELSE 0 end)         as nf_annual
          ,sum(case when spes.name_abbreviated = 'nfp' then spes.estimated_value ELSE 0 end)         as nfp_annual
          ,sum(case when spes.name_abbreviated = 'nslp' then spes.estimated_value ELSE 0 end)           as nslp_annual
@@ -532,6 +548,22 @@ base_table_1 as not materialized (
         ,lpe.nc_tanf_annual
         ,lpe.ncwap_annual
         ,lpe.nc_wic_annual
+        ,lpe.il_aabd_annual
+        ,lpe.il_aca_annual
+        ,lpe.il_aca_adults_annual
+        ,lpe.il_all_kids_annual
+        ,lpe.il_bap_annual
+        ,lpe.il_ctc_annual
+        ,lpe.il_eitc_annual
+        ,lpe.il_family_care_annual
+        ,lpe.il_liheap_annual
+        ,lpe.il_medicaid_annual
+        ,lpe.il_moms_and_babies_annual
+        ,lpe.il_nslp_annual
+        ,lpe.il_snap_annual
+        ,lpe.il_tanf_annual
+        ,lpe.il_transit_reduced_fare_annual
+        ,lpe.il_wic_annual
         ,lpe.nf_annual
         ,lpe.nfp_annual
         ,lpe.nslp_annual
@@ -651,6 +683,20 @@ base_table_2 as not materialized (
             + coalesce(bt1.nc_tanf_annual, 0)
             + coalesce(bt1.ncwap_annual, 0)
             + coalesce(bt1.nc_wic_annual, 0)
+            + coalesce(bt1.il_aabd_annual, 0)
+            + coalesce(bt1.il_aca_annual, 0)
+            + coalesce(bt1.il_aca_adults_annual, 0)
+            + coalesce(bt1.il_all_kids_annual, 0)
+            + coalesce(bt1.il_bap_annual, 0)
+            + coalesce(bt1.il_family_care_annual, 0)
+            + coalesce(bt1.il_liheap_annual, 0)
+            + coalesce(bt1.il_medicaid_annual, 0)
+            + coalesce(bt1.il_moms_and_babies_annual, 0)
+            + coalesce(bt1.il_nslp_annual, 0)
+            + coalesce(bt1.il_snap_annual, 0)
+            + coalesce(bt1.il_tanf_annual, 0)
+            + coalesce(bt1.il_transit_reduced_fare_annual, 0)
+            + coalesce(bt1.il_wic_annual, 0)
             + coalesce(bt1.nf_annual, 0)
             + coalesce(bt1.nfp_annual, 0)
             + coalesce(bt1.nslp_annual, 0)
@@ -673,6 +719,8 @@ base_table_2 as not materialized (
             + coalesce(bt1.coeitc_annual, 0)
             + coalesce(bt1.eitc_annual, 0)
             + coalesce(bt1.fatc_annual, 0)
+            + coalesce(bt1.il_ctc_annual, 0)
+            + coalesce(bt1.il_eitc_annual, 0)
             + coalesce(bt1.ma_maeitc_annual, 0)
             + coalesce(bt1.shitc_annual, 0) as tax_credits_annual
     from base_table_1 bt1
