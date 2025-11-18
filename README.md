@@ -139,6 +139,8 @@ Execute each of these SQL files in any order (they all depend on `data`, not on 
 - `data_householdmembers.sql`
 - `data_immediate_needs.sql`
 - `data_previous_benefits.sql`
+- `data_income.sql`
+- `data_expenses.sql`
 
 ### Step 6: Recreate data_tenant Security View
 
@@ -158,7 +160,9 @@ WHERE matviewname IN (
     'data_current_benefits',
     'data_householdmembers',
     'data_immediate_needs',
-    'data_previous_benefits'
+    'data_previous_benefits',
+    'data_income',
+    'data_expenses'
 );
 
 -- Check that data_tenant view exists
