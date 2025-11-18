@@ -18,6 +18,8 @@ with base as (
         ,sum(case when needs_dental_care = true then 1 else 0 end)                     as needs_dental_care
         ,sum(case when needs_job_resources = true then 1 else 0 end)                     as needs_job_resources
         ,sum(case when needs_legal_services = true then 1 else 0 end)                     as needs_legal_services
+        ,sum(case when needs_college_savings = true then 1 else 0 end)                     as needs_college_savings
+        ,sum(case when needs_veteran_services = true then 1 else 0 end)                     as needs_veteran_services
     from data
     group by white_label_id, partner
     )
@@ -32,7 +34,10 @@ select
         ,'Mental Health'
         ,'Family Planning'
         ,'Dental Care'
+        ,'Job Resources'
         ,'Legal Services'
+        ,'College Savings'
+        ,'Veteran Services'
         ])  as Benefit
     ,unnest(array [
         needs_baby_supplies
@@ -45,6 +50,8 @@ select
         ,needs_dental_care
         ,needs_job_resources
         ,needs_legal_services
+        ,needs_college_savings
+        ,needs_veteran_services
         ]) as Count
     ,white_label_id
     ,partner
