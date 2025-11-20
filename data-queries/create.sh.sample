@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+# instructions for running this script:
+# 1. Copy this file and name it create.sh
+# 1. Ensure you have psql installed and configured to connect to your PostgreSQL database
+# 2. Update the DB_HOST, DB_USER, DB_PASS and DB_NAME variables below as needed
+# 3. Run this script from the command line: bash create.sh
+set -euo pipefail
+
+# Customize these:
+DB_HOST="localhost"
+DB_USER="mfb"
+DB_NAME="mfb"
+DB_PASS="mfb"
+
+# Helper function
+run_sql() {
+  local file="$1"
+  echo "Running $file..."
+  PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -f "$file"
+  echo "✓ Finished $file"
+  echo "----------------------"
+}
+
+# Run files in the correct dependency order
+run_sql data_referrer_codes.sql
+run_sql data_programs.sql
+run_sql data.sql
+run_sql data_current_benefits.sql
+run_sql data_householdmembers.sql
+run_sql data_immediate_needs.sql
+run_sql data_previous_benefits.sql
+run_sql data_expenses.sql
+run_sql data_income.sql
+# run_sql data_tenant.sql
+# run_sql reference_data.sql
+
+echo "🎉 All materialized views and views rebuilt successfully!"
