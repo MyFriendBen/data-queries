@@ -1,6 +1,14 @@
 # Updating Materialized Views - Documentation
 
-## Overview
+## Background
+
+This directory contains SQL files that define materialized views used in our Looker Studio dashboards. These are still in use, but there are plans to replace them with dbt models in the future.
+
+## Local Setup
+
+To work with these materialized views locally, you can use the provided `create.sh.sample` script to run the sql files and create the views in your local PostgreSQL database.
+
+## Updating Materialized Views
 
 This document provides instructions for updating materialized views, primarily using `data_referrer_codes` since that's the one that I'm working through right now, using a CASCADE DROP approach.
 
