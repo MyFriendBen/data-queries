@@ -1,1 +1,13 @@
+# data-queries
 data-queries/create.sh
+
+# dbt
+.env*
+profiles.yml
+secrets
+dbt_packages/
+logs/
+**/target/
+**/build/
+**/dist/
+venv/
