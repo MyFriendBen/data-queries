@@ -469,6 +469,8 @@ base_table_1 as not materialized (
         ,ss.needs_dental_care
         ,ss.needs_job_resources
         ,ss.needs_legal_services
+        ,ss.needs_college_savings
+        ,ss.needs_veteran_services
 
 -- # Add new benefits here and in the latest program eligibility table above # --
         ,lpe.acp_annual
