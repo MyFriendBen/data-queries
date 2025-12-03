@@ -10,19 +10,12 @@
 with session_page_views as (
   select
     event_date,
+    event_timestamp,
     user_pseudo_id,
-    -- Extract session ID from event_params
-    (select value.int_value from unnest(event_params) where key = 'ga_session_id') as ga_session_id,
-    -- Page information
-    (select value.string_value from unnest(event_params) where key = 'page_location') as page_location,
-    regexp_extract((select value.string_value from unnest(event_params) where key = 'page_location'), r'[^/]+://[^/]+(/[^?]*)') as page_path,
-    -- State extraction
-    regexp_extract((select value.string_value from unnest(event_params) where key = 'page_location'), r'^[^/]+://[^/]+/([a-z]{2})/', 1) as state_code,
-    event_timestamp
-  
-  from {{ source('google_analytics', 'events_*') }}
-  where event_name = 'page_view'
-    and (select value.string_value from unnest(event_params) where key = 'page_location') is not null
+    ga_session_id,
+    page_path,
+    state_code
+  from {{ ref('int_ga4_page_views') }}
 ),
 
 session_funnel_events as (

@@ -32,10 +32,12 @@ dbt/
 │   ├── postgres/           # PostgreSQL models and sources
 │   │   ├── sources.yml     # Django app data sources
 │   │   ├── staging/        # Clean raw screening data
+│   │   ├── intermediate/   # Add derived fields and business logic
 │   │   └── marts/          # Analytics-ready tables with RLS
 │   └── bigquery/           # BigQuery models and sources
 │       ├── sources.yml     # Google Analytics data sources
-│       ├── staging/        # Clean GA4 data
+│       ├── staging/        # Extract GA4 event_params (light transformations)
+│       ├── intermediate/   # Add derived fields and business logic
 │       └── marts/          # Analytics-ready tables
 ├── macros/
 │   └── row_level_security.sql  # RLS policy setup
