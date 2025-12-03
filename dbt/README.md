@@ -1,8 +1,8 @@
 # dbt Data Transformation
 
-dbt transforms raw screening data into analytics-ready tables with built-in row-level security for multi-tenant access.
+Dbt transforms raw screening data into analytics-ready tables with built-in row-level security for multi-tenant access.
 
-The plan is to replace our existing data-queries pipeline with this dbt project for better maintainability and scalability.
+The plan is to replace our existing data-queries pipeline with dbt for better maintainability and scalability.
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ dbt/
 │       ├── staging/        # Clean GA4 data
 │       └── marts/          # Analytics-ready tables
 ├── macros/
-│   └── row_level_security.sql  # RLS user management
+│   └── row_level_security.sql  # RLS policy setup
 └── profiles.yml            # Database connections
 ```
 
@@ -90,29 +90,6 @@ dbt docs serve     # View docs at localhost:8080
 rm -rf target/ logs/
 ```
 
-### Row-Level Security (PostgreSQL Only)
-
-Create tenant-specific database users with row-level security:
-
-Note: the specific ids will depend on your data.
-
-```bash
-# Create user for North Carolina (white_label_id = 1)
-dbt run-operation create_rls_user --vars '{"username": "nc", "password": "secure_password", "white_label_access": 1}'
-
-# Create user for Colorado (white_label_id = 7)
-dbt run-operation create_rls_user --vars '{"username": "co", "password": "secure_password", "white_label_access": 7}'
-
-# Create admin user (sees all data)
-dbt run-operation create_rls_user --vars '{"username": "admin_user", "password": "admin_password", "white_label_access": "ADMIN"}'
-```
-
-**How RLS Works:**
-
-- **Regular users**: Only see data for their assigned `white_label_id`
-- **Admin users**: Bypass RLS and see all data
-- **Automatic filtering**: Database enforces access controls at query time
-
 ## Development
 
 ### Adding New Models
@@ -122,9 +99,17 @@ dbt run-operation create_rls_user --vars '{"username": "admin_user", "password":
 
 Models automatically run only on their target database.
 
-### Adding RLS to PostgreSQL Models
+### Row-Level Security (PostgreSQL Only)
 
-Add this post-hook to enable row-level security:
+**How RLS Works:**
+
+- **Regular users**: Only see data for their assigned `white_label_id`
+- **Admin users**: Bypass RLS and see all data
+- **Automatic filtering**: Database enforces access controls at query time
+
+#### Adding RLS to PostgreSQL Models
+
+All models with white label data should use RLS. Add this post-hook to enable row-level security:
 
 ```sql
 {{
@@ -134,6 +119,52 @@ Add this post-hook to enable row-level security:
   )
 }}
 ```
+
+#### Creating Test Users for Local Development
+
+⚠️ **For local development only.** Production user provisioning should be handled via infrastructure-as-code (Terraform, CI/CD pipelines, etc.) with proper secrets management.
+
+Use `psql` to create test users with secure password handling:
+
+```bash
+# Option 1: Interactive password prompt (most secure - password not logged)
+psql -h localhost -U postgres << 'EOF'
+\prompt 'Enter password for user: ' user_password
+CREATE USER nc WITH PASSWORD :'user_password';
+ALTER USER nc SET rls.white_label_id = '1';
+GRANT CONNECT ON DATABASE your_database TO nc;
+GRANT USAGE ON SCHEMA your_schema TO nc;
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO nc;
+EOF
+
+# Option 2: Using environment variable (keeps password out of shell history)
+export DB_PASSWORD="secure_password"
+psql -h localhost -U postgres << EOF
+-- Create user for North Carolina (white_label_id = 1)
+CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
+ALTER USER nc SET rls.white_label_id = '1';
+GRANT CONNECT ON DATABASE your_database TO nc;
+GRANT USAGE ON SCHEMA your_schema TO nc;
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO nc;
+
+-- Create user for Colorado (white_label_id = 7)
+CREATE USER co WITH PASSWORD '$DB_PASSWORD';
+ALTER USER co SET rls.white_label_id = '7';
+GRANT CONNECT ON DATABASE your_database TO co;
+GRANT USAGE ON SCHEMA your_schema TO co;
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO co;
+
+-- Create admin user with BYPASSRLS (sees all data)
+CREATE USER admin_user WITH PASSWORD '$DB_PASSWORD' BYPASSRLS;
+GRANT CONNECT ON DATABASE your_database TO admin_user;
+GRANT USAGE ON SCHEMA your_schema TO admin_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO admin_user;
+EOF
+unset DB_PASSWORD
+```
+
+**Note:** Replace `your_database` and `your_schema` with your actual database and schema names. The specific `white_label_id` values depend on your data.
+
 
 ## BigQuery Setup (Optional)
 
