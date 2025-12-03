@@ -63,13 +63,24 @@ daily_conversion_metrics as (
     count(*) as total_sessions_with_funnel_activity,
     sum(session_started) as sessions_started,
     sum(session_completed) as sessions_completed,
-    sum(case when session_started = 1 and session_completed = 1 and first_completed_timestamp > first_started_timestamp then 1 else 0 end) as sessions_converted,
-    
-    -- User-level metrics  
+    sum(case
+      when session_completed = 1
+        and first_completed_timestamp is not null
+        and (first_started_timestamp is null or first_completed_timestamp > first_started_timestamp)
+      then 1
+      else 0
+    end) as sessions_converted,
+
+    -- User-level metrics
     count(distinct user_pseudo_id) as total_users_with_funnel_activity,
     count(distinct case when session_started = 1 then user_pseudo_id end) as users_started,
     count(distinct case when session_completed = 1 then user_pseudo_id end) as users_completed,
-    count(distinct case when session_started = 1 and session_completed = 1 and first_completed_timestamp > first_started_timestamp then user_pseudo_id end) as users_converted,
+    count(distinct case
+      when session_completed = 1
+        and first_completed_timestamp is not null
+        and (first_started_timestamp is null or first_completed_timestamp > first_started_timestamp)
+      then user_pseudo_id
+    end) as users_converted,
     
     -- Conversion rates
     round(sum(session_completed) / nullif(sum(session_started), 0) * 100, 2) as session_conversion_rate_pct,
