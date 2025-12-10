@@ -1,0 +1,23 @@
+benefits:
+  target: postgres
+  outputs:
+    postgres:
+      type: postgres
+      host: "{{ env_var('DB_HOST', 'localhost') }}"
+      user: "{{ env_var('DB_USER') }}"
+      password: "{{ env_var('DB_PASS') }}"
+      port: "{{ env_var('DB_PORT', 5432) }}"
+      dbname: "{{ env_var('DB_NAME') }}"
+      schema: "{{ env_var('DB_SCHEMA', 'analytics') }}"
+      threads: 4
+      connect_timeout: 30
+    
+    bigquery:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: analytics
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"

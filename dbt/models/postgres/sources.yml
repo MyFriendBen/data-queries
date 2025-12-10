@@ -1,0 +1,79 @@
+version: 2
+
+sources:
+  - name: django_apps
+    description: "Raw Django application tables"
+    schema: public
+    config:
+      enabled: "{{ target.type == 'postgres' }}"
+    tables:
+      - name: screener_screen
+        description: "Raw screener submissions from Django Screen model"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: completed
+            description: "Whether the screener was completed"
+            tests:
+              - not_null
+          - name: submission_date
+            description: "When the screener was submitted"
+          - name: is_test
+            description: "Whether this is test data"
+          - name: created_at
+            description: "When the record was created"
+          - name: updated_at
+            description: "When the record was last updated"
+      - name: screener_whitelabel
+        description: "White label organizations from Django WhiteLabel model"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: name
+            description: "White label organization name"
+          - name: code
+            description: "White label organization code"
+          - name: state_code
+            description: "State code for the white label"
+          - name: cms_method
+            description: "CMS method used by the white label"
+      - name: screener_eligibilitysnapshot
+        description: "Eligibility snapshot records from Django EligibilitySnapshot model"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+          - name: submission_date
+            description: "When the eligibility snapshot was created"
+          - name: is_batch
+            description: "Whether this is a batch snapshot"
+          - name: had_error
+            description: "Whether the snapshot had an error"
+      - name: screener_programeligibilitysnapshot
+        description: "Program eligibility snapshot records from Django ProgramEligibilitySnapshot model"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: eligibility_snapshot_id
+            description: "Foreign key to screener_eligibilitysnapshot"
+          - name: new
+            description: "Whether this is a new eligibility result"
+          - name: name
+            description: "Full program name"
+          - name: name_abbreviated
+            description: "Abbreviated program name"
+          - name: value_type
+            description: "Type of benefit value"
+          - name: estimated_value
+            description: "Estimated dollar value of benefit"
+          - name: estimated_delivery_time
+            description: "Estimated time to receive benefit"
+          - name: estimated_application_time
+            description: "Estimated time to apply for benefit"
+          - name: eligible
+            description: "Whether household is eligible for program"
+          - name: failed_tests
+            description: "JSON of failed eligibility tests"
+          - name: passed_tests
+            description: "JSON of passed eligibility tests"

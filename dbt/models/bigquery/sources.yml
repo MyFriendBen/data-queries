@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: google_analytics
+    description: "Google Analytics 4 BigQuery export data"
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: "{{ env_var('GCP_ANALYTICS_TABLE') }}"
+    tables:
+      - name: events_*
+        description: "GA4 events data (wildcard table for daily exports)"
+        columns:
+          - name: event_date
+            description: "Date of the event in YYYYMMDD format"
+          - name: event_timestamp
+            description: "Timestamp of the event in microseconds"
+          - name: event_name
+            description: "Name of the event (e.g., page_view, session_start)"
+          - name: user_pseudo_id
+            description: "Pseudonymous user identifier"
+          - name: event_params
+            description: "Array of event parameters"
