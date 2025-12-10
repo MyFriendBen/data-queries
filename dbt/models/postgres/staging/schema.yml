@@ -8,3 +8,5 @@ models:
         description: "The referrer code used to identify partners."
         tests:
           - unique # Ensure no duplicate referrer codes
+      - name: partner
+        description: "The name of the partner associated with the referrer code."
