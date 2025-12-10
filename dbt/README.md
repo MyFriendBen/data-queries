@@ -13,6 +13,7 @@ cp profiles.yml.example profiles.yml
 
 # 2. Load environment and install dependencies
 source load-env.sh
+python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 dbt deps
