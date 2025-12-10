@@ -30,4 +30,4 @@ SELECT
     ttt.language_code,
     ttt.text
 FROM translations_t tt
-LEFT JOIN translations_tt ttt ON tt.translation_id = ttt.master_id
+INNER JOIN translations_tt ttt ON tt.translation_id = ttt.master_id
