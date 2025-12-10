@@ -2,7 +2,7 @@
 data-queries/create.sh
 
 # dbt
-.env*
+.env
 profiles.yml
 secrets
 dbt_packages/
