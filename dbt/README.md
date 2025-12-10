@@ -8,13 +8,26 @@ The plan is to replace our existing data-queries pipeline with dbt for better ma
 
 ```bash
 # 1. Copy and configure environment files
+cd dbt
 cp .env.example .env          # Edit with your database credentials
 cp profiles.yml.example profiles.yml
 
 # 2. Load environment and install dependencies
 source load-env.sh
+
+# Create a virtual environment using the following command
+python3 -m venv venv
+
+# Activate the virtual environment
+# For Mac/Linux/Git Bash:
 source venv/bin/activate
+# For Windows PowerShell:
+# .\venv\Scripts\Activate.ps1
+
+# Install all the packages
 pip install -r requirements.txt
+
+# Install the dependencies specified in packages.yml file
 dbt deps
 
 # 3. Run PostgreSQL models (default)

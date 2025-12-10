@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: mart_programs
+    description: "Mart model for programs data - reproduces data_programs.sql materialized view. Contains program translations filtered to 'program.%-value_type' labels."
+    columns:
+      - name: id
+        description: "Translation translation ID (primary key)"
+        tests:
+          - not_null
+          - unique
+      - name: master_id
+        description: "Foreign key to translations_translation table"
+        tests:
+          - not_null
+      - name: label
+        description: "Translation label (e.g., 'program.co_snap-value_type')"
+        tests:
+          - not_null
+      - name: language_code
+        description: "Language code (filtered to 'en-us')"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['en-us']
+      - name: text
+        description: "Translation text value"
+        tests:
+          - not_null

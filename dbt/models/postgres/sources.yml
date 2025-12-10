@@ -77,3 +77,21 @@ sources:
             description: "JSON of failed eligibility tests"
           - name: passed_tests
             description: "JSON of passed eligibility tests"
+      - name: translations_translation
+        description: "Translation metadata table from Django"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: label
+            description: "Translation label (e.g., program.%-name)"
+      - name: translations_translation_translation
+        description: "Translation text table from Django"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: master_id
+            description: "Foreign key to translations_translation"
+          - name: language_code
+            description: "Language code for the translation (e.g., en-us)"
+          - name: text
+            description: "Translation text"
