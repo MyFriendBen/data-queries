@@ -573,6 +573,7 @@ base_table_1 as (
         ,lpe.tanf_annual
         ,lpe.trua_annual
         ,lpe.ubp_annual
+        ,lpe.upk_annual
         ,lpe.wic_annual
         ,secs.is_home_owner
         ,secs.is_renter
@@ -703,6 +704,7 @@ base_table_2 as (
             + coalesce(bt1.tanf_annual, 0)
             + coalesce(bt1.trua_annual, 0)
             + coalesce(bt1.ubp_annual, 0)
+            + coalesce(bt1.upk_annual, 0)
             + coalesce(bt1.wic_annual, 0) as non_tax_credit_benefits_annual
         , coalesce(bt1.coctc_annual, 0)
             + coalesce(bt1.coeitc_annual, 0)
