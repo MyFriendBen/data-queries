@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: stg_referrer_codes
+    description: "This model maps referrer codes to partner names."
+    columns:
+      - name: referrer_code
+        description: "The referrer code used to identify partners."
+        tests:
+          - unique # Ensure no duplicate referrer codes
+      - name: partner
+        description: "The name of the partner associated with the referrer code."
