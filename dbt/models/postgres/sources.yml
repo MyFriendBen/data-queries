@@ -95,3 +95,12 @@ sources:
             description: "Language code for the translation (e.g., en-us)"
           - name: text
             description: "Translation text"
+      - name: programs_program
+        description: "Programs table from Django that links programs to white labels"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: value_type_id
+            description: "Foreign key to translations_translation for the value type"
+          - name: white_label_id
+            description: "White label organization ID for RLS"

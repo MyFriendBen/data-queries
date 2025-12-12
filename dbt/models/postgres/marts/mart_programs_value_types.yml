@@ -1,8 +1,8 @@
 version: 2
 
 models:
-  - name: mart_programs
-    description: "Mart model for programs data - reproduces data_programs.sql materialized view. Contains program translations filtered to 'program.%-value_type' labels."
+  - name: mart_programs_value_types
+    description: "Mart model for programs data with row-level security. Contains program translations filtered to 'program.%-value_type' labels, restricted by white_label_id."
     columns:
       - name: id
         description: "Translation translation ID (primary key)"
@@ -26,5 +26,9 @@ models:
                 values: ['en-us']
       - name: text
         description: "Translation text value"
+        tests:
+          - not_null
+      - name: white_label_id
+        description: "White label organization ID - used for row-level security"
         tests:
           - not_null

@@ -1,6 +1,6 @@
 {{ config(
     materialized='view',
-    description='Staging model for translations_translation and translations_translation_translation tables'
+    description='Staging model for translations_translation and translations_translation_translation tables with white_label_id'
 ) }}
 
 WITH translations_t AS (
@@ -28,6 +28,8 @@ SELECT
     ttt.master_id,
     tt.label,
     ttt.language_code,
-    ttt.text
+    ttt.text,
+    pp.white_label_id
 FROM translations_t tt
 INNER JOIN translations_tt ttt ON tt.translation_id = ttt.master_id
+INNER JOIN {{ source('django_apps', 'programs_program') }} pp ON tt.translation_id = pp.value_type_id
