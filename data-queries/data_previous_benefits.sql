@@ -10,7 +10,7 @@ with base as (
         ,sum(case when has_acp = true then 1 else 0 end)                     as acp
         ,sum(case when has_andcs = true then 1 else 0 end)                     as andcs
         ,sum(case when has_ccb = true then 1 else 0 end)                     as ccb
-        ,sum(case when has_cccap = true then 1 else 0 end)                     as cccap
+        ,sum(case when has_ccap = true then 1 else 0 end)                     as ccap
         ,sum(case when has_ccdf = true then 1 else 0 end)                     as ccdf
         ,sum(case when has_cdhcs = true then 1 else 0 end)                     as cdhcs
         ,sum(case when has_chp = true then 1 else 0 end)                     as chp
@@ -64,7 +64,7 @@ select
         'ACP'
         ,'ANDCS'
         ,'CCB'
-        ,'CCCAP'
+        ,'CCAP'
         ,'CCDF'
         ,'CDHCS'
         ,'CHP'
@@ -114,7 +114,7 @@ select
         acp
         ,andcs
         ,ccb
-        ,cccap
+        ,ccap
         ,ccdf
         ,cdhcs
         ,chp
