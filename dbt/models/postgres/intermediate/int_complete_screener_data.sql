@@ -419,8 +419,8 @@ base_table_2 as (
             + coalesce(chp_annual, 0)
             + coalesce(chs_annual, 0)
             + coalesce(cocb_annual, 0)
-            -- + coalesce(bt1.coctc_annual, 0) -- tax credit
-            -- + coalesce(bt1.coeitc_annual, 0) -- tax credit
+            -- + coalesce(coctc_annual, 0) -- tax credit
+            -- + coalesce(coeitc_annual, 0) -- tax credit
             + coalesce(co_energy_calculator_bheap_annual, 0)
             + coalesce(co_energy_calculator_bhgap_annual, 0)
             + coalesce(co_energy_calculator_care_annual, 0)
