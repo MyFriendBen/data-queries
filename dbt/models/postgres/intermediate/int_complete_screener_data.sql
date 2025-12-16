@@ -22,23 +22,23 @@ base_table_1 as (
         ss.alternate_path,
         les.snapshots,
 
-        -- Partner inference logic - matches data.sql
+        -- Partner inference logic
         case
             when ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' then 'Test'
             when ss.referrer_code is null or trim(ss.referrer_code) = '' then
                 case
                     when ss.referral_source is null or trim(ss.referral_source) = '' then 'No Partner'
-                    when ss.referral_source is not null and ss.referral_source in (select * from all_referrer_codes) then drc2.partner
+                    when drc2.referrer_code is not null then drc2.partner
                     else 'Other'
                 end
-            when ss.referrer_code is not null or trim(ss.referrer_code) <> '' then
+            when ss.referrer_code is not null and trim(ss.referrer_code) <> '' then
                 case
                     when ss.referral_source is null or trim(ss.referral_source) = '' then drc1.partner
-                    when trim(ss.referral_source) = trim(ss.referrer_code) and trim(ss.referral_source) in (select * from all_referrer_codes) then drc1.partner
+                    when trim(ss.referral_source) = trim(ss.referrer_code) then drc1.partner
                     when trim(ss.referral_source) <> trim(ss.referrer_code) then
                         case
-                            when trim(ss.referral_source) in (select * from all_referrer_codes) then concat(drc1.partner,', ',drc2.partner)
-                            when trim(ss.referrer_code) in (select * from all_referrer_codes) then drc1.partner
+                            when drc2.referrer_code is not null then concat(drc1.partner,', ',drc2.partner)
+                            when drc1.referrer_code is not null then drc1.partner
                             else 'Other'
                         end
                     else 'Other'
@@ -451,7 +451,6 @@ base_table_2 as (
             + coalesce(_dev_ineligible_annual, 0)
             + coalesce(cowap_annual, 0)
             + coalesce(cpcr_annual, 0)
-            + coalesce(ctc_annual, 0)
             + coalesce(cwd_medicaid_annual, 0)
             + coalesce(dpp_annual, 0)
             + coalesce(dptr_annual, 0)
@@ -526,6 +525,7 @@ base_table_2 as (
         
         -- Calculate tax credits total
         coalesce(coctc_annual, 0)
+            + coalesce(ctc_annual, 0)
             + coalesce(coeitc_annual, 0)
             + coalesce(eitc_annual, 0)
             + coalesce(fatc_annual, 0)
@@ -546,4 +546,3 @@ where completed = true
     and is_test = false
     and is_test_data = false
     -- and white_label_id=4
-order by id
