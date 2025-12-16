@@ -3,14 +3,7 @@
     description='Complete screener data with eligibility calculations, broken into base tables for clarity'
 ) }}
 
-with all_referrer_codes as (
-    select distinct referrer_code
-    from {{ source('django_apps', 'screener_screen') }}
-    where referrer_code is not null and referrer_code <> ''
-),
-
-
-base_table_1 as (
+with base_table_1 as (
     select
         ss.id,
         les.latest_snapshot_id,
