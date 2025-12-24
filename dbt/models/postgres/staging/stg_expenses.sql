@@ -11,5 +11,4 @@ select
     ,d.white_label_id
     ,se.*
 from {{ source('django_apps', 'screener_expense') }} se
-left join {{ ref('stg_screens') }} d ON se.screen_id = d.id
-where se.screen_id in(d.id)
+inner join {{ ref('stg_screens') }} d ON se.screen_id = d.id
