@@ -1,0 +1,45 @@
+# Copy this file to terraform.tfvars and update with your values
+
+# Database Configuration  
+database_host = "localhost"
+database_name = "mfb"
+database_port = 5432
+
+# Global Dashboard Database Credentials (Admin Access)
+global_db_credentials = {
+  username = "mfb"           # Your admin database user
+  password = "your_password" # Your admin database password
+}
+
+# Tenant-Specific Database Credentials (RLS Users)
+tenant_db_credentials = {
+  nc = {
+    username = "nc"
+    password = "your_password"  # NC user password
+  }
+  co = {
+    username = "co" 
+    password = "your_password"  # CO user password (update this)
+  }
+}
+
+# Tenant Configuration (Non-sensitive)
+tenants = {
+  nc = {
+    name         = "nc"
+    display_name = "North Carolina"
+  }
+  co = {
+    name         = "co"
+    display_name = "Colorado"
+  }
+}
+
+# Metabase Configuration
+metabase_url = "http://localhost:3001"
+metabase_admin_email = "admin@yourcompany.com"
+metabase_admin_password = "your_admin_password"  # Set during Metabase setup
+
+# BigQuery Configuration
+gcp_project_id = "your-gcp-project-id"
+bigquery_service_account_path = "../dbt/secrets/bigquerykey.json"
