@@ -6,7 +6,13 @@
 }}
 
 select
-    unnest(array[
+    t.benefit as benefit,
+    t.count as count,
+    pb.white_label_id,
+    pb.partner
+from {{ ref('int_previous_benefits') }} pb
+cross join lateral unnest(
+    array[
         'ACP'
         ,'ANDCS'
         ,'CCB'
@@ -55,57 +61,55 @@ select
         ,'UPK'
         ,'VA'
         ,'WIC'
-        ]) as Benefit
-    ,unnest(array[
-        acp
-        ,andcs
-        ,ccb
-        ,ccap
-        ,ccdf
-        ,cdhcs
-        ,chp
-        ,chs
-        ,co_andso
-        ,coctc
-        ,coeitc
-        ,cowap
-        ,cpcr
-        ,csfp
-        ,ctc
-        ,dpp
-        ,ede
-        ,eitc
-        ,erc
-        ,fatc
-        ,leap
-        ,lifeline
-        ,ma_eaedc
-        ,ma_macfc
-        ,ma_maeitc
-        ,ma_mbta
-        ,ma_ssp
-        ,medicaid
-        ,mydenver
-        ,nc_lieap
-        ,nccip
-        ,ncscca
-        ,ncwap
-        ,nfp
-        ,nslp
-        ,oap
-        ,pell_grant
-        ,rag
-        ,rtdlive
-        ,section_8
-        ,snap
-        ,ssi
-        ,sunbucks
-        ,tanf
-        ,ubp
-        ,upk
-        ,va
-        ,wic
-        ]) as Count
-    ,white_label_id
-    ,partner
-from {{ ref('int_previous_benefits') }}
+        ],
+    array[
+        pb.acp
+        ,pb.andcs
+        ,pb.ccb
+        ,pb.ccap
+        ,pb.ccdf
+        ,pb.cdhcs
+        ,pb.chp
+        ,pb.chs
+        ,pb.co_andso
+        ,pb.coctc
+        ,pb.coeitc
+        ,pb.cowap
+        ,pb.cpcr
+        ,pb.csfp
+        ,pb.ctc
+        ,pb.dpp
+        ,pb.ede
+        ,pb.eitc
+        ,pb.erc
+        ,pb.fatc
+        ,pb.leap
+        ,pb.lifeline
+        ,pb.ma_eaedc
+        ,pb.ma_macfc
+        ,pb.ma_maeitc
+        ,pb.ma_mbta
+        ,pb.ma_ssp
+        ,pb.medicaid
+        ,pb.mydenver
+        ,pb.nc_lieap
+        ,pb.nccip
+        ,pb.ncscca
+        ,pb.ncwap
+        ,pb.nfp
+        ,pb.nslp
+        ,pb.oap
+        ,pb.pell_grant
+        ,pb.rag
+        ,pb.rtdlive
+        ,pb.section_8
+        ,pb.snap
+        ,pb.ssi
+        ,pb.sunbucks
+        ,pb.tanf
+        ,pb.ubp
+        ,pb.upk
+        ,pb.va
+        ,pb.wic
+    ]
+) as t(benefit, count)
