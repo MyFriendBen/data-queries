@@ -1,7 +1,7 @@
 {{
   config(
     materialized='table',
-    description='Materialized mart for previous beneftis'
+    description='Materialized mart for previous benefits'
   )
 }}
 
