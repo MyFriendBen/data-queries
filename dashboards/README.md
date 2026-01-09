@@ -31,14 +31,48 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 - Skip database connection (we'll configure with Terraform)
 - Complete the initial setup
 
-**3. Configure Terraform variables**
+**3. Create tenant database users with row-level security**
+
+Each tenant needs a dedicated database user that only has access to their white label data.
+
+**Important:** Before running these commands:
+- Replace `white_label_id` values with the correct IDs from your My Friend Ben database
+- Update the database name (`mfb`) and credentials to match your local setup
+
+```bash
+# Set password as environment variable (keeps it out of shell history)
+export DB_PASSWORD="secure_password"
+
+psql -h localhost -U postgres -d mfb << EOF
+-- Create user for North Carolina (example: white_label_id = 1)
+CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
+ALTER USER nc SET rls.white_label_id = '1';
+GRANT CONNECT ON DATABASE mfb TO nc;
+GRANT USAGE ON SCHEMA public TO nc;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO nc;
+
+-- Create user for Colorado (example: white_label_id = 7)
+CREATE USER co WITH PASSWORD '$DB_PASSWORD';
+ALTER USER co SET rls.white_label_id = '7';
+GRANT CONNECT ON DATABASE mfb TO co;
+GRANT USAGE ON SCHEMA public TO co;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO co;
+EOF
+
+unset DB_PASSWORD
+```
+
+**4. Configure Terraform variables**
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Metabase admin credentials and GCP project
+# Edit terraform.tfvars with:
+# - Your Metabase admin credentials
+# - Database credentials for each tenant (from step 3)
+# - GCP project details
 ```
 
-**4. Run Terraform to configure BigQuery and collections**
+**5. Run Terraform to configure BigQuery and collections**
 
 ```bash
 terraform init
@@ -84,7 +118,24 @@ tenant_db_credentials = {
 
 ### 2. Create Database User
 
-TODO: update with new dbt instructions
+Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
+
+**Note:** Check your My Friend Ben database to find the correct `white_label_id` for the new tenant.
+
+```bash
+export DB_PASSWORD="secure_password"
+
+psql -h localhost -U postgres -d mfb << EOF
+-- Create user for Florida (example: white_label_id = 3)
+CREATE USER fl WITH PASSWORD '$DB_PASSWORD';
+ALTER USER fl SET rls.white_label_id = '3';
+GRANT CONNECT ON DATABASE mfb TO fl;
+GRANT USAGE ON SCHEMA public TO fl;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO fl;
+EOF
+
+unset DB_PASSWORD
+```
 
 ### 3. Deploy New Tenant
 
@@ -101,20 +152,4 @@ Verify database user exists and has correct `white_label_id` setting
 
 ### Connection errors
 
-Check database host/credentials in `terraform.tfvars`
-
-### Metabase auth issues
-
-Verify Metabase admin credentials in `terraform.tfvars`
-
-### BigQuery Connection Issues
-
-1. **Service Account**: Ensure the service account key is mounted correctly at `../dbt/secrets/bigquerykey.json`
-2. **Permissions**: Verify the service account has BigQuery Data Viewer permissions
-3. **Project ID**: Double-check the GCP project ID in your configuration
-
-### Performance Optimization
-
-1. **Query Caching**: Enable caching in **Admin** > **Settings** > **Caching**
-2. **Scheduled Refreshes**: Set up email subscriptions for regular dashboard updates
-3. **Database Optimization**: Use dbt model materializations for faster queries
+Check credentials in `terraform.tfvars`
