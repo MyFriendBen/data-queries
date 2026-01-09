@@ -11,7 +11,7 @@ select
     ,sum(case when name_abbreviated = 'andcs' then estimated_value ELSE 0 end) as andcs_annual
     ,sum(case when name_abbreviated = 'awd_medicaid' then estimated_value else 0 end) as awd_medicaid_annual
     ,sum(case when name_abbreviated = 'bca' then estimated_value else 0 end) as bca_annual
-    ,sum(case when name_abbreviated = 'cccap' then estimated_value else 0 end) as cccap_annual
+    ,sum(case when name_abbreviated = 'ccap' then estimated_value else 0 end) as ccap_annual
     ,sum(case when name_abbreviated = 'cdhcs' then estimated_value else 0 end) as cdhcs_annual
     ,sum(case when name_abbreviated = 'cfhc' then estimated_value else 0 end) as cfhc_annual
     ,sum(case when name_abbreviated = 'chp' then estimated_value else 0 end) as chp_annual
