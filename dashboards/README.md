@@ -4,25 +4,42 @@ Terraform configuration for Metabase infrastructure and multi-tenant analytics w
 
 ## Quick Start
 
+### Prerequisites
+
+- Docker and Docker Compose installed
+- BigQuery service account key at `../dbt/secrets/bigquerykey.json`
+
+### Setup Steps
+
+**1. Start Metabase containers**
+
 ```bash
-# 1. Copy and configure environment files
-cp .env.example .env
-cp terraform.tfvars.example terraform.tfvars
-
-# Edit both files with your configuration
-
-# 2. Run automated setup
-./setup-metabase.sh
+bash ./setup-metabase.sh
 ```
 
-The setup script will:
+This will:
 
-1. Start Metabase and PostgreSQL containers via Docker Compose
-2. Wait for Metabase to be ready
-3. Prompt you to complete the initial setup wizard (if needed)
-4. Automatically configure BigQuery datasource and collections via Terraform
+- Start Metabase and PostgreSQL containers via Docker Compose
+- Wait for Metabase to be ready (may take 1-2 minutes)
+- Check if initial setup is complete
 
-## 5. Deploy Infrastructure
+**2. Complete Metabase initial setup**
+
+Open http://localhost:3001 in your browser (or the URL shown by the setup script) and complete the setup wizard:
+
+- Create admin account
+- Skip database connection (we'll configure with Terraform)
+- Complete the initial setup
+
+**3. Configure Terraform variables**
+
+```bash
+cd ../terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Metabase admin credentials and GCP project
+```
+
+**4. Run Terraform to configure BigQuery and collections**
 
 ```bash
 terraform init
@@ -34,6 +51,51 @@ This creates:
 
 - BigQuery datasource in Metabase
 - Metabase collections for multi-tenant organization
+
+### Development Environment Configuration
+
+By default, the setup uses:
+- **Port 3001** for Metabase web interface
+- **"metabase"** for all PostgreSQL credentials (database name, user, and password)
+
+This is fine for local development since the database is only accessible on your machine.
+
+#### Customizing the Port
+
+**When to customize:** If port 3001 is already in use by another application, Docker Compose will fail with a "port is already allocated" error.
+
+**How to customize:** Set the `METABASE_PORT` environment variable before running setup:
+
+```bash
+export METABASE_PORT=3002
+bash ./setup-metabase.sh
+```
+
+The setup script will automatically use your custom port for the Metabase URL.
+
+#### Customizing Database Credentials (Optional)
+
+You can also customize the PostgreSQL database credentials if needed:
+
+```bash
+export METABASE_DB_NAME=my_db
+export METABASE_DB_USER=my_user
+export METABASE_DB_PASS=my_secure_password
+bash ./setup-metabase.sh
+```
+
+#### Using a .env file
+
+Alternatively, create a `.env` file in the `dashboards` directory with your customizations:
+
+```bash
+METABASE_PORT=3002
+METABASE_DB_NAME=my_db
+METABASE_DB_USER=my_user
+METABASE_DB_PASS=my_secure_password
+```
+
+Then run the setup script as normal.
 
 ## Adding New Tenants
 
@@ -80,7 +142,7 @@ Check database host/credentials in `terraform.tfvars`
 
 ### Metabase auth issues
 
-Verify Metabase admin credentials in both `.env` and `terraform.tfvars`
+Verify Metabase admin credentials in `terraform.tfvars`
 
 ### BigQuery Connection Issues
 

@@ -7,20 +7,10 @@ set -e
 
 echo "Starting Metabase development environment..."
 
-# Use METABASE_URL from env or default to localhost for dev
-METABASE_URL="${METABASE_URL:-http://localhost:3001}"
+# Use METABASE_PORT to construct URL (defaults to 3001)
+METABASE_PORT="${METABASE_PORT:-3001}"
+METABASE_URL="http://localhost:${METABASE_PORT}"
 echo "Metabase URL: $METABASE_URL"
-
-# Check if .env file exists
-if [ ! -f .env ]; then
-    echo "ERROR: .env file not found. Please copy .env.example to .env and configure it."
-    exit 1
-fi
-
-# Source environment variables
-set -a
-source .env
-set +a
 
 echo "Starting Metabase containers..."
 docker compose up -d
@@ -40,24 +30,17 @@ done
 
 echo "Metabase is ready!"
 
-# Use METABASE_URL from env or default to localhost
-METABASE_URL="${METABASE_URL:-http://localhost:3001}"
-
 # Check if setup is already complete
 if curl -f -s "$METABASE_URL/api/session/properties" | grep -q '"has-user-setup":true'; then
     echo "Metabase is already configured."
     echo ""
-    echo "Next step: Import permissions graph and configure resources"
-    echo "Run: cd ../terraform && ./import-metabase-permissions.sh"
+    echo "Access your Metabase instance at: $METABASE_URL"
 else
     echo ""
     echo "Metabase needs initial setup. Please complete the setup wizard at:"
     echo "   $METABASE_URL"
     echo ""
-    echo "After completing the setup wizard, run:"
-    echo "   cd ../terraform && ./import-metabase-permissions.sh"
+    echo "After completing the setup wizard, configure BigQuery and collections:"
+    echo "   cd ../terraform && terraform apply"
     exit 0
 fi
-
-echo ""
-echo "Access your Metabase instance at: $METABASE_URL"
