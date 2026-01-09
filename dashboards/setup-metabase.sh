@@ -7,9 +7,7 @@ set -e
 
 echo "Starting Metabase development environment..."
 
-# Use METABASE_PORT to construct URL (defaults to 3001)
-METABASE_PORT="${METABASE_PORT:-3001}"
-METABASE_URL="http://localhost:${METABASE_PORT}"
+METABASE_URL="http://localhost:3001"
 echo "Metabase URL: $METABASE_URL"
 
 echo "Starting Metabase containers..."
@@ -32,15 +30,12 @@ echo "Metabase is ready!"
 
 # Check if setup is already complete
 if curl -f -s "$METABASE_URL/api/session/properties" | grep -q '"has-user-setup":true'; then
-    echo "Metabase is already configured."
+    echo "Metabase is already configured. See README for instructions to run terraform to create your dashboards."
     echo ""
     echo "Access your Metabase instance at: $METABASE_URL"
 else
     echo ""
     echo "Metabase needs initial setup. Please complete the setup wizard at:"
     echo "   $METABASE_URL"
-    echo ""
-    echo "After completing the setup wizard, configure BigQuery and collections:"
-    echo "   cd ../terraform && terraform apply"
     exit 0
 fi

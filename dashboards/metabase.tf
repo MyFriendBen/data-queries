@@ -175,18 +175,14 @@ resource "metabase_card" "tenant_screen_count" {
 
   json = jsonencode(merge(local.screen_count_card_config, {
     # Override just the tenant-specific parts
-    collection_id = metabase_collection.tenant_collections[each.key].id
+    collection_id = tonumber(metabase_collection.tenant_collections[each.key].id)
     dataset_query = merge(local.screen_count_card_config.dataset_query, {
-      database = data.metabase_table.tenant_screen_summary_tables[each.key].db_id
+      database = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].db_id)
       query = merge(local.screen_count_card_config.dataset_query.query, {
-        source-table = data.metabase_table.tenant_screen_summary_tables[each.key].id
+        source-table = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].id)
       })
     })
   }))
-
-  lifecycle {
-    ignore_changes = [json]
-  }
 }
 
 # Dashboard that shows BigQuery data
@@ -194,7 +190,7 @@ resource "metabase_dashboard" "analytics" {
   name       = "MFB Analytics Dashboard"
   cards_json = jsonencode([
     {
-      card_id = metabase_card.conversion_funnel.id
+      card_id = tonumber(metabase_card.conversion_funnel.id)
       row = 0
       col = 0
       size_x = 12
@@ -204,7 +200,7 @@ resource "metabase_dashboard" "analytics" {
       visualization_settings = {}
     },
     {
-      card_id = metabase_card.screen_count.id
+      card_id = tonumber(metabase_card.screen_count.id)
       row = 8
       col = 0
       size_x = 6
@@ -214,10 +210,6 @@ resource "metabase_dashboard" "analytics" {
       visualization_settings = {}
     }
   ])
-
-  lifecycle {
-    ignore_changes = [cards_json]
-  }
 }
 
 # Tenant-specific dashboards
@@ -225,11 +217,11 @@ resource "metabase_dashboard" "tenant_analytics" {
   for_each = var.tenants
 
   name       = "${each.value.display_name} Analytics Dashboard"
-  collection_id = metabase_collection.tenant_collections[each.key].id
+  collection_id = tonumber(metabase_collection.tenant_collections[each.key].id)
 
   cards_json = jsonencode([
     {
-      card_id = metabase_card.tenant_screen_count[each.key].id
+      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
       row = 0
       col = 0
       size_x = 6
@@ -239,8 +231,4 @@ resource "metabase_dashboard" "tenant_analytics" {
       visualization_settings = {}
     }
   ])
-
-  lifecycle {
-    ignore_changes = [cards_json]
-  }
 }

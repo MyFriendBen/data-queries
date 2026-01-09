@@ -1,6 +1,6 @@
-# Infrastructure & Analytics Platform
+# MFB Data Dashboards
 
-Terraform configuration for Metabase infrastructure and multi-tenant analytics with BigQuery integration.
+Metabase infrastructure deployed through terraform with multi-tenant analytics.
 
 ## Quick Start
 
@@ -34,7 +34,6 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 **3. Configure Terraform variables**
 
 ```bash
-cd ../terraform
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your Metabase admin credentials and GCP project
 ```
@@ -47,55 +46,19 @@ terraform plan
 terraform apply
 ```
 
-This creates:
-
-- BigQuery datasource in Metabase
-- Metabase collections for multi-tenant organization
+This creates the collections and dashboards in Metabase. Now when you go to localhost:3001, you should see the dashboards populated with data.
 
 ### Development Environment Configuration
 
 By default, the setup uses:
 - **Port 3001** for Metabase web interface
-- **"metabase"** for all PostgreSQL credentials (database name, user, and password)
+- **Database credentials:** username `metabase`, password `metabase`, database name `metabase`
 
-This is fine for local development since the database is only accessible on your machine.
+These defaults are fine for local development since the database is only accessible on your machine.
 
-#### Customizing the Port
-
-**When to customize:** If port 3001 is already in use by another application, Docker Compose will fail with a "port is already allocated" error.
-
-**How to customize:** Set the `METABASE_PORT` environment variable before running setup:
-
-```bash
-export METABASE_PORT=3002
-bash ./setup-metabase.sh
-```
-
-The setup script will automatically use your custom port for the Metabase URL.
-
-#### Customizing Database Credentials (Optional)
-
-You can also customize the PostgreSQL database credentials if needed:
-
-```bash
-export METABASE_DB_NAME=my_db
-export METABASE_DB_USER=my_user
-export METABASE_DB_PASS=my_secure_password
-bash ./setup-metabase.sh
-```
-
-#### Using a .env file
-
-Alternatively, create a `.env` file in the `dashboards` directory with your customizations:
-
-```bash
-METABASE_PORT=3002
-METABASE_DB_NAME=my_db
-METABASE_DB_USER=my_user
-METABASE_DB_PASS=my_secure_password
-```
-
-Then run the setup script as normal.
+**To customize:** Edit `docker-compose.yml` directly:
+- **Port:** Line 9 - change `"3001:3000"` to use a different port
+- **Database credentials:** Lines 12, 14-15 (Metabase config) and lines 36-38 (PostgreSQL config)
 
 ## Adding New Tenants
 

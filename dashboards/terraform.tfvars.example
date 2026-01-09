@@ -1,7 +1,7 @@
 # Copy this file to terraform.tfvars and update with your values
 
 # Database Configuration  
-database_host = "localhost"
+database_host = "host.docker.internal"
 database_name = "mfb"
 database_port = 5432
 
