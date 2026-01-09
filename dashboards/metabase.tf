@@ -110,11 +110,16 @@ data "metabase_table" "tenant_screen_summary_tables" {
   db_id  = tonumber(metabase_database.tenant_postgres[each.key].id)
 }
 
+# Global collection for admin-level analytics
+resource "metabase_collection" "global" {
+  name = "Global"
+}
+
 # Tenant-specific collections for organization
 resource "metabase_collection" "tenant_collections" {
   for_each = var.tenants
-  
-  name = "${each.value.display_name} Analytics"
+
+  name = each.value.display_name
 }
 
 # Card following GitHub example exactly but with our BigQuery table
@@ -122,7 +127,7 @@ resource "metabase_card" "conversion_funnel" {
   json = jsonencode({
     name                = "💡 Conversion Funnel Insights"
     description         = "📖 Analytics from BigQuery conversion funnel data"
-    collection_id       = null
+    collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
     cache_ttl           = null
     query_type          = "query"
@@ -148,7 +153,7 @@ resource "metabase_card" "screen_count" {
   json = jsonencode({
     name                = "Number of Screens"
     description         = "Total count of completed screens from PostgreSQL"
-    collection_id       = null
+    collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
     cache_ttl           = null
     query_type          = "query"
@@ -187,7 +192,8 @@ resource "metabase_card" "tenant_screen_count" {
 
 # Dashboard that shows BigQuery data
 resource "metabase_dashboard" "analytics" {
-  name       = "MFB Analytics Dashboard"
+  name          = "MFB Analytics Dashboard"
+  collection_id = tonumber(metabase_collection.global.id)
   cards_json = jsonencode([
     {
       card_id = tonumber(metabase_card.conversion_funnel.id)
@@ -216,7 +222,7 @@ resource "metabase_dashboard" "analytics" {
 resource "metabase_dashboard" "tenant_analytics" {
   for_each = var.tenants
 
-  name       = "${each.value.display_name} Analytics Dashboard"
+  name       = "${each.value.display_name} Dashboard"
   collection_id = tonumber(metabase_collection.tenant_collections[each.key].id)
 
   cards_json = jsonencode([
