@@ -7,7 +7,7 @@ Metabase infrastructure deployed through terraform with multi-tenant analytics.
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- BigQuery service account key at `../dbt/secrets/bigquerykey.json`
+- BigQuery service account key saved to `./secrets/bigquerykey.json` (or customize path via `bigquery_service_account_key_path` in terraform.tfvars)
 
 ### Setup Steps
 
@@ -67,9 +67,10 @@ unset DB_PASSWORD
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with:
-# - Your Metabase admin credentials
+# - Your Metabase admin credentials (from step 2)
 # - Database credentials for each tenant (from step 3)
-# - GCP project details
+# - GCP project ID for BigQuery
+# Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
 **5. Run Terraform to configure BigQuery and collections**

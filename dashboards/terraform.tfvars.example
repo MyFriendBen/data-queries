@@ -42,4 +42,10 @@ metabase_admin_password = "your_admin_password"  # Set during Metabase setup
 
 # BigQuery Configuration
 gcp_project_id = "your-gcp-project-id"
-bigquery_service_account_path = "../dbt/secrets/bigquerykey.json"
+
+# Local development: specify path to service account key file (defaults to ./secrets/bigquerykey.json)
+# bigquery_service_account_key_path = "./secrets/bigquerykey.json"
+
+# Production: pass JSON content from secret manager
+# bigquery_service_account_key_content = "{ ... }"
+# Or via environment variable: export TF_VAR_bigquery_service_account_key_content="$(gcloud secrets versions access latest --secret=bigquery-key)"

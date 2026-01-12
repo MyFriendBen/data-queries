@@ -93,8 +93,20 @@ variable "gcp_project_id" {
   default     = "your-gcp-project-id"
 }
 
-variable "bigquery_service_account_path" {
-  description = "Path to BigQuery service account JSON key file"
+variable "bigquery_service_account_key_path" {
+  description = "Path to BigQuery service account JSON key file (for local development)"
   type        = string
-  default     = "../dbt/secrets/bigquerykey.json"
+  default     = "./secrets/bigquerykey.json"
+}
+
+variable "bigquery_service_account_key_content" {
+  description = "BigQuery service account JSON key content (for production - pass from secret manager)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+locals {
+  # Use content if provided, otherwise read from file path
+  bigquery_key = var.bigquery_service_account_key_content != null ? var.bigquery_service_account_key_content : file(var.bigquery_service_account_key_path)
 }

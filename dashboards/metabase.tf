@@ -31,7 +31,7 @@ locals {
 resource "metabase_database" "bigquery" {
   name = "MFB BigQuery Analytics"
   bigquery_details = {
-    service_account_key      = file(var.bigquery_service_account_path)
+    service_account_key      = local.bigquery_key
     project_id               = var.gcp_project_id
     dataset_filters_type     = "all"
   }
