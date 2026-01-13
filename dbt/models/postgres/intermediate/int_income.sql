@@ -12,5 +12,5 @@ SELECT
     d.id as screener_id,
     d.submission_date,
     d.white_label_id
-FROM {{ source('django_apps', 'screener_incomestream') }} si
+FROM {{ ref('stg_income') }} si
 INNER JOIN public.data d ON si.screen_id = d.id
