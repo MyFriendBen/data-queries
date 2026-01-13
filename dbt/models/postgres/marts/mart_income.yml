@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: mart_income
+    description: "Mart model for income data with row-level security. Contains screener income stream records filtered to complete screeners, restricted by white_label_id."
+    columns:
+      - name: id
+        description: "Income stream ID (primary key)"
+        tests:
+          - not_null
+          - unique
+      - name: screen_id
+        description: "Foreign key to screener_screen table"
+        tests:
+          - not_null
+      - name: screener_id
+        description: "Screener ID - same as screen_id for reference clarity"
+        tests:
+          - not_null
+      - name: submission_date
+        description: "Date when the screener was submitted"
+        tests:
+          - not_null
+      - name: white_label_id
+        description: "White label organization ID - used for row-level security"
+        tests:
+          - not_null
+      - name: type
+        description: "Type of income stream (e.g., employment, self-employment, benefits)"
+        tests:
+          - not_null
+      - name: amount
+        description: "Income amount in dollars"
+        tests:
+          - not_null
+      - name: frequency
+        description: "Frequency of income (yearly, monthly, weekly, hourly, biweekly, semimonthly)"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['yearly', 'monthly', 'weekly', 'hourly', 'biweekly', 'semimonthly']
