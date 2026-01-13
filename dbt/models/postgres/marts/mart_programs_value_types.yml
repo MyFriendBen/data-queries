@@ -5,7 +5,7 @@ models:
     description: "Mart model for programs data with row-level security. Contains program translations filtered to 'program.%-value_type' labels, restricted by white_label_id."
     columns:
       - name: id
-        description: "Translation translation ID (primary key)"
+        description: "Translation translation ID - unique per translation. Semantic primary key is (id, white_label_id) since translations may be assigned to multiple white_labels."
         tests:
           - not_null
           - unique
