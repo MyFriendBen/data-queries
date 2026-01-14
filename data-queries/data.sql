@@ -412,7 +412,7 @@ base_table_1 as not materialized (
         ,ss.has_acp
         ,ss.has_andcs
         ,ss.has_ccb
-        ,ss.has_cccap
+        ,ss.has_ccap
         ,ss.has_ccdf
         ,ss.has_cdhcs
         ,ss.has_chp
