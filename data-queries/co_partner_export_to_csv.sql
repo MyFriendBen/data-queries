@@ -1,17 +1,7 @@
+\COPY (
 -- CO Partner Data Export
 -- Flat format for pivot table analysis in Excel
 -- Filters: CO white label, completed screens, Jan 2024 onwards
---
--- TO EXPORT AS CSV:
--- Option 1: From psql command line
---   \COPY (SELECT * FROM co_partner_export) TO '/path/to/co_export.csv' WITH CSV HEADER
---
--- Option 2: From shell (replace connection details)
---   psql -h HOST -U USER -d DATABASE -c "\COPY (SELECT * FROM co_partner_export) TO 'co_export.csv' WITH CSV HEADER"
---
--- Option 3: Create as a view first, then export
---   CREATE VIEW co_partner_export AS <this query>;
---   \COPY (SELECT * FROM co_partner_export) TO 'co_export.csv' WITH CSV HEADER
 
 WITH co_screens AS (
     SELECT d.*
@@ -159,6 +149,7 @@ SELECT
     cs.monthly_income,
     cs.monthly_expenses,
     cs.household_assets,
+    cs.housing_situation,
 
     -- Opt-in status (funnel metric)
     COALESCE(uo.send_offers, false) as opted_in_offers,
@@ -266,4 +257,5 @@ SELECT
 
 FROM co_screens cs
 LEFT JOIN user_optins uo ON cs.id = uo.screen_id
-ORDER BY cs.submission_date DESC;
+ORDER BY cs.submission_date DESC
+) TO '/Users/jm/code/mfb/data-queries/co_partner_export.csv' WITH CSV HEADER
