@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: mart_householdmembers
+    description: "Mart model that reproduces data_householdmembers materialized view. Contains household member records joined with screener data and restricted by white_label_id."
+    columns:
+      - name: id
+        description: "Household member ID (primary key)"
+        tests:
+          - not_null
+          - unique
+
+      - name: screener_id
+        description: "ID of the screener_householdmember this household member record belongs to."
+        tests:
+          - not_null
+
+      - name: white_label_id
+        description: "White label organization ID used for row-level security."
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner for the head of household."
+        tests:
+          - not_null
+
+      - name: screen_id
+        description: "ID of the screener same as screener_id."
+        tests:
+          - not_null
+
+      - name: frontend_id
+        description: "Frontend-facing unique identifier (UUID) for the household member."
+        tests:
+          - not_null
+
