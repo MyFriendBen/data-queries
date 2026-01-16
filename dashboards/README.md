@@ -33,7 +33,7 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 
 **3. Create tenant database users with row-level security**
 
-Each tenant needs a dedicated database user that only has access to their white label data.
+Each tenant needs a dedicated database user that only has access to their white-label data.
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your My Friend Ben database

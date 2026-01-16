@@ -23,10 +23,6 @@ variable "global_db_credentials" {
     password = string
   })
   sensitive = true
-  default = {
-    username = "mfb"
-    password = "admin_password"
-  }
 }
 
 variable "tenants" {
@@ -54,16 +50,6 @@ variable "tenant_db_credentials" {
     password = string
   }))
   sensitive = true
-  default = {
-    nc = {
-      username = "nc"
-      password = "myfriendben"
-    }
-    co = {
-      username = "co"
-      password = "colorado_password"
-    }
-  }
 }
 
 # Metabase configuration variables
@@ -83,7 +69,6 @@ variable "metabase_admin_password" {
   description = "Metabase admin password for API access"
   type        = string
   sensitive   = true
-  default     = "your_admin_password"
 }
 
 # BigQuery configuration variables
@@ -107,6 +92,7 @@ variable "bigquery_service_account_key_content" {
 }
 
 locals {
-  # Use content if provided, otherwise read from file path
-  bigquery_key = var.bigquery_service_account_key_content != null ? var.bigquery_service_account_key_content : file(var.bigquery_service_account_key_path)
+  # Use content if provided, otherwise read from file path (if it exists)
+  bigquery_key_from_file = fileexists(var.bigquery_service_account_key_path) ? file(var.bigquery_service_account_key_path) : null
+  bigquery_key           = coalesce(var.bigquery_service_account_key_content, local.bigquery_key_from_file)
 }
