@@ -16,7 +16,7 @@ output "tenant_dashboard_urls" {
 output "tenant_collection_ids" {
   description = "IDs of tenant collections (useful for organizing new cards)"
   value = {
-    for k, v in metabase_collection.tenant_collections :
+    for k, v in local.tenant_collection_map :
     k => v.id
   }
 }
@@ -63,9 +63,9 @@ output "tenant_screen_count_card_ids" {
 output "quick_access" {
   description = "Quick access URLs and important IDs"
   value = {
-    metabase_url          = var.metabase_url
-    main_dashboard        = "${var.metabase_url}/dashboard/${metabase_dashboard.analytics.id}"
-    tenant_dashboards     = {
+    metabase_url      = var.metabase_url
+    main_dashboard    = "${var.metabase_url}/dashboard/${metabase_dashboard.analytics.id}"
+    tenant_dashboards = {
       for k, v in metabase_dashboard.tenant_analytics :
       k => "${var.metabase_url}/dashboard/${v.id}"
     }

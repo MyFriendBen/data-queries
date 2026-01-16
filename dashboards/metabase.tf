@@ -39,7 +39,7 @@ resource "metabase_database" "bigquery" {
 
 resource "metabase_database" "postgres" {
   name = "MFB PostgreSQL Analytics"
-  
+
   custom_details = {
     engine = "postgres"
 
@@ -63,9 +63,9 @@ resource "metabase_database" "postgres" {
 # Tenant-specific PostgreSQL data sources (RLS filtered access)
 resource "metabase_database" "tenant_postgres" {
   for_each = var.tenants
-  
+
   name = "MFB PostgreSQL ${each.value.display_name}"
-  
+
   custom_details = {
     engine = "postgres"
 
@@ -86,14 +86,29 @@ resource "metabase_database" "tenant_postgres" {
   }
 }
 
+# Wait for Metabase to sync database schemas before creating cards/dashboards
+resource "time_sleep" "wait_for_database_sync" {
+  depends_on = [
+    metabase_database.bigquery,
+    metabase_database.postgres,
+    metabase_database.tenant_postgres
+  ]
+
+  create_duration = "120s"
+}
+
 # Get the table reference from BigQuery
 data "metabase_table" "conversion_funnel_table" {
+  depends_on = [time_sleep.wait_for_database_sync]
+
   name  = "mart_screener_conversion_funnel"
   db_id = tonumber(metabase_database.bigquery.id)
 }
 
 # Get the table reference from PostgreSQL
 data "metabase_table" "screen_summary_table" {
+  depends_on = [time_sleep.wait_for_database_sync]
+
   name   = "mart_screen_eligibility_summary"
   schema = "analytics"
   db_id  = tonumber(metabase_database.postgres.id)
@@ -102,9 +117,9 @@ data "metabase_table" "screen_summary_table" {
 # Get tenant-specific table references from PostgreSQL
 data "metabase_table" "tenant_screen_summary_tables" {
   for_each = var.tenants
-  
-  depends_on = [metabase_database.tenant_postgres]
-  
+
+  depends_on = [time_sleep.wait_for_database_sync]
+
   name   = "mart_screen_eligibility_summary"
   schema = "analytics"
   db_id  = tonumber(metabase_database.tenant_postgres[each.key].id)
@@ -112,21 +127,37 @@ data "metabase_table" "tenant_screen_summary_tables" {
 
 # Global collection for admin-level analytics
 resource "metabase_collection" "global" {
+  depends_on = [time_sleep.wait_for_database_sync]
+
   name = "Global"
 }
 
-# Tenant-specific collections for organization
-resource "metabase_collection" "tenant_collections" {
-  for_each = var.tenants
+# Tenant collections - created sequentially to avoid Metabase race condition
+# When adding new tenants, add a new resource and chain it to the previous one
 
-  name = each.value.display_name
+resource "metabase_collection" "tenant_collection_nc" {
+  name       = "North Carolina"
+  depends_on = [metabase_collection.global]
+}
+
+resource "metabase_collection" "tenant_collection_co" {
+  name       = "Colorado"
+  depends_on = [metabase_collection.tenant_collection_nc]
+}
+
+# Map for other resources to reference tenant collections by key
+locals {
+  tenant_collection_map = {
+    nc = metabase_collection.tenant_collection_nc
+    co = metabase_collection.tenant_collection_co
+  }
 }
 
 # Card following GitHub example exactly but with our BigQuery table
 resource "metabase_card" "conversion_funnel" {
   json = jsonencode({
-    name                = "💡 Conversion Funnel Insights"
-    description         = "📖 Analytics from BigQuery conversion funnel data"
+    name                = "Conversion Funnel Insights"
+    description         = "Analytics from BigQuery conversion funnel data"
     collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
     cache_ttl           = null
@@ -180,7 +211,7 @@ resource "metabase_card" "tenant_screen_count" {
 
   json = jsonencode(merge(local.screen_count_card_config, {
     # Override just the tenant-specific parts
-    collection_id = tonumber(metabase_collection.tenant_collections[each.key].id)
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = merge(local.screen_count_card_config.dataset_query, {
       database = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].db_id)
       query = merge(local.screen_count_card_config.dataset_query.query, {
@@ -223,7 +254,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   for_each = var.tenants
 
   name       = "${each.value.display_name} Dashboard"
-  collection_id = tonumber(metabase_collection.tenant_collections[each.key].id)
+  collection_id = tonumber(local.tenant_collection_map[each.key].id)
 
   cards_json = jsonencode([
     {

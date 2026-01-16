@@ -73,15 +73,16 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Run Terraform to configure BigQuery and collections**
+**5. Run Terraform**
 
 ```bash
 terraform init
-terraform plan
 terraform apply
 ```
 
-This creates the collections and dashboards in Metabase. Now when you go to localhost:3001, you should see the dashboards populated with data.
+Terraform will automatically wait 2 minutes after creating database connections for Metabase to sync schemas before creating cards and dashboards.
+
+When complete, view your dashboards at http://localhost:3001!
 
 ### Development Environment Configuration
 
@@ -117,7 +118,36 @@ tenant_db_credentials = {
 }
 ```
 
-### 2. Create Database User
+### 2. Add Tenant Collection Resource
+
+Edit `metabase.tf` to add a new collection resource. Collections must be created sequentially to avoid a Metabase race condition.
+
+**Why sequential creation?** Metabase's API has a race condition when creating multiple collections concurrently. Each collection creation updates an internal `collection_permission_graph_revision` table, and parallel requests can attempt to insert the same revision ID, causing a duplicate key error. Using Terraform's `for_each` to create collections in parallel triggers this issue. The workaround is to create each collection as a separate resource with chained `depends_on` to ensure sequential creation.
+
+Add a new collection resource that depends on the last existing one:
+
+```hcl
+# In metabase.tf - add after the last tenant collection resource
+
+resource "metabase_collection" "tenant_collection_fl" {
+  name       = "Florida"
+  depends_on = [metabase_collection.tenant_collection_co]  # ← Chain to previous
+}
+```
+
+Then add it to the `tenant_collection_map` local:
+
+```hcl
+locals {
+  tenant_collection_map = {
+    nc = metabase_collection.tenant_collection_nc
+    co = metabase_collection.tenant_collection_co
+    fl = metabase_collection.tenant_collection_fl  # ← Add new entry
+  }
+}
+```
+
+### 3. Create Database User
 
 Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
 
@@ -138,7 +168,7 @@ EOF
 unset DB_PASSWORD
 ```
 
-### 3. Deploy New Tenant
+### 4. Deploy New Tenant
 
 ```bash
 terraform plan  # Review changes
