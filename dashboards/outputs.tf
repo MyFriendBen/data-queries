@@ -46,15 +46,28 @@ output "conversion_funnel_card_id" {
   value       = metabase_card.conversion_funnel.id
 }
 
-output "screen_count_card_id" {
-  description = "ID of the screen count card"
-  value       = metabase_card.screen_count.id
+output "completed_screens_card_id" {
+  description = "ID of the completed screens card"
+  value       = metabase_card.completed_screens.id
 }
 
-output "tenant_screen_count_card_ids" {
-  description = "IDs of tenant-specific screen count cards"
+output "individuals_screened_card_id" {
+  description = "ID of the individuals screened card"
+  value       = metabase_card.individuals_screened.id
+}
+
+output "tenant_completed_screens_card_ids" {
+  description = "IDs of tenant-specific completed screens cards"
   value = {
-    for k, v in metabase_card.tenant_screen_count :
+    for k, v in metabase_card.tenant_completed_screens :
+    k => v.id
+  }
+}
+
+output "tenant_individuals_screened_card_ids" {
+  description = "IDs of tenant-specific individuals screened cards"
+  value = {
+    for k, v in metabase_card.tenant_individuals_screened :
     k => v.id
   }
 }
