@@ -5,6 +5,7 @@
 ) }}
 
 SELECT
+    ip.program_id,
     ip.translation_translation_id AS id,
     ip.master_id,
     ip.label,
@@ -13,4 +14,4 @@ SELECT
     ip.white_label_id
 FROM {{ ref('int_programs_value_types') }} ip
 WHERE ip.label ILIKE 'program.%-value_type'
-ORDER BY ip.white_label_id, ip.master_id
+ORDER BY ip.white_label_id, ip.program_id

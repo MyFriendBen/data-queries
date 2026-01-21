@@ -24,6 +24,7 @@ translations_tt AS (
 )
 
 SELECT
+    pp.id AS program_id,
     ttt.translation_translation_id,
     ttt.master_id,
     tt.label,

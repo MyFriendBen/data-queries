@@ -4,6 +4,7 @@
 ) }}
 
 SELECT
+    sp.program_id,
     sp.translation_translation_id,
     sp.master_id,
     sp.label,
