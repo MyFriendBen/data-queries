@@ -271,7 +271,7 @@ with base_table_1 as (
         pe.andcs_annual,
         pe.awd_medicaid_annual,
         pe.bca_annual,
-        pe.cccap_annual,
+        pe.ccap_annual,
         pe.cdhcs_annual,
         pe.cfhc_annual,
         pe.chp_annual,
@@ -413,7 +413,7 @@ base_table_2 as (
             + coalesce(andcs_annual, 0)
             + coalesce(awd_medicaid_annual, 0)
             + coalesce(bca_annual, 0)
-            + coalesce(cccap_annual, 0)
+            + coalesce(ccap_annual, 0)
             + coalesce(cdhcs_annual, 0)
             + coalesce(cfhc_annual, 0)
             + coalesce(chp_annual, 0)
