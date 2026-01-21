@@ -104,3 +104,93 @@ sources:
             description: "Foreign key to translations_translation for the value type"
           - name: white_label_id
             description: "White label organization ID for RLS"
+      - name: screener_incomestream
+        description: "Income stream records from Django IncomeStream model"
+        columns:
+          - name: id
+            description: "Primary key"
+            tests:
+              - not_null
+              - unique
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'screener_screen')
+          - name: type
+            description: "Type of income stream"
+          - name: amount
+            description: "Income amount"
+            tests:
+              - not_null
+          - name: frequency
+            description: "Income frequency"
+      - name: screener_expense
+        description: "Expense records from Django Expense model"
+        columns:
+          - name: id
+            description: "Primary key"
+            tests:
+              - not_null
+              - unique
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'screener_screen')
+          - name: type
+            description: "Type of expense"
+          - name: amount
+            description: "Expense amount"
+            tests:
+              - not_null
+          - name: frequency
+            description: "Expense frequency"
+      - name: screener_householdmember
+        description: "Household member records from Django HouseholdMember model"
+        columns:
+          - name: id
+            description: "Primary key"
+            tests:
+              - not_null
+              - unique
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'screener_screen')
+          - name: age
+            description: "Age of household member"
+          - name: relationship
+            description: "Relationship to head of household"
+          - name: has_disability
+            description: "Whether member has a disability"
+      - name: screener_energycalculatorscreen
+        description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
+        columns:
+          - name: id
+            description: "Primary key"
+            tests:
+              - not_null
+              - unique
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'screener_screen')
+          - name: energy_cost
+            description: "Monthly energy cost"
+          - name: heating_fuel_type
+            description: "Type of heating fuel used"
