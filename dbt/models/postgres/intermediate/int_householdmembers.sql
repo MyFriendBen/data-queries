@@ -29,5 +29,5 @@ select
     sh.frontend_id,
     sh.is_care_worker
 from {{ ref('stg_householdmembers') }} sh
-inner join public.data d
+inner join {{ ref('int_complete_screener_data') }} d
     on sh.screen_id = d.id

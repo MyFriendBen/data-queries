@@ -35,3 +35,56 @@ models:
         tests:
           - not_null
 
+      - name: submission_date
+        description: "Timestamp when the screener was submitted."
+
+      - name: age
+        description: "Age of the household member."
+
+      - name: student
+        description: "Indicates whether the household member is a student."
+
+      - name: student_full_time
+        description: "Indicates whether the household member is a full-time student."
+
+      - name: pregnant
+        description: "Indicates whether the household member is pregnant."
+
+      - name: unemployed
+        description: "Indicates whether the household member is unemployed."
+
+      - name: worked_in_last_18_mos
+        description: "Indicates whether the household member worked within the last 18 months."
+
+      - name: visually_impaired
+        description: "Indicates whether the household member is visually impaired."
+
+      - name: disabled
+        description: "Indicates whether the household member has a disability."
+
+      - name: veteran
+        description: "Indicates whether the household member is a veteran."
+
+      - name: medicaid
+        description: "Indicates whether the household member receives Medicaid."
+
+      - name: disability_medicaid
+        description: "Indicates whether the household member receives disability-related Medicaid."
+
+      - name: has_income
+        description: "Indicates whether the household member has income."
+
+      - name: has_expenses
+        description: "Indicates whether the household member has expenses."
+
+      - name: relationship
+        description: "Relationship of the household member to the head of household."
+
+      - name: long_term_disability
+        description: "Indicates whether the household member has a long-term disability."
+
+      - name: birth_year_month
+        description: "Birth year and month of the household member."
+
+      - name: is_care_worker
+        description: "Indicates whether the household member is a care worker."
