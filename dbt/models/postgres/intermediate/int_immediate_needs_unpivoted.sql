@@ -1,6 +1,6 @@
 {{ config(
     materialized='view',
-    description='Staging model that unpivots immediate needs counts into benefit-level rows'
+    description='Intermediate model that unpivots immediate needs counts into benefit-level rows'
 ) }}
 
 select

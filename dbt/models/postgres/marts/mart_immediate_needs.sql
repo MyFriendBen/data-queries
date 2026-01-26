@@ -5,4 +5,4 @@
 ) }}
 
 select *
-from {{ ref('stg_immediate_needs') }}
+from {{ ref('int_immediate_needs_unpivoted') }}
