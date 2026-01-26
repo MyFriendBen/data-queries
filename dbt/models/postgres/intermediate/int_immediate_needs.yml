@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: int_immediate_needs
+    description: "Intermediate model for immediate needs, with counts per category and white_label_id/partner."
+    columns:
+      - name: white_label_id
+        description: "White label organization ID used for row-level security."
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner associated with the screener."
+        tests:
+          - not_null
+
+      - name: needs_baby_supplies
+        description: "Count of people needing baby supplies."
+        tests:
+          - not_null
+
+      - name: needs_child_dev_help
+        description: "Count of people needing child development help."
+        tests:
+          - not_null
+
+      - name: needs_food
+        description: "Count of people needing food assistance."
+        tests:
+          - not_null
+
+      - name: needs_funeral_help
+        description: "Count of people needing funeral help."
+        tests:
+          - not_null
+
+      - name: needs_housing_help
+        description: "Count of people needing housing help."
+        tests:
+          - not_null
+
+      - name: needs_mental_health_help
+        description: "Count of people needing mental health help."
+        tests:
+          - not_null
+
+      - name: needs_family_planning_help
+        description: "Count of people needing family planning help."
+        tests:
+          - not_null
+
+      - name: needs_dental_care
+        description: "Count of people needing dental care."
+        tests:
+          - not_null
+
+      - name: needs_job_resources
+        description: "Count of people needing job resources."
+        tests:
+          - not_null
+
+      - name: needs_legal_services
+        description: "Count of people needing legal services."
+        tests:
+          - not_null
+
+      - name: needs_college_savings
+        description: "Count of people needing college savings help."
+        tests:
+          - not_null
+
+      - name: needs_veteran_services
+        description: "Count of people needing veteran services."
+        tests:
+          - not_null
