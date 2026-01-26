@@ -15,7 +15,7 @@ cross join lateral unnest(
         ,'ANDCS'
         ,'AWD Medicaid'
         ,'BCA'
-        ,'CCCAP'
+        ,'CCAP'
         ,'CDHCS'
         ,'CFHC'
         ,'CHP'
