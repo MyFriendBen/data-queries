@@ -103,7 +103,7 @@ cross join lateral unnest(
         ,'IL Transit Reduced Fare'
         ,'IL WIC'
         ,'NF'
-        ,'MFP'
+        ,'NFP'
         ,'NSLP'
         ,'OAP'
         ,'Omnisalud'
