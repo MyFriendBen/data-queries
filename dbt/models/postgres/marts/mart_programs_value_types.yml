@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: mart_programs_value_types
+    description: "Mart model for programs data with row-level security. Contains program translations filtered to 'program.%-value_type' labels, restricted by white_label_id."
+    columns:
+      - name: program_id
+        description: "Program ID (primary key) - unique identifier for each program from programs_program table"
+        tests:
+          - not_null
+          - unique
+      - name: id
+        description: "Translation translation ID - may be shared across multiple programs if they use the same value_type"
+        tests:
+          - not_null
+      - name: master_id
+        description: "Foreign key to translations_translation table"
+        tests:
+          - not_null
+      - name: label
+        description: "Translation label (e.g., 'program.co_snap-value_type')"
+        tests:
+          - not_null
+      - name: language_code
+        description: "Language code (filtered to 'en-us')"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['en-us']
+      - name: text
+        description: "Translation text value"
+        tests:
+          - not_null
+      - name: white_label_id
+        description: "White label organization ID - used for row-level security"
+        tests:
+          - not_null
