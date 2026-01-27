@@ -12,3 +12,12 @@ logs/
 **/dist/
 venv/
 .user.yml
+
+# terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+terraform.tfvars
+*.tfplan
