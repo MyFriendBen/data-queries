@@ -27,7 +27,7 @@ with base_table_1 as (
             when ss.referrer_code is not null and trim(ss.referrer_code) <> '' then
                 case
                     when ss.referral_source is null or trim(ss.referral_source) = '' then drc1.partner
-                    when trim(ss.referral_source) = trim(ss.referrer_code) then drc1.partner
+                    when trim(ss.referral_source) = trim(ss.referrer_code) then coalesce(drc1.partner, 'Other')
                     when trim(ss.referral_source) <> trim(ss.referrer_code) then
                         case
                             when drc2.referrer_code is not null then concat(drc1.partner,', ',drc2.partner)
