@@ -91,6 +91,18 @@ variable "bigquery_service_account_key_content" {
   default     = null
 }
 
+variable "database_sync_timeout" {
+  description = "Seconds to wait for Metabase to sync database schemas before creating cards/dashboards"
+  type        = number
+  default     = 60
+}
+
+variable "database_ssl" {
+  description = "Enable SSL for PostgreSQL connections (required for most production databases)"
+  type        = bool
+  default     = false
+}
+
 locals {
   # Use content if provided, otherwise read from file path (if it exists)
   bigquery_key_from_file = fileexists(var.bigquery_service_account_key_path) ? file(var.bigquery_service_account_key_path) : null

@@ -49,7 +49,7 @@ resource "metabase_database" "postgres" {
       dbname   = var.database_name
       user     = var.global_db_credentials.username
       password = var.global_db_credentials.password
-      ssl      = false
+      ssl      = var.database_ssl
       tunnel-enabled    = false
       advanced-options  = false
     })
@@ -75,7 +75,7 @@ resource "metabase_database" "tenant_postgres" {
       dbname   = var.database_name
       user     = var.tenant_db_credentials[each.key].username
       password = var.tenant_db_credentials[each.key].password
-      ssl      = false
+      ssl      = var.database_ssl
       tunnel-enabled    = false
       advanced-options  = false
     })
@@ -94,7 +94,7 @@ resource "time_sleep" "wait_for_database_sync" {
     metabase_database.tenant_postgres
   ]
 
-  create_duration = "120s"
+  create_duration = "${var.database_sync_timeout}s"
 }
 
 # Get the table reference from BigQuery

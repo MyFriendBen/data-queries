@@ -2,7 +2,7 @@ name: mfb-dashboards
 
 services:
   metabase:
-    image: metabase/metabase:latest
+    image: metabase/metabase:v0.57.11
     container_name: metabase
     hostname: metabase
     ports:
