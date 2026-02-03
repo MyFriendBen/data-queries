@@ -80,7 +80,7 @@ terraform init
 terraform apply
 ```
 
-Terraform will automatically wait 2 minutes after creating database connections for Metabase to sync schemas before creating cards and dashboards.
+Terraform will wait for Metabase to sync database schemas before creating cards and dashboards. This is configurable via `database_sync_wait_seconds` in terraform.tfvars (default: 60s, recommend 30s for local dev).
 
 When complete, view your dashboards at http://localhost:3001!
 
@@ -160,9 +160,9 @@ psql -h localhost -U postgres -d mfb << EOF
 -- Create user for Texas (white_label_id = 40)
 CREATE USER tx WITH PASSWORD '$DB_PASSWORD';
 ALTER USER tx SET rls.white_label_id = '40';
-GRANT CONNECT ON DATABASE mfb TO fl;
-GRANT USAGE ON SCHEMA public TO fl;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO fl;
+GRANT CONNECT ON DATABASE mfb TO tx;
+GRANT USAGE ON SCHEMA public TO tx;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO tx;
 EOF
 
 unset DB_PASSWORD

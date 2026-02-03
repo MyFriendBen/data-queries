@@ -94,7 +94,7 @@ resource "time_sleep" "wait_for_database_sync" {
     metabase_database.tenant_postgres
   ]
 
-  create_duration = "${var.database_sync_timeout}s"
+  create_duration = "${var.database_sync_wait_seconds}s"
 }
 
 # Get the table reference from BigQuery

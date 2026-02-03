@@ -91,7 +91,7 @@ variable "bigquery_service_account_key_content" {
   default     = null
 }
 
-variable "database_sync_timeout" {
+variable "database_sync_wait_seconds" {
   description = "Seconds to wait for Metabase to sync database schemas before creating cards/dashboards"
   type        = number
   default     = 60
