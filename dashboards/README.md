@@ -44,16 +44,16 @@ Each tenant needs a dedicated database user that only has access to their white-
 export DB_PASSWORD="secure_password"
 
 psql -h localhost -U postgres -d mfb << EOF
--- Create user for North Carolina (example: white_label_id = 1)
+-- Create user for North Carolina (white_label_id = 5)
 CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
-ALTER USER nc SET rls.white_label_id = '1';
+ALTER USER nc SET rls.white_label_id = '5';
 GRANT CONNECT ON DATABASE mfb TO nc;
 GRANT USAGE ON SCHEMA public TO nc;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO nc;
 
--- Create user for Colorado (example: white_label_id = 7)
+-- Create user for Colorado (white_label_id = 1)
 CREATE USER co WITH PASSWORD '$DB_PASSWORD';
-ALTER USER co SET rls.white_label_id = '7';
+ALTER USER co SET rls.white_label_id = '1';
 GRANT CONNECT ON DATABASE mfb TO co;
 GRANT USAGE ON SCHEMA public TO co;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO co;
@@ -107,14 +107,14 @@ Edit `terraform.tfvars`:
 tenants = {
   nc = { name = "nc", display_name = "North Carolina" }
   co = { name = "co", display_name = "Colorado" }
-  fl = { name = "fl", display_name = "Florida" }  # ← New tenant
+  tx = { name = "tx", display_name = "Texas" }  # ← New tenant
 }
 
 # Add tenant database credentials
 tenant_db_credentials = {
   nc = { username = "nc", password = "secure_password" }
   co = { username = "co", password = "secure_password" }
-  fl = { username = "fl", password = "secure_password" }  # ← New credentials
+  tx = { username = "tx", password = "secure_password" }  # ← New credentials
 }
 ```
 
@@ -129,8 +129,8 @@ Add a new collection resource that depends on the last existing one:
 ```hcl
 # In metabase.tf - add after the last tenant collection resource
 
-resource "metabase_collection" "tenant_collection_fl" {
-  name       = "Florida"
+resource "metabase_collection" "tenant_collection_tx" {
+  name       = "Texas"
   depends_on = [metabase_collection.tenant_collection_co]  # ← Chain to previous
 }
 ```
@@ -142,7 +142,7 @@ locals {
   tenant_collection_map = {
     nc = metabase_collection.tenant_collection_nc
     co = metabase_collection.tenant_collection_co
-    fl = metabase_collection.tenant_collection_fl  # ← Add new entry
+    tx = metabase_collection.tenant_collection_tx  # ← Add new entry
   }
 }
 ```
@@ -157,9 +157,9 @@ Create a new database user with row-level security (see Quick Start step 3 for d
 export DB_PASSWORD="secure_password"
 
 psql -h localhost -U postgres -d mfb << EOF
--- Create user for Florida (example: white_label_id = 3)
-CREATE USER fl WITH PASSWORD '$DB_PASSWORD';
-ALTER USER fl SET rls.white_label_id = '3';
+-- Create user for Texas (white_label_id = 40)
+CREATE USER tx WITH PASSWORD '$DB_PASSWORD';
+ALTER USER tx SET rls.white_label_id = '40';
 GRANT CONNECT ON DATABASE mfb TO fl;
 GRANT USAGE ON SCHEMA public TO fl;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO fl;

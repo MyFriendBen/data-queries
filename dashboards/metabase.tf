@@ -134,6 +134,18 @@ resource "metabase_collection" "global" {
 
 # Tenant collections - created sequentially to avoid Metabase race condition
 # When adding new tenants, add a new resource and chain it to the previous one
+#
+# NOTE: Ideally we'd use for_each here, but Metabase has a race condition when
+# creating multiple collections concurrently (duplicate key error in
+# collection_permission_graph_revision). Tested with provider v0.14.0 and
+# the issue persists. If fixed in a future version, replace with:
+#
+#   resource "metabase_collection" "tenant_collection" {
+#     for_each   = var.tenants
+#     name       = each.value.display_name
+#     depends_on = [metabase_collection.global]
+#   }
+#   locals { tenant_collection_map = metabase_collection.tenant_collection }
 
 resource "metabase_collection" "tenant_collection_nc" {
   name       = "North Carolina"

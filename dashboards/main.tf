@@ -4,7 +4,7 @@ terraform {
   required_providers {
     metabase = {
       source  = "flovouin/metabase"
-      version = "~> 0.13"
+      version = "~> 0.14"
     }
   }
 }
