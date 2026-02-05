@@ -77,6 +77,33 @@ sources:
             description: "JSON of failed eligibility tests"
           - name: passed_tests
             description: "JSON of passed eligibility tests"
+      - name: translations_translation
+        description: "Translation metadata table from Django"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: label
+            description: "Translation label (e.g., program.%-name)"
+      - name: translations_translation_translation
+        description: "Translation text table from Django"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: master_id
+            description: "Foreign key to translations_translation"
+          - name: language_code
+            description: "Language code for the translation (e.g., en-us)"
+          - name: text
+            description: "Translation text"
+      - name: programs_program
+        description: "Programs table from Django that links programs to white labels"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: value_type_id
+            description: "Foreign key to translations_translation for the value type"
+          - name: white_label_id
+            description: "White label organization ID for RLS"
       - name: screener_incomestream
         description: "Income stream records from Django IncomeStream model"
         columns:
