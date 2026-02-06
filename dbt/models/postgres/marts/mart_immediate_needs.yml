@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: mart_immediate_needs
+    description: "Mart table for immediate needs, unpivoted for dashboard: columns are benefit, count, white_label_id, and partner."
+    columns:
+      - name: white_label_id
+        description: "White label organization ID used for row-level security."
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner associated with the screener."
+        tests:
+          - not_null
+
+      - name: benefit
+        description: "Immediate need category (e.g., Food, Baby Supplies, Housing)."
+        tests:
+          - not_null
+
+      - name: count
+        description: "Count of people in the corresponding benefit category."
+        tests:
+          - not_null

@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: mart_householdmembers
+    description: "Mart model that reproduces data_householdmembers materialized view. Contains household member records joined with screener data and restricted by white_label_id."
+    columns:
+      - name: id
+        description: "Household member ID (primary key)"
+        tests:
+          - not_null
+          - unique
+
+      - name: screener_id
+        description: "ID of the screener_householdmember this household member record belongs to."
+        tests:
+          - not_null
+
+      - name: white_label_id
+        description: "White label organization ID used for row-level security."
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner for the head of household."
+        tests:
+          - not_null
+
+      - name: screen_id
+        description: "ID of the screener same as screener_id."
+        tests:
+          - not_null
+
+      - name: frontend_id
+        description: "Frontend-facing unique identifier (UUID) for the household member."
+        tests:
+          - not_null
+
+      - name: submission_date
+        description: "Timestamp when the screener was submitted."
+
+      - name: age
+        description: "Age of the household member."
+
+      - name: student
+        description: "Indicates whether the household member is a student."
+
+      - name: student_full_time
+        description: "Indicates whether the household member is a full-time student."
+
+      - name: pregnant
+        description: "Indicates whether the household member is pregnant."
+
+      - name: unemployed
+        description: "Indicates whether the household member is unemployed."
+
+      - name: worked_in_last_18_mos
+        description: "Indicates whether the household member worked within the last 18 months."
+
+      - name: visually_impaired
+        description: "Indicates whether the household member is visually impaired."
+
+      - name: disabled
+        description: "Indicates whether the household member has a disability."
+
+      - name: veteran
+        description: "Indicates whether the household member is a veteran."
+
+      - name: medicaid
+        description: "Indicates whether the household member receives Medicaid."
+
+      - name: disability_medicaid
+        description: "Indicates whether the household member receives disability-related Medicaid."
+
+      - name: has_income
+        description: "Indicates whether the household member has income."
+
+      - name: has_expenses
+        description: "Indicates whether the household member has expenses."
+
+      - name: relationship
+        description: "Relationship of the household member to the head of household."
+
+      - name: long_term_disability
+        description: "Indicates whether the household member has a long-term disability."
+
+      - name: birth_year_month
+        description: "Birth year and month of the household member."
+
+      - name: is_care_worker
+        description: "Indicates whether the household member is a care worker."

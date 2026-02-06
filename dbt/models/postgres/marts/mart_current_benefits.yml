@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: mart_current_benefits
+    description: "Mart table for current benefits, unpivoted for dashboard use. Contains benefit counts by white_label_id and partner with row-level security."
+    columns:
+      - name: white_label_id
+        description: "White label organization ID used for row-level security"
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner associated with the screener"
+        tests:
+          - not_null
+
+      - name: benefit
+        description: "Benefit category name"
+        tests:
+          - not_null
+
+      - name: count
+        description: "Count of people eligible for the corresponding benefit"
+        tests:
+          - not_null
