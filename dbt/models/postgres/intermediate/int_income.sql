@@ -13,4 +13,4 @@ SELECT
     d.submission_date,
     d.white_label_id
 FROM {{ ref('stg_income') }} si
-INNER JOIN public.data d ON si.screen_id = d.id
+INNER JOIN {{ source('django_apps', 'data') }} d ON si.screen_id = d.id
