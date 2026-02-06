@@ -17,15 +17,19 @@ models:
       +enabled: "{{ target.type == 'postgres' }}"
       staging:
         +materialized: view
+        +schema: internal
       intermediate:
         +materialized: view
+        +schema: internal
       marts:
         +materialized: table
     bigquery:
       +enabled: "{{ target.type == 'bigquery' }}"
       staging:
         +materialized: view
+        +schema: internal
       intermediate:
         +materialized: view
+        +schema: internal
       marts:
-        +materialized: table 
+        +materialized: table

@@ -48,15 +48,15 @@ psql -h localhost -U postgres -d mfb << EOF
 CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
 ALTER USER nc SET rls.white_label_id = '5';
 GRANT CONNECT ON DATABASE mfb TO nc;
-GRANT USAGE ON SCHEMA public TO nc;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO nc;
+GRANT USAGE ON SCHEMA analytics TO nc;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO nc;
 
 -- Create user for Colorado (white_label_id = 1)
 CREATE USER co WITH PASSWORD '$DB_PASSWORD';
 ALTER USER co SET rls.white_label_id = '1';
 GRANT CONNECT ON DATABASE mfb TO co;
-GRANT USAGE ON SCHEMA public TO co;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO co;
+GRANT USAGE ON SCHEMA analytics TO co;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO co;
 EOF
 
 unset DB_PASSWORD
@@ -161,8 +161,8 @@ psql -h localhost -U postgres -d mfb << EOF
 CREATE USER tx WITH PASSWORD '$DB_PASSWORD';
 ALTER USER tx SET rls.white_label_id = '40';
 GRANT CONNECT ON DATABASE mfb TO tx;
-GRANT USAGE ON SCHEMA public TO tx;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO tx;
+GRANT USAGE ON SCHEMA analytics TO tx;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO tx;
 EOF
 
 unset DB_PASSWORD
@@ -184,3 +184,13 @@ Verify database user exists and has correct `white_label_id` setting
 ### Connection errors
 
 Check credentials in `terraform.tfvars`
+
+### Switching Branches
+
+Terraform state can get out of sync when switching between branches that define different resources. To avoid errors, destroy the current infrastructure before checking out a new branch and re-apply after:
+
+```bash
+terraform destroy
+git checkout <other-branch>
+terraform apply
+```
