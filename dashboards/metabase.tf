@@ -8,7 +8,7 @@ provider "metabase" {
 # Shared configuration template for screen count cards
 locals {
   screen_count_card_config = {
-    name                = "Number of Screens"
+    name                = "Completed Screens"
     description         = "Total count of completed screens from PostgreSQL"
     collection_position = null
     cache_ttl           = null
@@ -109,7 +109,7 @@ data "metabase_table" "conversion_funnel_table" {
 data "metabase_table" "screen_summary_table" {
   depends_on = [time_sleep.wait_for_database_sync]
 
-  name   = "mart_screen_eligibility_summary"
+  name   = "mart_screener_data"
   schema = "analytics"
   db_id  = tonumber(metabase_database.postgres.id)
 }
@@ -120,7 +120,7 @@ data "metabase_table" "tenant_screen_summary_tables" {
 
   depends_on = [time_sleep.wait_for_database_sync]
 
-  name   = "mart_screen_eligibility_summary"
+  name   = "mart_screener_data"
   schema = "analytics"
   db_id  = tonumber(metabase_database.tenant_postgres[each.key].id)
 }
@@ -194,7 +194,7 @@ resource "metabase_card" "conversion_funnel" {
 # Screen count card using PostgreSQL data
 resource "metabase_card" "screen_count" {
   json = jsonencode({
-    name                = "Number of Screens"
+    name                = "Completed Screens"
     description         = "Total count of completed screens from PostgreSQL"
     collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
