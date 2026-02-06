@@ -1,7 +1,8 @@
 {{
   config(
     materialized='table',
-    description='Materialized mart for expenses data'
+    description='Materialized mart for expenses data',
+    post_hook="{{ setup_white_label_rls(this.name) }}"
   )
 }}
 
