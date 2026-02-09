@@ -1,0 +1,4 @@
+FROM metabase/metabase:v0.57.11
+COPY heroku-entrypoint.sh /app/heroku-entrypoint.sh
+RUN chmod +x /app/heroku-entrypoint.sh
+CMD ["/app/heroku-entrypoint.sh"]
