@@ -381,7 +381,6 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
          - "!dashboards/README.md"
          - "!dashboards/docker-compose.yml"
          - "!dashboards/setup-metabase.sh"
-         - "!dashboards/secrets/**"
 
    jobs:
      plan:
@@ -466,14 +465,9 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
          - run: terraform apply -auto-approve
    ```
 
-3. **Configure Metabase user permissions** (separate ticket, out of scope)
-   - User group creation and permission assignment via Terraform is tracked in a separate ticket
-   - Phase 3 scope is deploying existing Terraform functionality (databases, collections, cards, dashboards)
-
 ### Terraform Provider Notes
 
 - **Pin versions:** Keep `flovouin/metabase ~> 0.14` and `metabase/metabase:v0.57.11`. Test compatibility before upgrading either — the Metabase API is unversioned and can break between releases.
-- **Race condition:** Collection creation is already handled sequentially in the existing Terraform config (due to a known Metabase race condition with concurrent writes).
 - **State file security:** Terraform state stores all variable values in plaintext, including passwords. Terraform Cloud encrypts state at rest. If using GCS, ensure the bucket has appropriate access controls.
 
 ---
@@ -508,12 +502,3 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 | Create Terraform plan/apply workflows                      | 3     | Step   | Manual apply worked |
 
 ---
-
-## Future Considerations (Out of Scope)
-
-- Read replica for analytics queries (if analytics load impacts Django app performance)
-- Metabase SSO / SAML integration for tenant login
-- Slack/email alerting on dbt test failures or workflow failures
-- Dashboard version control beyond Terraform (e.g., Metabase serialization)
-- Cost monitoring for Heroku + BigQuery
-- Centralizing secrets into a dedicated secrets manager
