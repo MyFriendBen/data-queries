@@ -187,6 +187,8 @@ Check credentials in `terraform.tfvars`
 
 ### Switching Branches
 
+FOR DEVELOPMENT PURPOSES ONLY - DO NOT USE THIS IN PRODUCTION
+
 Terraform state can get out of sync when switching between branches that define different resources. To avoid errors, destroy the current infrastructure before checking out a new branch and re-apply after:
 
 ```bash
