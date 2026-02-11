@@ -31,14 +31,11 @@ Move from a fully local setup (Docker Compose Metabase, local dbt runs, Terrafor
 
 Get Metabase running at a public URL so stakeholders can access dashboards.
 
-### Prerequisite: Create Wrapper Dockerfile and Entrypoint
+### Prerequisite: Create Wrapper Dockerfile and Entrypoint — ✅ Completed
 
-Both deployment options below require a wrapper Dockerfile and entrypoint script. Two Heroku-specific issues make this necessary:
+Both deployment options below require a wrapper Dockerfile and entrypoint script. Heroku dynamically assigns a port via `$PORT`, but Metabase expects `MB_JETTY_PORT`. Without mapping, you get H10 (App crashed) errors.
 
-1. **`$PORT` mapping:** Heroku dynamically assigns a port. Metabase defaults to 3000. Without mapping, you get H10 (App crashed) errors.
-2. **BigQuery credentials:** Heroku has no volume mounts. The BigQuery service account JSON must be decoded from a base64 env var at startup.
-
-Create these files before proceeding with either deployment option:
+These files are already committed (`dashboards/Dockerfile.heroku`, `dashboards/heroku-entrypoint.sh`):
 
 ```bash
 # dashboards/heroku-entrypoint.sh
@@ -46,13 +43,7 @@ Create these files before proceeding with either deployment option:
 set -e
 
 # Heroku assigns $PORT dynamically; Metabase needs it as MB_JETTY_PORT
-export MB_JETTY_PORT=${PORT:-3000}
-
-# Decode BigQuery service account key from base64 env var
-if [ -n "$BIGQUERY_SA_KEY_BASE64" ]; then
-    echo "$BIGQUERY_SA_KEY_BASE64" | base64 -d > /tmp/bigquery-sa-key.json
-    export GOOGLE_APPLICATION_CREDENTIALS=/tmp/bigquery-sa-key.json
-fi
+export MB_JETTY_PORT=$PORT
 
 exec /app/run_metabase.sh
 ```
@@ -105,9 +96,11 @@ To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebu
 
 ### Steps
 
-1. **Create the wrapper Dockerfile, entrypoint, and `heroku.yml`** (files listed in Prerequisite above)
+1. ~~**Create the wrapper Dockerfile and entrypoint**~~ ✅ Completed
 
-2. **Provision Heroku app + Postgres addon**
+2. **Create `heroku.yml`** if you choose Option A above.
+
+3. **Provision Heroku app + Postgres addon**
 
    ```bash
    heroku create mfb-metabase
@@ -115,7 +108,7 @@ To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebu
    heroku addons:create heroku-postgresql:essential-0 -a mfb-metabase
    ```
 
-3. **Configure Heroku environment variables**
+4. **Configure Heroku environment variables**
 
    ```bash
    # Metabase internal DB (parse from DATABASE_URL provided by addon)
@@ -127,11 +120,9 @@ To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebu
    heroku config:set MB_SITE_URL="https://mfb-metabase-<hash>.herokuapp.com" -a mfb-metabase
    heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-a-random-key>" -a mfb-metabase
 
-   # BigQuery credentials (base64-encoded service account JSON)
-   heroku config:set BIGQUERY_SA_KEY_BASE64="$(base64 -i secrets/bigquerykey.json | tr -d '\n')" -a mfb-metabase
    ```
 
-4. **Use Standard-2X dynos (1GB RAM) or higher**
+5. **Use Standard-2X dynos (1GB RAM) or higher**
    - Metabase needs significant memory; Standard-1X (512MB) will likely OOM
 
    ```bash
@@ -140,22 +131,22 @@ To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebu
 
    - Monitor memory usage after deploy; upgrade to Performance-M if needed
 
-5. **Deploy** using Option A or B above
+6. **Deploy** using Option A or B above
 
-6. **Complete Metabase setup wizard manually**
+7. **Complete Metabase setup wizard manually**
    - Visit the Heroku app URL
    - Create admin account (save credentials — Terraform uses these in Phase 3)
    - Skip data source setup (Terraform handles this in Phase 3)
 
-7. **Verify Metabase is healthy**
+8. **Verify Metabase is healthy**
    - Check `/api/health` endpoint returns OK
    - Confirm Heroku Postgres addon is being used for Metabase internal state
 
 ### Heroku Gotchas
 
 - **Heroku Postgres addon** is only for Metabase's internal metadata — it is not the analytics database. The analytics data lives in the production Django database.
-- **`MB_DB_CONNECTION_URI`:** Heroku Postgres provides `DATABASE_URL` in postgres:// format. Metabase needs JDBC format. Either parse it in the entrypoint script or set `MB_DB_HOST`, `MB_DB_PORT`, `MB_DB_DBNAME`, `MB_DB_USER`, `MB_DB_PASS` individually.
-- **Ephemeral filesystem:** The decoded BigQuery JSON at `/tmp/` is lost on dyno restart — the entrypoint recreates it on every boot, which is fine.
+- **`MB_DB_CONNECTION_URI`:** Heroku Postgres provides `DATABASE_URL` in postgres:// format. Metabase needs JDBC format. Either set `MB_DB_CONNECTION_URI` to the JDBC URL or set `MB_DB_HOST`, `MB_DB_PORT`, `MB_DB_DBNAME`, `MB_DB_USER`, `MB_DB_PASS` individually.
+- **BigQuery credentials:** Configured via Terraform (Phase 3), which passes the service account key content directly through the Metabase API — no filesystem or entrypoint involvement needed.
 
 ---
 
@@ -354,7 +345,9 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
 | `DATABASE_HOST`           | `TF_VAR_database_host`                             |
 | `GLOBAL_DB_USER`          | Part of `TF_VAR_global_db_credentials`             |
 | `GLOBAL_DB_PASS`          | Part of `TF_VAR_global_db_credentials`             |
+| `NC_DB_USER`              | Part of `TF_VAR_tenant_db_credentials`             |
 | `NC_DB_PASS`              | Part of `TF_VAR_tenant_db_credentials`             |
+| `CO_DB_USER`              | Part of `TF_VAR_tenant_db_credentials`             |
 | `CO_DB_PASS`              | Part of `TF_VAR_tenant_db_credentials`             |
 | `BIGQUERY_SA_KEY`         | `TF_VAR_bigquery_service_account_key_content`      |
 | `GCP_PROJECT_ID`          | `TF_VAR_gcp_project_id`                            |
@@ -395,10 +388,6 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
          TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
          TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
          TF_VAR_database_ssl: "true"
-         TF_VAR_global_db_credentials: >-
-           {"username":"${{ secrets.GLOBAL_DB_USER }}","password":"${{ secrets.GLOBAL_DB_PASS }}"}
-         TF_VAR_tenant_db_credentials: >-
-           {"nc":{"username":"nc","password":"${{ secrets.NC_DB_PASS }}"},"co":{"username":"co","password":"${{ secrets.CO_DB_PASS }}"}}
          TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
        steps:
@@ -407,6 +396,27 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
            with:
              terraform_version: "1.9.x"
              cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+         - name: Build Terraform credential JSON variables
+           run: |
+             global_creds=$(jq -n \
+               --arg user "$GLOBAL_DB_USER" \
+               --arg pass "$GLOBAL_DB_PASS" \
+               '{username: $user, password: $pass}')
+             tenant_creds=$(jq -n \
+               --arg nc_user "$NC_DB_USER" \
+               --arg nc_pass "$NC_DB_PASS" \
+               --arg co_user "$CO_DB_USER" \
+               --arg co_pass "$CO_DB_PASS" \
+               '{nc: {username: $nc_user, password: $nc_pass}, co: {username: $co_user, password: $co_pass}}')
+             echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
+             echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
+           env:
+             GLOBAL_DB_USER: ${{ secrets.GLOBAL_DB_USER }}
+             GLOBAL_DB_PASS: ${{ secrets.GLOBAL_DB_PASS }}
+             NC_DB_USER: ${{ secrets.NC_DB_USER }}
+             NC_DB_PASS: ${{ secrets.NC_DB_PASS }}
+             CO_DB_USER: ${{ secrets.CO_DB_USER }}
+             CO_DB_PASS: ${{ secrets.CO_DB_PASS }}
          - run: terraform init
          - run: terraform plan -no-color
            id: plan
@@ -449,10 +459,6 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
          TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
          TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
          TF_VAR_database_ssl: "true"
-         TF_VAR_global_db_credentials: >-
-           {"username":"${{ secrets.GLOBAL_DB_USER }}","password":"${{ secrets.GLOBAL_DB_PASS }}"}
-         TF_VAR_tenant_db_credentials: >-
-           {"nc":{"username":"nc","password":"${{ secrets.NC_DB_PASS }}"},"co":{"username":"co","password":"${{ secrets.CO_DB_PASS }}"}}
          TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
          TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
        steps:
@@ -461,6 +467,27 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
            with:
              terraform_version: "1.9.x"
              cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+         - name: Build Terraform credential JSON variables
+           run: |
+             global_creds=$(jq -n \
+               --arg user "$GLOBAL_DB_USER" \
+               --arg pass "$GLOBAL_DB_PASS" \
+               '{username: $user, password: $pass}')
+             tenant_creds=$(jq -n \
+               --arg nc_user "$NC_DB_USER" \
+               --arg nc_pass "$NC_DB_PASS" \
+               --arg co_user "$CO_DB_USER" \
+               --arg co_pass "$CO_DB_PASS" \
+               '{nc: {username: $nc_user, password: $nc_pass}, co: {username: $co_user, password: $co_pass}}')
+             echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
+             echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
+           env:
+             GLOBAL_DB_USER: ${{ secrets.GLOBAL_DB_USER }}
+             GLOBAL_DB_PASS: ${{ secrets.GLOBAL_DB_PASS }}
+             NC_DB_USER: ${{ secrets.NC_DB_USER }}
+             NC_DB_PASS: ${{ secrets.NC_DB_PASS }}
+             CO_DB_USER: ${{ secrets.CO_DB_USER }}
+             CO_DB_PASS: ${{ secrets.CO_DB_PASS }}
          - run: terraform init
          - run: terraform apply -auto-approve
    ```
@@ -469,6 +496,15 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
 
 - **Pin versions:** Keep `flovouin/metabase ~> 0.14` and `metabase/metabase:v0.57.11`. Test compatibility before upgrading either — the Metabase API is unversioned and can break between releases.
 - **State file security:** Terraform state stores all variable values in plaintext, including passwords. Terraform Cloud encrypts state at rest. If using GCS, ensure the bucket has appropriate access controls.
+
+### Maintenance Note: CI Variable Coupling
+
+Both `terraform-plan.yml` and `terraform-apply.yml` duplicate the `TF_VAR_*` environment variable mappings and the `jq` credential-building step. This means:
+
+- **Adding a new Terraform variable** requires three changes: update `variables.tf`, add the GitHub secret, and update **both** workflow files.
+- **Adding a new tenant** requires updating the `jq` block in both workflows (to include the new tenant's credentials in the JSON object).
+
+This is a known tradeoff for simplicity — the duplication keeps each workflow self-contained and easy to read. If it becomes painful (e.g., many tenants or frequent variable changes), extract the shared logic into a [composite action](https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action) or switch to a `.tfvars` file generated by a single setup step.
 
 ---
 
@@ -480,7 +516,7 @@ Three systems need credentials:
 
 | System                     | Secret Store                  | Secrets                                                         |
 | -------------------------- | ----------------------------- | --------------------------------------------------------------- |
-| Heroku (Metabase)          | Heroku config vars            | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`, `BIGQUERY_SA_KEY_BASE64` |
+| Heroku (Metabase)          | Heroku config vars            | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`                           |
 | GitHub Actions (dbt)       | GitHub secrets + Environments | `DB_HOST/USER/PASS/NAME`, `GCP_SA_KEY`, `GCP_PROJECT_ID`        |
 | GitHub Actions (Terraform) | GitHub secrets                | `TF_VAR_*`, `TF_API_TOKEN`                                      |
 
@@ -490,7 +526,8 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 
 | Step                                                       | Phase | Type   | Depends On          |
 | ---------------------------------------------------------- | ----- | ------ | ------------------- |
-| Create wrapper Dockerfile + entrypoint + heroku.yml        | 1     | Prereq | —                   |
+| ~~Create wrapper Dockerfile + entrypoint~~  ✅             | 1     | Prereq | —                   |
+| Create heroku.yml (optional)                               | 1     | Prereq | —                   |
 | Provision Heroku app + Postgres addon                      | 1     | Step   | Prereq above        |
 | Configure Heroku env vars, deploy, setup wizard            | 1     | Step   | Above               |
 | Store dbt secrets in GitHub Environments                   | 2     | Prereq | —                   |
