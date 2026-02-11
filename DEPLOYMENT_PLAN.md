@@ -244,7 +244,9 @@ Without this, every new dbt model requires manually re-granting `SELECT` to each
 
          # Write BigQuery service account key to temp file
          - if: matrix.target == 'bigquery'
-           run: echo '${{ secrets.GCP_SA_KEY }}' > /tmp/bigquery-key.json
+           run: |
+            install -m 600 /dev/null /tmp/bigquery-key.json
+            echo '${{ secrets.GCP_SA_KEY }}' > /tmp/bigquery-key.json
 
          - run: dbt build --target ${{ matrix.target }}
            env:
@@ -398,11 +400,11 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
              cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
          - name: Build Terraform credential JSON variables
            run: |
-             global_creds=$(jq -n \
+             global_creds=$(jq -cn \
                --arg user "$GLOBAL_DB_USER" \
                --arg pass "$GLOBAL_DB_PASS" \
                '{username: $user, password: $pass}')
-             tenant_creds=$(jq -n \
+             tenant_creds=$(jq -cn \
                --arg nc_user "$NC_DB_USER" \
                --arg nc_pass "$NC_DB_PASS" \
                --arg co_user "$CO_DB_USER" \
@@ -469,11 +471,11 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
              cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
          - name: Build Terraform credential JSON variables
            run: |
-             global_creds=$(jq -n \
+             global_creds=$(jq -cn \
                --arg user "$GLOBAL_DB_USER" \
                --arg pass "$GLOBAL_DB_PASS" \
                '{username: $user, password: $pass}')
-             tenant_creds=$(jq -n \
+             tenant_creds=$(jq -cn \
                --arg nc_user "$NC_DB_USER" \
                --arg nc_pass "$NC_DB_PASS" \
                --arg co_user "$CO_DB_USER" \
