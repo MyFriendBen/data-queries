@@ -4,9 +4,5 @@
 ) }}
 
 SELECT
-    si.id,
-    si.screen_id,
-    si.type,
-    si.amount,
-    si.frequency
+    si.*
 FROM {{ source('django_apps', 'screener_incomestream') }} si

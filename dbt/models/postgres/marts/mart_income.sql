@@ -5,13 +5,6 @@
 ) }}
 
 SELECT
-    ii.id,
-    ii.screen_id,
-    ii.screener_id,
-    ii.submission_date,
-    ii.white_label_id,
-    ii.type,
-    ii.amount,
-    ii.frequency
+    ii.*
 FROM {{ ref('int_income') }} ii
 ORDER BY ii.white_label_id, ii.screener_id, ii.id

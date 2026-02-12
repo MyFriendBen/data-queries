@@ -40,3 +40,9 @@ models:
           - accepted_values:
               arguments:
                 values: ['yearly', 'monthly', 'weekly', 'hourly', 'biweekly', 'semimonthly']
+      - name: household_member_id
+        description: "Foreign key to screener_householdmember table - identifies which household member this income belongs to"
+      - name: hours_worked
+        description: "Number of hours worked (applicable for hourly income types)"
+      - name: category
+        description: "Category classification for the income stream"

@@ -194,12 +194,3 @@ sources:
             description: "Monthly energy cost"
           - name: heating_fuel_type
             description: "Type of heating fuel used"
-      - name: data
-        description: "Materialized view with complete screener data including eligibility calculations"
-        columns:
-          - name: id
-            description: "Primary key - screener ID"
-          - name: submission_date
-            description: "Date when the screener was submitted"
-          - name: white_label_id
-            description: "White label organization ID"
