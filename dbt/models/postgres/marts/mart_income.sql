@@ -6,5 +6,5 @@
 
 SELECT
     *
-FROM {{ ref('int_income') }} ii
-ORDER BY ii.white_label_id, ii.screener_id, ii.id
+FROM {{ ref('int_income') }}
+ORDER BY white_label_id, screener_id, id
