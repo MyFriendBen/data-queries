@@ -4,5 +4,5 @@
 ) }}
 
 SELECT
-    si.*
+    *
 FROM {{ source('django_apps', 'screener_incomestream') }} si
