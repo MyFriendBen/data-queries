@@ -42,4 +42,8 @@
   -- Grant necessary permissions
   GRANT SELECT ON {{ full_table_name }} TO PUBLIC;
 
+  -- Create index for white_label_id 
+  CREATE INDEX IF NOT EXISTS idx_{{ table_name }}_{{ white_label_column }}
+    ON {{ full_table_name }} ({{ white_label_column }});
+
 {% endmacro %}
