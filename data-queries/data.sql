@@ -736,5 +736,6 @@ from base_table_2
 where completed=true
     and is_test=false
     and is_test_data=false
+    and partner<>'Test'
 --     and white_label_id=4
 order by id
