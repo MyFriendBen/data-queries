@@ -5,27 +5,7 @@
   (setup_white_label_rls). This macro is called via the on-run-end hook in
   dbt_project.yml and will raise a compilation error if any mart model under
   models/postgres/marts/ is missing the required post-hook.
-
-  How it works:
-    - Skips enforcement for non-postgres targets (e.g. BigQuery).
-    - Iterates over all compiled graph nodes, filtering for mart models
-      in the models/postgres/marts/ directory.
-    - Inspects each model's 'post-hook' config for the presence of
-      'setup_white_label_rls'.
-    - Models can opt out by adding the tag 'no-rls' (e.g. tags=['no-rls']).
-    - Collects non-compliant models and raises a clear error listing them.
-
-  Usage:
-    Added as an on-run-end hook in dbt_project.yml:
-      on-run-end:
-        - "{{ enforce_rls_on_marts() }}"
-
-  Notes:
-    - The {% if execute %} guard is required because the graph object is only
-      available during execution, not during parsing.
-    - dbt stores hooks under the hyphenated key 'post-hook' (not 'post_hook')
-      in node.config.
-    - Jinja's namespace() is used to work around for-loop variable scoping.
+ 
 #}
 
 {% macro enforce_rls_on_marts() %}
