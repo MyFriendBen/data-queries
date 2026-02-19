@@ -19,7 +19,27 @@ tenant_db_credentials = {
   }
   co = {
     username = "co" 
-    password = "your_password"  # CO user password (update this)
+    password = "your_password"  # CO user password
+  }
+  tx = {
+    username = "tx"
+    password = "your_password"  # TX user password
+  }
+  il = {
+    username = "il"
+    password = "your_password"  # IL user password
+  }
+  ma = {
+    username = "ma"
+    password = "your_password"  # MA user password
+  }
+  cesn = {
+    username = "cesn"
+    password = "your_password"  # CESN user password
+  }
+  co_tax_calculator = {
+    username = "co_tax_calculator"
+    password = "your_password"  # CO Tax Calculator user password
   }
 }
 
@@ -32,6 +52,26 @@ tenants = {
   co = {
     name         = "co"
     display_name = "Colorado"
+  }
+  tx = {
+    name         = "tx"
+    display_name = "Texas"
+  }
+  il = {
+    name         = "il"
+    display_name = "Illinois"
+  }
+  ma = {
+    name         = "ma"
+    display_name = "Massachusetts"
+  }
+  cesn = {
+    name         = "cesn"
+    display_name = "CESN"
+  }
+  co_tax_calculator = {
+    name         = "co_tax_calculator"
+    display_name = "CO Tax Calculator"
   }
 }
 
