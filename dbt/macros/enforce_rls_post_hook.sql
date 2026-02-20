@@ -20,9 +20,8 @@
     {% for node in graph.nodes.values() %}
       {# Only check postgres mart models #}
       {% if node.resource_type == 'model'
-         and node.fqn | length >= 3
-         and node.fqn[1] == 'postgres'
-         and node.fqn[2] == 'marts' %}
+         and node.path is string
+         and node.path.startswith('postgres/marts/') %}
 
         {# Allow explicit opt-out via 'no-rls' tag #}
         {% if 'no-rls' in node.tags %}
