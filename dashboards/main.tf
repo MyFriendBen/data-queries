@@ -6,5 +6,9 @@ terraform {
       source  = "flovouin/metabase"
       version = "~> 0.14"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.13"
+    }
   }
 }
