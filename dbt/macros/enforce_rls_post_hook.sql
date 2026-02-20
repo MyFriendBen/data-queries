@@ -31,7 +31,7 @@
           {% set hooks = node.config.get('post-hook', []) %}
           {% set ns = namespace(has_rls_hook=false) %}
           {% for hook in hooks %}
-            {% set hook_sql = hook.sql if hook.sql is not none else hook %}
+            {% set hook_sql = hook.sql if hook.sql is defined else hook %}
             {% if hook_sql is string and 'setup_white_label_rls' in hook_sql %}
               {% set ns.has_rls_hook = true %}
             {% endif %}
