@@ -4,8 +4,7 @@
   Enforces that all postgres mart models include the white label RLS post-hook
   (setup_white_label_rls). This macro is called via the on-run-end hook in
   dbt_project.yml and will raise a compilation error if any mart model under
-  models/postgres/marts/ is missing the required post-hook.
- 
+  models/postgres/marts/ is missing the required post-hook. 
 #}
 
 {% macro enforce_rls_on_marts() %}
