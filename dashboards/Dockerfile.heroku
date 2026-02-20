@@ -1,4 +1,4 @@
-FROM metabase/metabase:v0.56.19
+FROM metabase/metabase:v0.56.19.x
 COPY dashboards/heroku-entrypoint.sh /app/heroku-entrypoint.sh
 RUN chmod +x /app/heroku-entrypoint.sh
 CMD ["/app/heroku-entrypoint.sh"]
