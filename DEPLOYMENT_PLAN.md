@@ -50,7 +50,7 @@ exec /app/run_metabase.sh
 
 ```dockerfile
 # dashboards/Dockerfile.heroku
-FROM metabase/metabase:v0.56.19.x
+FROM metabase/metabase:v0.56.19
 COPY dashboards/heroku-entrypoint.sh /app/heroku-entrypoint.sh
 RUN chmod +x /app/heroku-entrypoint.sh
 CMD ["/app/heroku-entrypoint.sh"]
@@ -496,7 +496,7 @@ Terraform variables are passed as `TF_VAR_` environment variables. Use GitHub En
 
 ### Terraform Provider Notes
 
-- **Pin versions:** Keep `flovouin/metabase ~> 0.14` and `metabase/metabase:v0.56.19.x`. Test compatibility before upgrading either — the Metabase API is unversioned and can break between releases.
+- **Pin versions:** Keep `flovouin/metabase ~> 0.14` and `metabase/metabase:v0.56.19`. Test compatibility before upgrading either — the Metabase API is unversioned and can break between releases.
 - **State file security:** Terraform state stores all variable values in plaintext, including passwords. Terraform Cloud encrypts state at rest. If using GCS, ensure the bucket has appropriate access controls.
 
 ### Maintenance Note: CI Variable Coupling
