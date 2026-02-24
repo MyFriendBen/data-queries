@@ -1,3 +1,5 @@
 build:
   docker:
-    web: dashboards/Dockerfile.heroku
+    web:
+      dockerfile: dashboards/Dockerfile.heroku
+      context: .
