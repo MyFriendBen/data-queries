@@ -12,13 +12,14 @@ locals {
     description         = "Total count of completed screens from PostgreSQL"
     collection_position = null
     cache_ttl           = null
-    query_type          = "native"
+    query_type          = "query"
     dataset_query = {
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native      = "SELECT count(*) AS count FROM analytics.mart_screener_data;"
-      }]
+      query = {
+        aggregation = [
+          ["count"]
+        ]
+      }
+      type = "query"
     }
     parameter_mappings     = []
     display                = "scalar"
@@ -166,23 +167,22 @@ locals {
 
 # Card following GitHub example exactly but with our BigQuery table
 resource "metabase_card" "conversion_funnel" {
-  lifecycle {
-    ignore_changes = [json]
-  }
   json = jsonencode({
     name                = "Conversion Funnel Insights"
     description         = "Analytics from BigQuery conversion funnel data"
     collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
     cache_ttl           = null
-    query_type          = "native"
+    query_type          = "query"
     dataset_query = {
-      database   = data.metabase_table.conversion_funnel_table.db_id
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native      = "SELECT count(*) AS count FROM mart_screener_conversion_funnel;"
-      }]
+      database = data.metabase_table.conversion_funnel_table.db_id
+      query = {
+        source-table = data.metabase_table.conversion_funnel_table.id
+        aggregation = [
+          ["count"]
+        ]
+      }
+      type = "query"
     }
     parameter_mappings     = []
     display                = "table"
@@ -193,23 +193,22 @@ resource "metabase_card" "conversion_funnel" {
 
 # Screen count card using PostgreSQL data
 resource "metabase_card" "screen_count" {
-  lifecycle {
-    ignore_changes = [json]
-  }
   json = jsonencode({
     name                = "Completed Screens"
     description         = "Total count of completed screens from PostgreSQL"
     collection_id       = tonumber(metabase_collection.global.id)
     collection_position = null
     cache_ttl           = null
-    query_type          = "native"
+    query_type          = "query"
     dataset_query = {
-      database   = data.metabase_table.screen_summary_table.db_id
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native      = "SELECT count(*) AS count FROM analytics.mart_screener_data;"
-      }]
+      database = data.metabase_table.screen_summary_table.db_id
+      query = {
+        source-table = data.metabase_table.screen_summary_table.id
+        aggregation = [
+          ["count"]
+        ]
+      }
+      type = "query"
     }
     parameter_mappings     = []
     display                = "scalar"
@@ -222,21 +221,15 @@ resource "metabase_card" "screen_count" {
 resource "metabase_card" "tenant_screen_count" {
   for_each = var.tenants
 
-  lifecycle {
-    ignore_changes = [json]
-  }
-
   json = jsonencode(merge(local.screen_count_card_config, {
     # Override just the tenant-specific parts
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
-    dataset_query = {
-      database   = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].db_id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native      = "SELECT count(*) AS count FROM analytics.mart_screener_data;"
-      }]
-    }
+    dataset_query = merge(local.screen_count_card_config.dataset_query, {
+      database = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].db_id)
+      query = merge(local.screen_count_card_config.dataset_query.query, {
+        source-table = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].id)
+      })
+    })
   }))
 }
 
