@@ -3,7 +3,7 @@ version: 1.0.0
 profile: benefits
 require-dbt-version: ">=1.7.0,<2.0.0"
 
-on-run-end: 
+on-run-start: 
   - "{{ enforce_rls_on_marts() }}"
 
 model-paths: ["models"]
