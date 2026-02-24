@@ -14,10 +14,16 @@ jobs:
 
       - name: Check mart models for RLS post-hook
         run: |
+          shopt -s nullglob
           MARTS_DIR="dbt/models/postgres/marts"
           non_compliant=()
 
-          for file in "$MARTS_DIR"/*.sql; do
+          files=("$MARTS_DIR"/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "ℹ️  No mart models found under $MARTS_DIR"
+            exit 0
+          fi
+          for file in "${files[@]}"; do
             model=$(basename "$file" .sql)
 
             # Allow explicit opt-out via 'no-rls' tag
