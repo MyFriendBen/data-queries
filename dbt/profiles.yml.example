@@ -11,7 +11,7 @@ benefits:
       schema: "{{ env_var('DB_SCHEMA', 'analytics') }}"
       threads: 4
       connect_timeout: 30
-    
+
     bigquery:
       type: bigquery
       method: service-account

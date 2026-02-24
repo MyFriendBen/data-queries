@@ -1,3 +1,0 @@
-[sqlfluff]
-# Override root dialect for BigQuery models
-dialect = bigquery

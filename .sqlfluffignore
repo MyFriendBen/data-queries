@@ -1,0 +1,8 @@
+# Files with SQL syntax that SQLFluff cannot parse (not dbt-specific):
+
+# Legacy files using CREATE MATERIALIZED VIEW syntax
+data-queries/v1_deprecated/
+
+# BigQuery UNNEST with nested struct access (ep.value.int_value)
+# not supported by SQLFluff's ANSI/BigQuery parser
+dbt/models/bigquery/staging/stg_ga_page_views.sql

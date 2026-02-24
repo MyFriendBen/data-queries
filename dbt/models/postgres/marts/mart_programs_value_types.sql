@@ -12,6 +12,6 @@ SELECT
     ip.language_code,
     ip.text,
     ip.white_label_id
-FROM {{ ref('int_programs_value_types') }} ip
+FROM {{ ref('int_programs_value_types') }} AS ip
 WHERE ip.label ILIKE 'program.%-value_type'
 ORDER BY ip.white_label_id, ip.program_id

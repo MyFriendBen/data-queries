@@ -4,56 +4,56 @@
 ) }}
 
 
-select
-    white_label_id
-    ,partner
-    ,sum(case when has_acp = true then 1 else 0 end) as acp
-    ,sum(case when has_andcs = true then 1 else 0 end) as andcs
-    ,sum(case when has_ccb = true then 1 else 0 end) as ccb
-    ,sum(case when has_ccap = true then 1 else 0 end) as ccap
-    ,sum(case when has_ccdf = true then 1 else 0 end) as ccdf
-    ,sum(case when has_cdhcs = true then 1 else 0 end) as cdhcs
-    ,sum(case when has_chp = true then 1 else 0 end) as chp
-    ,sum(case when has_chs = true then 1 else 0 end) as chs
-    ,sum(case when has_co_andso = true then 1 else 0 end) as co_andso
-    ,sum(case when has_coctc = true then 1 else 0 end) as coctc
-    ,sum(case when has_coeitc = true then 1 else 0 end) as coeitc
-    ,sum(case when has_cowap = true then 1 else 0 end) as cowap
-    ,sum(case when has_cpcr = true then 1 else 0 end) as cpcr
-    ,sum(case when has_csfp = true then 1 else 0 end) as csfp
-    ,sum(case when has_ctc = true then 1 else 0 end) as ctc
-    ,sum(case when has_dpp = true then 1 else 0 end) as dpp
-    ,sum(case when has_ede = true then 1 else 0 end) as ede
-    ,sum(case when has_eitc = true then 1 else 0 end) as eitc
-    ,sum(case when has_erc = true then 1 else 0 end) as erc
-    ,sum(case when has_fatc = true then 1 else 0 end) as fatc
-    ,sum(case when has_leap = true then 1 else 0 end) as leap
-    ,sum(case when has_lifeline = true then 1 else 0 end) as lifeline
-    ,sum(case when has_ma_eaedc = true then 1 else 0 end) as ma_eaedc
-    ,sum(case when has_ma_macfc = true then 1 else 0 end) as ma_macfc
-    ,sum(case when has_ma_maeitc = true then 1 else 0 end) as ma_maeitc
-    ,sum(case when has_ma_mbta = true then 1 else 0 end) as ma_mbta
-    ,sum(case when has_ma_ssp = true then 1 else 0 end) as ma_ssp
-    ,sum(case when has_medicaid = true then 1 else 0 end) as medicaid
-    ,sum(case when has_mydenver = true then 1 else 0 end) as mydenver
-    ,sum(case when has_nc_lieap = true then 1 else 0 end) as nc_lieap
-    ,sum(case when has_nccip = true then 1 else 0 end) as nccip
-    ,sum(case when has_ncscca = true then 1 else 0 end) as ncscca
-    ,sum(case when has_ncwap = true then 1 else 0 end) as ncwap
-    ,sum(case when has_nfp = true then 1 else 0 end) as nfp
-    ,sum(case when has_nslp = true then 1 else 0 end) as nslp
-    ,sum(case when has_oap = true then 1 else 0 end) as oap
-    ,sum(case when has_pell_grant = true then 1 else 0 end) as pell_grant
-    ,sum(case when has_rag = true then 1 else 0 end) as rag
-    ,sum(case when has_rtdlive = true then 1 else 0 end) as rtdlive
-    ,sum(case when has_section_8 = true then 1 else 0 end) as section_8
-    ,sum(case when has_snap = true then 1 else 0 end) as snap
-    ,sum(case when has_ssi = true then 1 else 0 end) as ssi
-    ,sum(case when has_sunbucks = true then 1 else 0 end) as sunbucks
-    ,sum(case when has_tanf = true then 1 else 0 end) as tanf
-    ,sum(case when has_ubp = true then 1 else 0 end) as ubp
-    ,sum(case when has_upk = true then 1 else 0 end) as upk
-    ,sum(case when has_va = true then 1 else 0 end) as va
-    ,sum(case when has_wic = true then 1 else 0 end) as wic
-from {{ ref('int_complete_screener_data') }}
-group by white_label_id, partner
+SELECT
+    white_label_id,
+    partner,
+    sum(CASE WHEN has_acp = true THEN 1 ELSE 0 END) AS acp,
+    sum(CASE WHEN has_andcs = true THEN 1 ELSE 0 END) AS andcs,
+    sum(CASE WHEN has_ccb = true THEN 1 ELSE 0 END) AS ccb,
+    sum(CASE WHEN has_ccap = true THEN 1 ELSE 0 END) AS ccap,
+    sum(CASE WHEN has_ccdf = true THEN 1 ELSE 0 END) AS ccdf,
+    sum(CASE WHEN has_cdhcs = true THEN 1 ELSE 0 END) AS cdhcs,
+    sum(CASE WHEN has_chp = true THEN 1 ELSE 0 END) AS chp,
+    sum(CASE WHEN has_chs = true THEN 1 ELSE 0 END) AS chs,
+    sum(CASE WHEN has_co_andso = true THEN 1 ELSE 0 END) AS co_andso,
+    sum(CASE WHEN has_coctc = true THEN 1 ELSE 0 END) AS coctc,
+    sum(CASE WHEN has_coeitc = true THEN 1 ELSE 0 END) AS coeitc,
+    sum(CASE WHEN has_cowap = true THEN 1 ELSE 0 END) AS cowap,
+    sum(CASE WHEN has_cpcr = true THEN 1 ELSE 0 END) AS cpcr,
+    sum(CASE WHEN has_csfp = true THEN 1 ELSE 0 END) AS csfp,
+    sum(CASE WHEN has_ctc = true THEN 1 ELSE 0 END) AS ctc,
+    sum(CASE WHEN has_dpp = true THEN 1 ELSE 0 END) AS dpp,
+    sum(CASE WHEN has_ede = true THEN 1 ELSE 0 END) AS ede,
+    sum(CASE WHEN has_eitc = true THEN 1 ELSE 0 END) AS eitc,
+    sum(CASE WHEN has_erc = true THEN 1 ELSE 0 END) AS erc,
+    sum(CASE WHEN has_fatc = true THEN 1 ELSE 0 END) AS fatc,
+    sum(CASE WHEN has_leap = true THEN 1 ELSE 0 END) AS leap,
+    sum(CASE WHEN has_lifeline = true THEN 1 ELSE 0 END) AS lifeline,
+    sum(CASE WHEN has_ma_eaedc = true THEN 1 ELSE 0 END) AS ma_eaedc,
+    sum(CASE WHEN has_ma_macfc = true THEN 1 ELSE 0 END) AS ma_macfc,
+    sum(CASE WHEN has_ma_maeitc = true THEN 1 ELSE 0 END) AS ma_maeitc,
+    sum(CASE WHEN has_ma_mbta = true THEN 1 ELSE 0 END) AS ma_mbta,
+    sum(CASE WHEN has_ma_ssp = true THEN 1 ELSE 0 END) AS ma_ssp,
+    sum(CASE WHEN has_medicaid = true THEN 1 ELSE 0 END) AS medicaid,
+    sum(CASE WHEN has_mydenver = true THEN 1 ELSE 0 END) AS mydenver,
+    sum(CASE WHEN has_nc_lieap = true THEN 1 ELSE 0 END) AS nc_lieap,
+    sum(CASE WHEN has_nccip = true THEN 1 ELSE 0 END) AS nccip,
+    sum(CASE WHEN has_ncscca = true THEN 1 ELSE 0 END) AS ncscca,
+    sum(CASE WHEN has_ncwap = true THEN 1 ELSE 0 END) AS ncwap,
+    sum(CASE WHEN has_nfp = true THEN 1 ELSE 0 END) AS nfp,
+    sum(CASE WHEN has_nslp = true THEN 1 ELSE 0 END) AS nslp,
+    sum(CASE WHEN has_oap = true THEN 1 ELSE 0 END) AS oap,
+    sum(CASE WHEN has_pell_grant = true THEN 1 ELSE 0 END) AS pell_grant,
+    sum(CASE WHEN has_rag = true THEN 1 ELSE 0 END) AS rag,
+    sum(CASE WHEN has_rtdlive = true THEN 1 ELSE 0 END) AS rtdlive,
+    sum(CASE WHEN has_section_8 = true THEN 1 ELSE 0 END) AS section_8,
+    sum(CASE WHEN has_snap = true THEN 1 ELSE 0 END) AS snap,
+    sum(CASE WHEN has_ssi = true THEN 1 ELSE 0 END) AS ssi,
+    sum(CASE WHEN has_sunbucks = true THEN 1 ELSE 0 END) AS sunbucks,
+    sum(CASE WHEN has_tanf = true THEN 1 ELSE 0 END) AS tanf,
+    sum(CASE WHEN has_ubp = true THEN 1 ELSE 0 END) AS ubp,
+    sum(CASE WHEN has_upk = true THEN 1 ELSE 0 END) AS upk,
+    sum(CASE WHEN has_va = true THEN 1 ELSE 0 END) AS va,
+    sum(CASE WHEN has_wic = true THEN 1 ELSE 0 END) AS wic
+FROM {{ ref('int_complete_screener_data') }}
+GROUP BY white_label_id, partner

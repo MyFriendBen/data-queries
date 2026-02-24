@@ -39,7 +39,15 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['yearly', 'monthly', 'weekly', 'hourly', 'biweekly', 'semimonthly']
+                values:
+                  [
+                    "yearly",
+                    "monthly",
+                    "weekly",
+                    "hourly",
+                    "biweekly",
+                    "semimonthly",
+                  ]
       - name: household_member_id
         description: "Foreign key to screener_householdmember table - identifies which household member this income belongs to"
       - name: hours_worked

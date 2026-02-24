@@ -1,6 +1,6 @@
 # Copy this file to terraform.tfvars and update with your values
 
-# Database Configuration  
+# Database Configuration
 database_host = "host.docker.internal"
 database_name = "mfb"
 database_port = 5432
@@ -18,7 +18,7 @@ tenant_db_credentials = {
     password = "your_password"  # NC user password
   }
   co = {
-    username = "co" 
+    username = "co"
     password = "your_password"  # CO user password (update this)
   }
 }

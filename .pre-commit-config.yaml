@@ -7,27 +7,23 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
-      
+
   # Terraform
-  - repo: https://github.com/hashicorp/terraform-hooks
-    rev: v0.15.0
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.105.0
     hooks:
       - id: terraform_fmt
 
-  # dbt / SQL formatting
+  # SQL formatting (Black-style — formats layout and casing, skips unparseable sections)
   - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.3.0
+    rev: 4.0.4
     hooks:
-      - id: sqlfluff-lint
-        additional_dependencies: ['sqlfluff-templater-dbt', 'dbt-postgres', 'dbt-bigquery']
-        args: [--config, dbt/.sqlfluff]
       - id: sqlfluff-fix
-        additional_dependencies: ['sqlfluff-templater-dbt', 'dbt-postgres', 'dbt-bigquery']
-        args: [--config, dbt/.sqlfluff]
+        additional_dependencies: ["sqlfluff[rs]"]
 
-  # Prettier for YAML
+  # YAML formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v3.1.0
     hooks:
       - id: prettier
-        types: [yaml]
+        files: \.(yaml|yml)$

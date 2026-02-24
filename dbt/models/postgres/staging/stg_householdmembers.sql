@@ -3,7 +3,7 @@
     description='Staging model for screener household members'
 ) }}
 
-select
+SELECT
     id,
     age,
     student,
@@ -24,4 +24,4 @@ select
     birth_year_month,
     frontend_id,
     is_care_worker
-from {{ source('django_apps', 'screener_householdmember') }} 
+FROM {{ source('django_apps', 'screener_householdmember') }}
