@@ -18,7 +18,7 @@ jobs:
           MARTS_DIR="dbt/models/postgres/marts"
           non_compliant=()
 
-          files=("$MARTS_DIR"/*.sql)
+          mapfile -t files < <(find "$MARTS_DIR" -name "*.sql" -type f)
           if [ ${#files[@]} -eq 0 ]; then
             echo "ℹ️  No mart models found under $MARTS_DIR"
             exit 0
@@ -27,13 +27,13 @@ jobs:
             model=$(basename "$file" .sql)
 
             # Allow explicit opt-out via 'no-rls' tag
-            if grep -q "no-rls" "$file"; then
+            if grep -qE "(tags\s*=\s*\[.*'no-rls'|'no-rls'.*tags\s*=\s*\[)" "$file"; then
               echo "ℹ️  $model opted out of RLS via 'no-rls' tag"
               continue
             fi
 
             # Check for the required post-hook
-            if ! grep -q "setup_white_label_rls" "$file"; then
+            if ! grep -v '^\s*--' "$file" | grep -q "setup_white_label_rls"; then
               non_compliant+=("$model")
             fi
           done
