@@ -1,0 +1,51 @@
+name: RLS Post-Hook Enforcement
+
+on:
+  pull_request:
+    paths:
+      - "dbt/models/postgres/marts/**"
+
+jobs:
+  check-rls-hooks:
+    name: Check mart models for RLS post-hook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check mart models for RLS post-hook
+        run: |
+          MARTS_DIR="dbt/models/postgres/marts"
+          non_compliant=()
+
+          for file in "$MARTS_DIR"/*.sql; do
+            model=$(basename "$file" .sql)
+
+            # Allow explicit opt-out via 'no-rls' tag
+            if grep -q "no-rls" "$file"; then
+              echo "ℹ️  $model opted out of RLS via 'no-rls' tag"
+              continue
+            fi
+
+            # Check for the required post-hook
+            if ! grep -q "setup_white_label_rls" "$file"; then
+              non_compliant+=("$model")
+            fi
+          done
+
+          if [ ${#non_compliant[@]} -gt 0 ]; then
+            echo ""
+            echo "🚨 RLS ENFORCEMENT FAILURE"
+            echo "The following mart models are missing the required white label RLS post-hook:"
+            for model in "${non_compliant[@]}"; do
+              echo "  - $model"
+            done
+            echo ""
+            echo "To fix, add this to each model's config block:"
+            echo '  post_hook="{{ setup_white_label_rls(this.name) }}"'
+            echo ""
+            echo "If a model genuinely doesn't need RLS, add the tag 'no-rls':"
+            echo "  tags=['no-rls']"
+            exit 1
+          fi
+
+          echo "✅ All mart models have the required RLS post-hook."
