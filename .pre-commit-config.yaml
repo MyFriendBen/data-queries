@@ -14,7 +14,7 @@ repos:
     hooks:
       - id: terraform_fmt
 
-  # SQL formatting (Black-style — formats layout and casing, skips unparseable sections)
+  # SQL formatting
   - repo: https://github.com/sqlfluff/sqlfluff
     rev: 4.0.4
     hooks:

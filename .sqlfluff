@@ -4,7 +4,7 @@ dialect = ansi
 templater = jinja
 max_line_length = 120
 large_file_skip_byte_limit = 0
-processes = 2
+processes = -1
 
 # Skip sections that can't be parsed (BigQuery UNNEST, MATERIALIZED VIEW, etc.)
 # This allows the rest of the file to still be formatted correctly
