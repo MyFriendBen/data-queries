@@ -140,5 +140,5 @@ SELECT
     sum(CASE WHEN name_abbreviated = 'upk' THEN estimated_value ELSE 0 END) AS upk_annual,
     sum(CASE WHEN name_abbreviated = 'wic' THEN estimated_value ELSE 0 END) AS wic_annual
 FROM {{ source('django_apps', 'screener_programeligibilitysnapshot') }}
-WHERE eligible = true
+WHERE eligible = TRUE
 GROUP BY eligibility_snapshot_id

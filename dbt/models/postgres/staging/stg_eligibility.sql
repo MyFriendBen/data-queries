@@ -32,8 +32,8 @@ LEFT JOIN {{ source('django_apps', 'screener_eligibilitysnapshot') }} AS es
     ON pes.eligibility_snapshot_id = es.id
 WHERE
     -- Only include successful eligibility calculations
-    es.had_error = false
+    es.had_error = FALSE
     -- Only include completed screens
-    AND es.screen_id IS NOT null
+    AND es.screen_id IS NOT NULL
     -- Only include actual eligibility results
-    AND pes.eligible IS NOT null
+    AND pes.eligible IS NOT NULL
