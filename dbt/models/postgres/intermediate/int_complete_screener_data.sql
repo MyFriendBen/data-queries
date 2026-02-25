@@ -538,4 +538,5 @@ from base_table_2
 where completed = true
     and is_test = false
     and is_test_data = false
+    and partner IS DISTINCT FROM 'Test'
     -- and white_label_id=4

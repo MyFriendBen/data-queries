@@ -31,7 +31,7 @@ latest_eligibility_snapshot_by_screen_id as not materialized (
 -- # Create a list of all unique referrer codes to reference
 all_referrer_codes as not materialized (
     select distinct referrer_code
-    from screener_screen
+    from data_referrer_codes
     where referrer_code is not null and referrer_code <> ''
     ),
 
@@ -236,7 +236,7 @@ base_table_1 as not materialized (
                     when ss.referral_source is not null and ss.referral_source in (select * from all_referrer_codes) then drc2.partner
                     else 'Other'
                 end
-            when ss.referrer_code is not null or trim(ss.referrer_code) <> '' then
+            when ss.referrer_code is not null and trim(ss.referrer_code) <> '' then
                 case
                     when ss.referral_source is null or trim(ss.referral_source) = '' then drc1.partner
                     when trim(ss.referral_source) = trim(ss.referrer_code) and trim(ss.referral_source) in (select * from all_referrer_codes) then drc1.partner
@@ -736,5 +736,6 @@ from base_table_2
 where completed=true
     and is_test=false
     and is_test_data=false
+    and partner IS DISTINCT FROM 'Test'
 --     and white_label_id=4
 order by id
