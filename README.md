@@ -54,5 +54,4 @@ If you want to run the tools individually:
 
 
 ## 💡 Quick Tips
-- **SQL Dialects**: Our setup handles the rules for both Postgres and BigQuery automatically based on the folder.
 - **Skipping Checks**: If you need to skip the check for a specific commit (emergency only!), add `--no-verify` to your commit command.
