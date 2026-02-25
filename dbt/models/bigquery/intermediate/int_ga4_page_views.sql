@@ -31,4 +31,4 @@ SELECT
     regexp_extract(page_location, r'^[^/]+://[^/]+/([a-z]{2})/', 1) AS state_code
 
 FROM {{ ref('stg_ga_page_views') }}
-WHERE page_location IS NOT null
+WHERE page_location IS NOT NULL

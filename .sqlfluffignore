@@ -1,4 +1,4 @@
-# Files with SQL syntax that SQLFluff cannot parse (not dbt-specific):
+# Files with SQL syntax that SQLFluff cannot parse:
 
 # Legacy files using CREATE MATERIALIZED VIEW syntax
 data-queries/v1_deprecated/

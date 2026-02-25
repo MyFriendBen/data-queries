@@ -20,6 +20,14 @@ repos:
     hooks:
       - id: sqlfluff-fix
         additional_dependencies: ["sqlfluff[rs]"]
+        # Mirror .sqlfluffignore — pre-commit passes filenames directly to SQLFluff,
+        # which bypasses .sqlfluffignore. This exclude ensures they are skipped.
+        exclude: |
+          (?x)^(
+            data-queries/v1_deprecated/|
+            dbt/models/bigquery/staging/stg_ga_page_views\.sql|
+            dbt/models/bigquery/intermediate/int_ga4_page_views\.sql
+          )
 
   # YAML formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
