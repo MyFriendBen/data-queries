@@ -20,4 +20,5 @@ venv/
 *.tfstate.backup
 *.tfstate.*.backup
 terraform.tfvars
+backend-prod.hcl
 *.tfplan
