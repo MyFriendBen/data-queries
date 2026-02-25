@@ -98,17 +98,19 @@ These defaults are fine for local development since the database is only accessi
 
 ## Terraform State: Local Dev vs Production
 
-Terraform records every resource it manages in a **state file**. This project uses two different state backends depending on the environment.
+Terraform records every resource it manages in a **state file**. This project separates dev and prod state by using a gitignored `backend.tf` file: without it Terraform defaults to local state, with it Terraform uses GCS.
 
 ### Local Development (default)
 
-Local state works out of the box — no extra setup needed. When you run `terraform init` with no flags, Terraform stores state in `terraform.tfstate` on your machine. This file is gitignored and is only yours.
+No `backend.tf` file exists in a fresh checkout, so Terraform uses local state automatically. No extra flags or setup needed.
 
 ```bash
-terraform init         # uses local state automatically
+terraform init   # no backend.tf present → local state
 terraform plan
 terraform apply
 ```
+
+State is stored in `terraform.tfstate` on your machine. This file is gitignored and is only yours.
 
 ### Production (GCS remote backend)
 
@@ -125,25 +127,26 @@ Production uses a GCS bucket so that:
 gcloud storage buckets create gs://YOUR_BUCKET_NAME \
   --project=YOUR_GCP_PROJECT_ID \
   --location=US \
-  --uniform-bucket-level-access \
-  --versioning
+  --uniform-bucket-level-access
+
+gcloud storage buckets update gs://YOUR_BUCKET_NAME --versioning
 ```
 
 Replace `YOUR_BUCKET_NAME` with a globally unique name (e.g. `mfb-terraform-state`) and `YOUR_GCP_PROJECT_ID` with the GCP project ID.
 
-**2. Create your local backend config file** from the example:
+**2. Create `backend.tf`** from the example and set the bucket name:
 
 ```bash
-cp backend-prod.hcl.example backend-prod.hcl
-# Edit backend-prod.hcl and set the bucket name you just created
+cp backend.tf.example backend.tf
+# Edit backend.tf and replace YOUR_BUCKET_NAME with the bucket you just created
 ```
 
-`backend-prod.hcl` is gitignored — it stays on your machine (or in CI secrets).
+`backend.tf` is gitignored — it stays on your machine (or is injected by CI). Without this file, Terraform falls back to local state.
 
 #### First-time migration (run once to move existing local state to GCS)
 
 ```bash
-terraform init -backend-config=backend-prod.hcl -migrate-state
+terraform init -migrate-state
 ```
 
 Terraform will ask: `Do you want to copy existing state to the new backend?` — answer **yes**. After this, the local `terraform.tfstate` file is no longer used for prod.
@@ -151,12 +154,12 @@ Terraform will ask: `Do you want to copy existing state to the new backend?` —
 #### Ongoing prod workflow
 
 ```bash
-terraform init -backend-config=backend-prod.hcl
+terraform init
 terraform plan
 terraform apply
 ```
 
-State is now read from and written to GCS automatically. If another team member is running `terraform apply` at the same time, Terraform will display a locking error and exit safely rather than corrupting state.
+State is read from and written to GCS automatically. If another team member is running `terraform apply` at the same time, Terraform will display a locking error and exit safely rather than corrupting state.
 
 #### Granting team members access to the state bucket
 
