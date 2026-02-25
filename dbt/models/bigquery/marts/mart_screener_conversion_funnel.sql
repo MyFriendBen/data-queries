@@ -34,7 +34,7 @@ session_funnel_events AS (
     FROM session_page_views
     WHERE
         (page_path LIKE '%/step-1%' OR page_path LIKE '%/results%')
-        AND ga_session_id IS NOT null
+        AND ga_session_id IS NOT NULL
 ),
 
 session_summary AS (
@@ -66,8 +66,8 @@ daily_conversion_metrics AS (
         sum(CASE
             WHEN
                 session_completed = 1
-                AND first_completed_timestamp IS NOT null
-                AND (first_started_timestamp IS null OR first_completed_timestamp > first_started_timestamp)
+                AND first_completed_timestamp IS NOT NULL
+                AND (first_started_timestamp IS NULL OR first_completed_timestamp > first_started_timestamp)
                 THEN 1
             ELSE 0
         END) AS sessions_converted,
@@ -79,8 +79,8 @@ daily_conversion_metrics AS (
         count(DISTINCT CASE
             WHEN
                 session_completed = 1
-                AND first_completed_timestamp IS NOT null
-                AND (first_started_timestamp IS null OR first_completed_timestamp > first_started_timestamp)
+                AND first_completed_timestamp IS NOT NULL
+                AND (first_started_timestamp IS NULL OR first_completed_timestamp > first_started_timestamp)
                 THEN user_pseudo_id
         END) AS users_converted,
 

@@ -266,23 +266,23 @@ WITH base_table_1 AS (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN ss.referrer_code IS null OR trim(ss.referrer_code) = ''
+            WHEN ss.referrer_code IS NULL OR trim(ss.referrer_code) = ''
                 THEN
                     CASE
-                        WHEN ss.referral_source IS null OR trim(ss.referral_source) = '' THEN 'No Partner'
-                        WHEN drc2.referrer_code IS NOT null THEN drc2.partner
+                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN 'No Partner'
+                        WHEN drc2.referrer_code IS NOT NULL THEN drc2.partner
                         ELSE 'Other'
                     END
-            WHEN ss.referrer_code IS NOT null AND trim(ss.referrer_code) <> ''
+            WHEN ss.referrer_code IS NOT NULL AND trim(ss.referrer_code) <> ''
                 THEN
                     CASE
-                        WHEN ss.referral_source IS null OR trim(ss.referral_source) = '' THEN drc1.partner
+                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN drc1.partner
                         WHEN trim(ss.referral_source) = trim(ss.referrer_code) THEN coalesce(drc1.partner, 'Other')
                         WHEN trim(ss.referral_source) <> trim(ss.referrer_code)
                             THEN
                                 CASE
-                                    WHEN drc2.referrer_code IS NOT null THEN concat(drc1.partner, ', ', drc2.partner)
-                                    WHEN drc1.referrer_code IS NOT null THEN drc1.partner
+                                    WHEN drc2.referrer_code IS NOT NULL THEN concat(drc1.partner, ', ', drc2.partner)
+                                    WHEN drc1.referrer_code IS NOT NULL THEN drc1.partner
                                     ELSE 'Other'
                                 END
                         ELSE 'Other'
@@ -539,7 +539,7 @@ SELECT
     tax_credits_annual / 12 AS tax_credits_monthly
 FROM base_table_2
 WHERE
-    completed = true
-    AND is_test = false
-    AND is_test_data = false
+    completed = TRUE
+    AND is_test = FALSE
+    AND is_test_data = FALSE
     -- and white_label_id=4
