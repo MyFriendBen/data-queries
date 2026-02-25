@@ -3,6 +3,7 @@
 # Legacy files using CREATE MATERIALIZED VIEW syntax
 data-queries/v1_deprecated/
 
-# BigQuery UNNEST with nested struct access (ep.value.int_value)
-# not supported by SQLFluff's ANSI/BigQuery parser
+# BigQuery files with non-standard syntax (CROSS JOIN UNNEST, raw string r'...')
+# that SQLFluff's parser mis-formats. These require BigQuery-native execution.
 dbt/models/bigquery/staging/stg_ga_page_views.sql
+dbt/models/bigquery/intermediate/int_ga4_page_views.sql
