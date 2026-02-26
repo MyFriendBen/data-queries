@@ -73,10 +73,19 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Run Terraform**
+**5. Import the singleton collection permissions graph**
+
+Metabase exposes collection permissions as a single global object that must be imported into Terraform state before it can be managed. Run this once after completing the initial Metabase setup wizard:
+
+```bash
+terraform import metabase_collection_graph.graph 1
+```
+
+**6. Run Terraform**
 
 ```bash
 terraform init
+terraform plan   # review changes
 terraform apply
 ```
 
@@ -95,6 +104,35 @@ These defaults are fine for local development since the database is only accessi
 **To customize:** Edit `docker-compose.yml` directly:
 - **Port:** Line 9 - change `"3001:3000"` to use a different port
 - **Database credentials:** Lines 12, 14-15 (Metabase config) and lines 36-38 (PostgreSQL config)
+
+## Managing User Access
+
+Access to Metabase dashboards is controlled through **permission groups**. Terraform creates and configures these groups automatically — the only ongoing manual task is assigning users to the right group(s) in the Metabase UI.
+
+### Groups
+
+| Group | Access |
+|---|---|
+| **Global** | All dashboards: Global collection + every tenant collection + all databases |
+| **North Carolina** | NC collection and NC database only |
+| **Colorado** | CO collection and CO database only |
+| *(new tenant)* | Automatically created for every entry in `var.tenants` |
+
+A user can belong to more than one group. For example, a user who manages both NC and CO can be in both the NC and CO groups.
+
+### Assigning Users to Groups
+
+1. In Metabase, go to **Admin → People**
+2. Click on a user and select **Edit groups**
+3. Add them to the appropriate group(s)
+
+The Terraform output `tenant_group_ids` lists the numeric ID of each tenant group, and `global_group_id` lists the Global group ID — useful when scripting bulk user assignments via the Metabase API.
+
+### Permission Model
+
+- **Global group** — `write` access to the Global collection and all tenant collections; unrestricted query access to BigQuery and all PostgreSQL databases.
+- **Tenant group** — `read` access to their own tenant collection only; query-builder access to their own tenant-scoped PostgreSQL database.
+- **All Users (built-in)** — no collection access and no query access by default, so unauthenticated / unassigned users see nothing.
 
 ## Adding New Tenants
 
@@ -147,6 +185,8 @@ locals {
 }
 ```
 
+> **Note on permissions:** The `metabase_permissions_group.tenant` and all collection/data permission entries in `permissions.tf` use `for_each`/`for` over `var.tenants`, so the new group and its permissions are created automatically. No changes to `permissions.tf` are needed.
+
 ### 3. Create Database User
 
 Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
@@ -174,6 +214,15 @@ unset DB_PASSWORD
 terraform plan  # Review changes
 terraform apply  # Deploy new configuration
 ```
+
+Terraform will automatically:
+- Create the new `<Display Name>` permissions group
+- Grant it read access to the new tenant collection
+- Grant it query-builder access to the new tenant database
+- Grant the Global group write access to the new collection and full DB access
+
+After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
+
 
 ## Troubleshooting
 
