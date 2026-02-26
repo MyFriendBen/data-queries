@@ -1,0 +1,25 @@
+# Production GCS backend configuration.
+#
+# To enable remote state for production:
+#   cp backend.tf.example backend.tf
+#   # Edit backend.tf and set the correct bucket name
+#   terraform init -migrate-state
+#
+# backend.tf is gitignored — it only exists in production environments.
+# Without this file, terraform init uses local state (correct for local dev).
+#
+# The bucket must exist in GCP before running terraform init.
+# Create it with:
+#   gcloud storage buckets create gs://YOUR_BUCKET_NAME \
+#     --project=YOUR_GCP_PROJECT_ID \
+#     --location=US \
+#     --uniform-bucket-level-access
+#
+#   gcloud storage buckets update gs://YOUR_BUCKET_NAME --versioning
+
+terraform {
+  backend "gcs" {
+    bucket = "your-project-terraform-state"  # GCS bucket name (create this first)
+    prefix = "dashboards/prod"               # Path inside the bucket for state files
+  }
+}

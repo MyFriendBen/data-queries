@@ -37,7 +37,7 @@ Each tenant needs a dedicated database user that only has access to their white-
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your My Friend Ben database
-- Update the database name (`mfb`) and credentials to match your local setup
+- Update the database name (`benefit-Cal`) and credentials to match your local setup
 
 ```bash
 # Set password as environment variable (keeps it out of shell history)
@@ -95,6 +95,81 @@ These defaults are fine for local development since the database is only accessi
 **To customize:** Edit `docker-compose.yml` directly:
 - **Port:** Line 9 - change `"3001:3000"` to use a different port
 - **Database credentials:** Lines 12, 14-15 (Metabase config) and lines 36-38 (PostgreSQL config)
+
+## Terraform State: Local Dev vs Production
+
+Terraform records every resource it manages in a **state file**. This project separates dev and prod state by using a gitignored `backend.tf` file: without it Terraform defaults to local state, with it Terraform uses GCS.
+
+### Local Development (default)
+
+No `backend.tf` file exists in a fresh checkout, so Terraform uses local state automatically. No extra flags or setup needed.
+
+```bash
+terraform init   # no backend.tf present → local state
+terraform plan
+terraform apply
+```
+
+State is stored in `terraform.tfstate` on your machine. This file is gitignored and is only yours.
+
+### Production (GCS remote backend)
+
+Production uses a GCS bucket so that:
+- **State locking** prevents two people from running `terraform apply` simultaneously and corrupting state
+- **Shared access** lets any authorized team member deploy from the same known state
+- **Security** keeps sensitive values (passwords, keys stored in state) off local machines and out of git
+
+#### One-time GCS setup (done once per project, by an admin)
+
+**1. Create the GCS bucket** with versioning enabled so state history is preserved:
+
+```bash
+gcloud storage buckets create gs://YOUR_BUCKET_NAME \
+  --project=YOUR_GCP_PROJECT_ID \
+  --location=US \
+  --uniform-bucket-level-access
+
+gcloud storage buckets update gs://YOUR_BUCKET_NAME --versioning
+```
+
+Replace `YOUR_BUCKET_NAME` with a globally unique name (e.g. `mfb-terraform-state`) and `YOUR_GCP_PROJECT_ID` with the GCP project ID.
+
+**2. Create `backend.tf`** from the example and set the bucket name:
+
+```bash
+cp backend.tf.example backend.tf
+# Edit backend.tf and replace YOUR_BUCKET_NAME with the bucket you just created
+```
+
+`backend.tf` is gitignored — it stays on your machine (or is injected by CI). Without this file, Terraform falls back to local state.
+
+#### First-time migration (run once to move existing local state to GCS)
+
+```bash
+terraform init -migrate-state
+```
+
+Terraform will ask: `Do you want to copy existing state to the new backend?` — answer **yes**. After this, the local `terraform.tfstate` file is no longer used for prod.
+
+#### Ongoing prod workflow
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+State is read from and written to GCS automatically. If another team member is running `terraform apply` at the same time, Terraform will display a locking error and exit safely rather than corrupting state.
+
+#### Granting team members access to the state bucket
+
+Each person deploying to prod needs the `roles/storage.objectAdmin` IAM role on the bucket:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
+  --member=user:teammate@example.com \
+  --role=roles/storage.objectAdmin
+```
 
 ## Adding New Tenants
 
