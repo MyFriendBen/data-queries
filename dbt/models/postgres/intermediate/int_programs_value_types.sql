@@ -11,4 +11,4 @@ SELECT
     sp.language_code,
     sp.text,
     sp.white_label_id
-FROM {{ ref('stg_programs_value_types') }} sp
+FROM {{ ref('stg_programs_value_types') }} AS sp

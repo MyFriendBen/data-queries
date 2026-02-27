@@ -31,9 +31,9 @@ locals {
 resource "metabase_database" "bigquery" {
   name = "MFB BigQuery Analytics"
   bigquery_details = {
-    service_account_key      = local.bigquery_key
-    project_id               = var.gcp_project_id
-    dataset_filters_type     = "all"
+    service_account_key  = local.bigquery_key
+    project_id           = var.gcp_project_id
+    dataset_filters_type = "all"
   }
 }
 
@@ -44,14 +44,14 @@ resource "metabase_database" "postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host     = var.database_host
-      port     = var.database_port
-      dbname   = var.database_name
-      user     = var.global_db_credentials.username
-      password = var.global_db_credentials.password
-      ssl      = var.database_ssl
-      tunnel-enabled    = false
-      advanced-options  = false
+      host             = var.database_host
+      port             = var.database_port
+      dbname           = var.database_name
+      user             = var.global_db_credentials.username
+      password         = var.global_db_credentials.password
+      ssl              = var.database_ssl
+      tunnel-enabled   = false
+      advanced-options = false
     })
 
     redacted_attributes = [
@@ -70,14 +70,14 @@ resource "metabase_database" "tenant_postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host     = var.database_host
-      port     = var.database_port
-      dbname   = var.database_name
-      user     = var.tenant_db_credentials[each.key].username
-      password = var.tenant_db_credentials[each.key].password
-      ssl      = var.database_ssl
-      tunnel-enabled    = false
-      advanced-options  = false
+      host             = var.database_host
+      port             = var.database_port
+      dbname           = var.database_name
+      user             = var.tenant_db_credentials[each.key].username
+      password         = var.tenant_db_credentials[each.key].password
+      ssl              = var.database_ssl
+      tunnel-enabled   = false
+      advanced-options = false
     })
 
     redacted_attributes = [
@@ -269,23 +269,23 @@ resource "metabase_dashboard" "analytics" {
   collection_id = tonumber(metabase_collection.global.id)
   cards_json = jsonencode([
     {
-      card_id = tonumber(metabase_card.conversion_funnel.id)
-      row = 0
-      col = 0
-      size_x = 12
-      size_y = 8
-      parameter_mappings = []
-      series = []
+      card_id                = tonumber(metabase_card.conversion_funnel.id)
+      row                    = 0
+      col                    = 0
+      size_x                 = 12
+      size_y                 = 8
+      parameter_mappings     = []
+      series                 = []
       visualization_settings = {}
     },
     {
-      card_id = tonumber(metabase_card.screen_count.id)
-      row = 8
-      col = 0
-      size_x = 6
-      size_y = 4
-      parameter_mappings = []
-      series = []
+      card_id                = tonumber(metabase_card.screen_count.id)
+      row                    = 8
+      col                    = 0
+      size_x                 = 6
+      size_y                 = 4
+      parameter_mappings     = []
+      series                 = []
       visualization_settings = {}
     }
   ])
@@ -310,13 +310,13 @@ resource "metabase_dashboard" "tenant_analytics" {
     {
       card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
       # Assigning existing card to "All-Time Performance" tab (ID 2)
-      dashboard_tab_id = 2
-      row = 0
-      col = 0
-      size_x = 6
-      size_y = 4
-      parameter_mappings = []
-      series = []
+      dashboard_tab_id       = 2
+      row                    = 0
+      col                    = 0
+      size_x                 = 6
+      size_y                 = 4
+      parameter_mappings     = []
+      series                 = []
       visualization_settings = {}
     }
   ])

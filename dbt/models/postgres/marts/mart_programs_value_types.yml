@@ -27,7 +27,7 @@ models:
           - not_null
           - accepted_values:
               arguments:
-                values: ['en-us']
+                values: ["en-us"]
       - name: text
         description: "Translation text value"
         tests:

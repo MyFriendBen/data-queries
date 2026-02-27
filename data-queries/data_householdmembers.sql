@@ -1,13 +1,13 @@
 -- # This creates data_householdmember
-create materialized view
-    data_householdmembers as
+CREATE MATERIALIZED VIEW
+data_householdmembers AS
 
-select
-    d.id as screener_id
-    ,d.white_label_id
-    ,d.partner
-    ,d.submission_date
-    ,sh.*
-from screener_householdmember sh
-left join data d on sh.screen_id=d.id
-where sh.screen_id in(d.id)
+SELECT
+    sh.*,
+    d.id AS screener_id,
+    d.white_label_id,
+    d.partner,
+    d.submission_date
+FROM screener_householdmember AS sh
+LEFT JOIN data AS d ON sh.screen_id = d.id
+WHERE sh.screen_id IN (d.id)

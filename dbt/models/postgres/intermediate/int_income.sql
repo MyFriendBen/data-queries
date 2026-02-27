@@ -4,9 +4,9 @@
 ) }}
 
 SELECT
-    d.id as screener_id,
+    si.*,
+    d.id AS screener_id,
     d.submission_date,
-    d.white_label_id,
-    si.*
-FROM {{ ref('stg_income') }} si
-INNER JOIN {{ ref('int_complete_screener_data') }} d ON si.screen_id = d.id
+    d.white_label_id
+FROM {{ ref('stg_income') }} AS si
+INNER JOIN {{ ref('int_complete_screener_data') }} AS d ON si.screen_id = d.id

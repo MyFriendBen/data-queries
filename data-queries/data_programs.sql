@@ -1,24 +1,36 @@
 -- ## Writes a table into materialized_views to translate program codes into proper Program Names
-create materialized view
-    data_programs as
+CREATE MATERIALIZED VIEW
+data_programs AS
 
-With translations_t as (
-    select
-        tt.id
-        ,tt.label
-    from translations_translation tt
-    where label ilike 'program.%-name' or label ilike 'program.%-apply_button_link' or label ilike 'program.%-value_type'
-    order by tt.id
-    ),
+WITH translations_t AS (
+    SELECT
+        tt.id,
+        tt.label
+    FROM translations_translation AS tt
+    WHERE
+        tt.label ILIKE 'program.%-name'
+        OR tt.label ILIKE 'program.%-apply_button_link'
+        OR tt.label ILIKE 'program.%-value_type'
+    ORDER BY tt.id
+),
 
-translations_tt as (
-    select ttt.id, master_id, language_code, text
-    from translations_translation_translation ttt
-    left join translations_t tt on ttt.master_id = tt.id
-    where master_id in(tt.id) and language_code='en-us'
-    )
+translations_tt AS (
+    SELECT
+        ttt.id,
+        master_id,
+        language_code,
+        text
+    FROM translations_translation_translation AS ttt
+    LEFT JOIN translations_t AS tt ON ttt.master_id = tt.id
+    WHERE master_id IN (tt.id) AND language_code = 'en-us'
+)
 
-select ttt.id, ttt.master_id, tt.label, ttt.language_code, ttt.text
-from translations_t tt
-left join translations_tt ttt on tt.id = ttt.master_id
-where tt.label ilike 'program.%-value_type'
+SELECT
+    ttt.id,
+    ttt.master_id,
+    tt.label,
+    ttt.language_code,
+    ttt.text
+FROM translations_t AS tt
+LEFT JOIN translations_tt AS ttt ON tt.id = ttt.master_id
+WHERE tt.label ILIKE 'program.%-value_type'

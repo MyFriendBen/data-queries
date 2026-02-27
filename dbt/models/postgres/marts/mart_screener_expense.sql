@@ -6,10 +6,10 @@
   )
 }}
 
-select
-    d.id as screener_id
-    ,d.submission_date::date as submission_date
-    ,d.white_label_id
-    ,se.*
-from {{ ref('stg_expenses') }} se
-inner join {{ ref('int_complete_screener_data') }} d ON se.screen_id = d.id
+SELECT
+    d.id AS screener_id,
+    d.submission_date::date AS submission_date,
+    d.white_label_id,
+    se.*
+FROM {{ ref('stg_expenses') }} AS se
+INNER JOIN {{ ref('int_complete_screener_data') }} AS d ON se.screen_id = d.id

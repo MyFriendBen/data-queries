@@ -4,5 +4,5 @@
     post_hook="{{ setup_white_label_rls(this.name) }}"
 ) }}
 
-select *
-from {{ ref('int_current_benefits_unpivoted') }}
+SELECT *
+FROM {{ ref('int_current_benefits_unpivoted') }}
