@@ -32,7 +32,7 @@ latest_eligibility_snapshot_by_screen_id AS NOT MATERIALIZED (
 all_referrer_codes AS NOT MATERIALIZED (
     SELECT DISTINCT referrer_code
     FROM screener_screen
-    WHERE referrer_code IS NOT null AND referrer_code <> ''
+    WHERE referrer_code IS NOT NULL AND referrer_code <> ''
 ),
 
 -- # Monthly Income
@@ -216,7 +216,7 @@ latest_program_eligibility AS NOT MATERIALIZED (
         SUM(CASE WHEN spes.name_abbreviated = 'upk' THEN spes.estimated_value ELSE 0 END) AS upk_annual,
         SUM(CASE WHEN spes.name_abbreviated = 'wic' THEN spes.estimated_value ELSE 0 END) AS wic_annual
     FROM screener_programeligibilitysnapshot AS spes
-    WHERE spes.eligible = true
+    WHERE spes.eligible = TRUE
     GROUP BY spes.eligibility_snapshot_id
 ),
 
@@ -526,19 +526,19 @@ base_table_1 AS NOT MATERIALIZED (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN ss.referrer_code IS null OR TRIM(ss.referrer_code) = ''
+            WHEN ss.referrer_code IS NULL OR TRIM(ss.referrer_code) = ''
                 THEN
                     CASE
-                        WHEN ss.referral_source IS null OR TRIM(ss.referral_source) = '' THEN 'No Partner'
+                        WHEN ss.referral_source IS NULL OR TRIM(ss.referral_source) = '' THEN 'No Partner'
                         WHEN
-                            ss.referral_source IS NOT null AND ss.referral_source IN (SELECT * FROM all_referrer_codes)
+                            ss.referral_source IS NOT NULL AND ss.referral_source IN (SELECT * FROM all_referrer_codes)
                             THEN drc2.partner
                         ELSE 'Other'
                     END
-            WHEN ss.referrer_code IS NOT null OR TRIM(ss.referrer_code) <> ''
+            WHEN ss.referrer_code IS NOT NULL OR TRIM(ss.referrer_code) <> ''
                 THEN
                     CASE
-                        WHEN ss.referral_source IS null OR TRIM(ss.referral_source) = '' THEN drc1.partner
+                        WHEN ss.referral_source IS NULL OR TRIM(ss.referral_source) = '' THEN drc1.partner
                         WHEN
                             TRIM(ss.referral_source) = TRIM(ss.referrer_code)
                             AND TRIM(ss.referral_source) IN (SELECT * FROM all_referrer_codes)
@@ -803,8 +803,8 @@ SELECT
     tax_credits_annual / 12 AS tax_credits_monthly
 FROM base_table_2
 WHERE
-    completed = true
-    AND is_test = false
-    AND is_test_data = false
+    completed = TRUE
+    AND is_test = FALSE
+    AND is_test_data = FALSE
 --     and white_label_id=4
 ORDER BY id

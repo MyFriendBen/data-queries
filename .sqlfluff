@@ -1,6 +1,6 @@
 [sqlfluff]
-# dialect = ansi works for both Postgres and BigQuery at the formatting level
-dialect = ansi
+# dialect = postgres sets the default to PostgreSQL syntax
+dialect = postgres
 templater = jinja
 max_line_length = 120
 large_file_skip_byte_limit = 0

@@ -157,11 +157,41 @@ resource "metabase_collection" "tenant_collection_co" {
   depends_on = [metabase_collection.tenant_collection_nc]
 }
 
+resource "metabase_collection" "tenant_collection_tx" {
+  name       = "Texas"
+  depends_on = [metabase_collection.tenant_collection_co]
+}
+
+resource "metabase_collection" "tenant_collection_il" {
+  name       = "Illinois"
+  depends_on = [metabase_collection.tenant_collection_tx]
+}
+
+resource "metabase_collection" "tenant_collection_ma" {
+  name       = "Massachusetts"
+  depends_on = [metabase_collection.tenant_collection_il]
+}
+
+resource "metabase_collection" "tenant_collection_cesn" {
+  name       = "CESN"
+  depends_on = [metabase_collection.tenant_collection_ma]
+}
+
+resource "metabase_collection" "tenant_collection_co_tax_calculator" {
+  name       = "CO Tax Calculator"
+  depends_on = [metabase_collection.tenant_collection_cesn]
+}
+
 # Map for other resources to reference tenant collections by key
 locals {
   tenant_collection_map = {
-    nc = metabase_collection.tenant_collection_nc
-    co = metabase_collection.tenant_collection_co
+    nc                = metabase_collection.tenant_collection_nc
+    co                = metabase_collection.tenant_collection_co
+    tx                = metabase_collection.tenant_collection_tx
+    il                = metabase_collection.tenant_collection_il
+    ma                = metabase_collection.tenant_collection_ma
+    cesn              = metabase_collection.tenant_collection_cesn
+    co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
 }
 
@@ -268,9 +298,19 @@ resource "metabase_dashboard" "tenant_analytics" {
   name          = "${each.value.display_name} Dashboard"
   collection_id = tonumber(local.tenant_collection_map[each.key].id)
 
+  tabs_json = jsonencode([
+    { id = 1, name = "Google Analytics" },
+    { id = 2, name = "All-Time Performance" },
+    { id = 3, name = "Last 30 Days Performance" },
+    { id = 4, name = "Households" },
+    { id = 5, name = "Benefits & Immediate Needs" }
+  ])
+
   cards_json = jsonencode([
     {
-      card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
+      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
+      # Assigning existing card to "All-Time Performance" tab (ID 2)
+      dashboard_tab_id       = 2
       row                    = 0
       col                    = 0
       size_x                 = 6

@@ -1,5 +1,3 @@
 [sqlfluff]
-# BigQuery uses non-standard syntax (CROSS JOIN UNNEST, nested struct access)
-# that SQLFluff's parser cannot handle. Scoping `ignore = parsing` here ensures
-# Postgres models still get full parse error detection.
-ignore = parsing
+# Set BigQuery dialect specifically for this directory
+dialect = bigquery

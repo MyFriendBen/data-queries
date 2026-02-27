@@ -6,7 +6,7 @@ data_referrer_codes AS
 SELECT *
 FROM (
     VALUES
-    (null, 'No Partner'),
+    (NULL, 'No Partner'),
     ('', 'No Partner'),
     ('211co', '2-1-1 Colorado'),
     ('211nc', '2-1-1 North Carolina'),

@@ -1,6 +1,6 @@
 -- Recreate the data_tenant view with row-level security
 CREATE VIEW public.data_tenant
-WITH (security_barrier = true)        -- thwarts OR-1=1 tricks
+WITH (security_barrier = TRUE)        -- thwarts OR-1=1 tricks
 AS
 SELECT *
 FROM public.data                    -- your existing MV
