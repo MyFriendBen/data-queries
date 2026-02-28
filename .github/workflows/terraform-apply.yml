@@ -35,9 +35,9 @@ jobs:
       TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
       TF_VAR_database_name: ${{ vars.DATABASE_NAME }}
       TF_VAR_database_ssl: "true"
+      TF_VAR_bigquery_enabled: ${{ vars.BIGQUERY_ENABLED || 'false' }}
       TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
       TF_VAR_gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
     steps:
       - uses: actions/checkout@v4
 
@@ -46,8 +46,11 @@ jobs:
           terraform_version: "1.9.x"
 
       - name: Authenticate to Google Cloud
+        if: vars.BIGQUERY_ENABLED == 'true'
         run: |
           echo '${{ secrets.BIGQUERY_SA_KEY }}' > ${{ github.workspace }}/gcp-key.json
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
 
       - name: Build Terraform credential JSON variables
         run: |

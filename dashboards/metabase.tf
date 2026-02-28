@@ -29,6 +29,8 @@ locals {
 }
 
 resource "metabase_database" "bigquery" {
+  count = var.bigquery_enabled ? 1 : 0
+
   name = "MFB BigQuery Analytics"
   bigquery_details = {
     service_account_key      = local.bigquery_key
@@ -88,21 +90,23 @@ resource "metabase_database" "tenant_postgres" {
 
 # Wait for Metabase to sync database schemas before creating cards/dashboards
 resource "time_sleep" "wait_for_database_sync" {
-  depends_on = [
-    metabase_database.bigquery,
-    metabase_database.postgres,
-    metabase_database.tenant_postgres
-  ]
+  depends_on = concat(
+    var.bigquery_enabled ? [metabase_database.bigquery[0]] : [],
+    [metabase_database.postgres],
+    [for db in metabase_database.tenant_postgres : db]
+  )
 
   create_duration = "${var.database_sync_wait_seconds}s"
 }
 
 # Get the table reference from BigQuery
 data "metabase_table" "conversion_funnel_table" {
+  count = var.bigquery_enabled ? 1 : 0
+
   depends_on = [time_sleep.wait_for_database_sync]
 
   name  = "mart_screener_conversion_funnel"
-  db_id = tonumber(metabase_database.bigquery.id)
+  db_id = tonumber(metabase_database.bigquery[0].id)
 }
 
 # Get the table reference from PostgreSQL
@@ -167,6 +171,8 @@ locals {
 
 # Card following GitHub example exactly but with our BigQuery table
 resource "metabase_card" "conversion_funnel" {
+  count = var.bigquery_enabled ? 1 : 0
+
   json = jsonencode({
     name                = "Conversion Funnel Insights"
     description         = "Analytics from BigQuery conversion funnel data"
@@ -175,9 +181,9 @@ resource "metabase_card" "conversion_funnel" {
     cache_ttl           = null
     query_type          = "query"
     dataset_query = {
-      database = data.metabase_table.conversion_funnel_table.db_id
+      database = data.metabase_table.conversion_funnel_table[0].db_id
       query = {
-        source-table = data.metabase_table.conversion_funnel_table.id
+        source-table = data.metabase_table.conversion_funnel_table[0].id
         aggregation = [
           ["count"]
         ]
@@ -233,32 +239,36 @@ resource "metabase_card" "tenant_screen_count" {
   }))
 }
 
-# Dashboard that shows BigQuery data
+# Dashboard that shows analytics data
 resource "metabase_dashboard" "analytics" {
   name          = "MFB Analytics Dashboard"
   collection_id = tonumber(metabase_collection.global.id)
-  cards_json = jsonencode([
-    {
-      card_id = tonumber(metabase_card.conversion_funnel.id)
-      row = 0
-      col = 0
-      size_x = 12
-      size_y = 8
-      parameter_mappings = []
-      series = []
-      visualization_settings = {}
-    },
-    {
-      card_id = tonumber(metabase_card.screen_count.id)
-      row = 8
-      col = 0
-      size_x = 6
-      size_y = 4
-      parameter_mappings = []
-      series = []
-      visualization_settings = {}
-    }
-  ])
+  cards_json = jsonencode(concat(
+    var.bigquery_enabled ? [
+      {
+        card_id = tonumber(metabase_card.conversion_funnel[0].id)
+        row = 0
+        col = 0
+        size_x = 12
+        size_y = 8
+        parameter_mappings = []
+        series = []
+        visualization_settings = {}
+      }
+    ] : [],
+    [
+      {
+        card_id = tonumber(metabase_card.screen_count.id)
+        row = var.bigquery_enabled ? 8 : 0
+        col = 0
+        size_x = 6
+        size_y = 4
+        parameter_mappings = []
+        series = []
+        visualization_settings = {}
+      }
+    ]
+  ))
 }
 
 # Tenant-specific dashboards
