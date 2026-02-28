@@ -672,6 +672,14 @@ Issues encountered during staging deployment and their resolutions, captured to 
 
 See `dashboards/GITHUB_SECRETS.md` for detailed next steps.
 
+### Terraform State Backend — GCS Requires Auth Too
+
+**Issue:** The GCS backend (`mfb-terraform-state` bucket) also needs GCP authentication. Since service account keys are blocked by the org policy, GitHub Actions workflows can't authenticate to GCS to read/write Terraform state.
+
+**Decision:** Switch from GCS to **Terraform Cloud** as the state backend. This avoids the GCP auth issue entirely — Terraform Cloud only needs an API token (stored as a GitHub Secret), provides free state storage, locking, and encryption at rest.
+
+**Next step:** See "Resume Point" section below.
+
 ---
 
 ## Production Deployment Checklist
@@ -705,5 +713,84 @@ Quick-reference for deploying to production, incorporating lessons from staging:
 - [ ] Add production secrets/variables to `production` GitHub Environment
 - [ ] If production DB is Standard-tier+, create RLS users via `heroku pg:credentials:create`
 - [ ] Trigger `terraform-apply` workflow with `production` environment
+
+---
+
+## Resume Point (Start Here Monday)
+
+### What's Done
+- ✅ **Phase 1 staging**: Metabase running on Heroku at `https://mfb-metabase-staging-0805953c70da.herokuapp.com`
+  - Heroku Pipeline created (`mfb-metabase` with staging + production apps)
+  - Standard-2X dyno (required — 512MB OOMs)
+  - Setup wizard complete, admin account created
+  - Production app provisioned but not yet deployed
+- ✅ **Terraform config**: BigQuery made conditional, GCS backend configured (but blocked — see below)
+- ✅ **GitHub Actions workflows**: `terraform-plan.yml` and `terraform-apply.yml` created
+- ✅ **GitHub Environments**: `staging` and `production` created
+- ✅ **Analytics schema**: Created in staging database
+
+### What's Next (In Order)
+
+#### 1. Switch Terraform backend from GCS to Terraform Cloud (~15 min)
+
+GCS backend can't authenticate because the same GCP org policy blocks service account keys. Switch to Terraform Cloud:
+
+1. **Create a Terraform Cloud account** at https://app.terraform.io
+2. **Create an organization** (e.g., `mfb`)
+3. **Create a workspace** named `mfb-dashboards-staging`
+   - Set **Execution Mode** to **"Local"** (GitHub Actions runs plan/apply, TF Cloud only stores state)
+4. **Generate an API token**: User Settings → Tokens → Create an API token
+5. **Update `dashboards/main.tf`** — replace the `backend "gcs"` block:
+   ```hcl
+   terraform {
+     cloud {
+       organization = "mfb"
+       workspaces {
+         tags = ["dashboards"]
+       }
+     }
+   }
+   ```
+6. **Add GitHub Secret** `TF_API_TOKEN` (the API token from step 4) — this goes in the **repository-level** secrets (not environment-level, since both staging and production use the same TF Cloud org)
+7. **Update both workflow files** to pass the token:
+   ```yaml
+   - uses: hashicorp/setup-terraform@v3
+     with:
+       terraform_version: "1.9.x"
+       cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+   ```
+8. Run `terraform init` to initialize the new backend
+
+#### 2. Finish configuring GitHub Secrets for staging (~10 min)
+
+Follow checklist in `dashboards/GITHUB_SECRETS.md`:
+```bash
+# Get staging database credentials
+heroku pg:credentials:url -a cobenefits-api-staging
+```
+Add all variables and secrets to the `staging` GitHub Environment.
+
+#### 3. Push branch and merge PR (~5 min)
+
+```bash
+git push origin jmejia/mfb-681-data-deploy-to-heroku
+```
+Create PR, merge to `main`. The `terraform-apply` workflow will run automatically against staging.
+
+#### 4. Verify staging Terraform apply
+
+Check the Actions tab — Terraform should create:
+- Postgres data source (global + per-tenant) in Metabase
+- Collections (Global, North Carolina, Colorado)
+- Cards and dashboards
+
+#### 5. Deploy to production
+
+Follow the "Production Deployment Checklist" section above.
+
+### Deferred Items
+- **BigQuery integration**: Blocked by GCP org policy. See `dashboards/GITHUB_SECRETS.md` for resolution paths.
+- **dbt nightly workflow** (Phase 2): `.github/workflows/dbt-nightly.yml` not yet created.
+- **Database-level RLS**: Only available on Heroku Postgres Standard-tier+. Staging uses single credential.
 
 ---
