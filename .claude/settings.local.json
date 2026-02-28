@@ -5,7 +5,9 @@
       "Bash(gh pr diff:*)",
       "Bash(cat:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(gcloud config get-value:*)",
+      "Bash(terraform init:*)"
     ]
   }
 }
