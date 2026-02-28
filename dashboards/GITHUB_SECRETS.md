@@ -4,10 +4,20 @@ This document lists all secrets and variables needed for Terraform workflows.
 
 ## How to Add Secrets/Variables
 
-1. Go to your repository: https://github.com/MyFriendBen/data-queries
-2. Navigate to **Settings → Secrets and variables → Actions**
-3. Create two **Environments**: `staging` and `production`
-4. Add the secrets/variables below to each environment
+### Step 1: Create Environments
+
+Environments are managed in **repository settings**, not the Actions dashboard.
+
+1. Go to **Settings → Environments**: https://github.com/MyFriendBen/data-queries/settings/environments
+2. Click **"New environment"**, name it `staging`, click **"Configure environment"**
+3. Repeat to create a `production` environment
+
+### Step 2: Add Secrets and Variables
+
+Within each environment's settings page:
+- Click **"Add environment secret"** to add secrets
+- Click **"Add environment variable"** to add variables
+- Add the secrets/variables listed below for each environment
 
 ---
 
