@@ -36,12 +36,13 @@ Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets b
 
 ### Variables (Settings → Environments → staging → Variables)
 
-| Variable Name | Description | Example Value |
-|---------------|-------------|---------------|
+| Variable Name | Description | Value |
+|---------------|-------------|-------|
 | `METABASE_URL` | Staging Metabase URL | `https://mfb-metabase-staging-0805953c70da.herokuapp.com` |
-| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | `admin@myfriendben.org` |
+| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | (your admin email) |
 | `DATABASE_NAME` | Staging database name | From `heroku pg:credentials:url` output |
 | `GCP_PROJECT_ID` | Google Cloud project ID | `mfb-data` |
+| `BIGQUERY_ENABLED` | Enable BigQuery data source | `false` (see [BigQuery section](#bigquery-authentication-blocked)) |
 
 ### Secrets (Settings → Environments → staging → Secrets)
 
@@ -55,7 +56,39 @@ Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets b
 | `NC_DB_PASS` | Database password for NC tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
 | `CO_DB_USER` | Database user for CO tenant | Same as `GLOBAL_DB_USER` (single credential on staging) |
 | `CO_DB_PASS` | Database password for CO tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
-| `BIGQUERY_SA_KEY` | BigQuery service account JSON key | Full JSON content of your service account key file |
+
+---
+
+## BigQuery Authentication (Blocked)
+
+BigQuery integration is currently **disabled** due to a GCP organization policy (`iam.disableServiceAccountKeyCreation`) that prevents creating service account keys.
+
+### Current State
+- `BIGQUERY_ENABLED` variable is set to `false`
+- Terraform skips all BigQuery resources (data source, cards, dashboard widgets)
+- Postgres dashboards work without it
+
+### To Enable BigQuery Later
+
+Two approaches to resolve, depending on how Metabase and GitHub Actions authenticate:
+
+#### For GitHub Actions (Terraform + dbt):
+Use **Workload Identity Federation** — no service account key needed:
+1. Create a Workload Identity Pool in GCP Console
+2. Add an OIDC provider for GitHub (`https://token.actions.githubusercontent.com`)
+3. Grant BigQuery Data Viewer + Job User roles
+4. Update workflows to use `google-github-actions/auth@v2`
+
+#### For Metabase on Heroku (runtime BigQuery access):
+Metabase runs on Heroku and needs persistent credentials. Options:
+1. **Ask an org admin** to create a one-time exception for a service account key
+2. **Use a BigQuery proxy** that supports Workload Identity
+3. **Move Metabase to GCP** (Cloud Run) where it can use attached service accounts
+
+### When Ready to Enable:
+1. Add `BIGQUERY_SA_KEY` secret to the environment (full JSON content of the service account key)
+2. Change `BIGQUERY_ENABLED` variable to `true`
+3. Run `terraform apply` — BigQuery data source and cards will be created automatically
 
 ---
 
@@ -65,7 +98,8 @@ Same secrets/variables as staging, but with **production values**:
 - Different `METABASE_URL` (production Metabase)
 - Different `DATABASE_HOST` (production database)
 - Different admin password
-- Same `BIGQUERY_SA_KEY` and `GCP_PROJECT_ID` (unless using separate GCP projects)
+- Same `GCP_PROJECT_ID` (unless using separate GCP projects)
+- `BIGQUERY_ENABLED` = `false` until BigQuery auth is resolved
 
 ### Production Database Users (RLS)
 
@@ -123,20 +157,21 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 - [ ] Create `staging` GitHub Environment
 - [ ] Ensure `analytics` schema exists in staging database
 - [ ] Run `heroku pg:credentials:url -a cobenefits-api-staging` to get credentials
-- [ ] Add all Variables to staging environment
+- [ ] Add all Variables to staging environment (set `BIGQUERY_ENABLED` to `false`)
 - [ ] Add all Secrets to staging environment (use default credential for all DB secrets)
+- [ ] Push and merge workflow files to `main`
+- [ ] Verify `terraform-apply` workflow runs successfully
 
 ### Production (Later)
 - [ ] Create `production` GitHub Environment
 - [ ] Create RLS database users (if Standard-tier or above)
 - [ ] Add all Variables and Secrets to production environment
+- [ ] Deploy Metabase to production via pipeline promotion
+- [ ] Complete production Metabase setup wizard
+- [ ] Run `terraform-apply` workflow with `production` environment
 
----
-
-## Testing the Setup
-
-Once secrets are configured:
-1. Push and merge the workflow files to `main`
-2. The `terraform-apply` workflow will run automatically against staging
-3. Check the Actions tab to see the run
-4. Verify Metabase has the data sources and dashboards configured
+### BigQuery (Deferred)
+- [ ] Resolve GCP org policy for service account keys (or set up Workload Identity Federation)
+- [ ] Add `BIGQUERY_SA_KEY` secret to both environments
+- [ ] Set `BIGQUERY_ENABLED` to `true` in both environments
+- [ ] Run `terraform apply` to create BigQuery data sources
