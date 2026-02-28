@@ -123,6 +123,12 @@ variable "database_ssl" {
   default     = false
 }
 
+variable "bigquery_enabled" {
+  description = "Enable BigQuery data source in Metabase. Requires bigquery_service_account_key_content or a valid key file."
+  type        = bool
+  default     = false
+}
+
 locals {
   # Use content if provided, otherwise read from file path (if it exists)
   bigquery_key_from_file = fileexists(var.bigquery_service_account_key_path) ? file(var.bigquery_service_account_key_path) : null

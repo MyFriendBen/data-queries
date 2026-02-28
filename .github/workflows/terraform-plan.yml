@@ -1,0 +1,103 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "dashboards/**"
+      - "!dashboards/README.md"
+      - "!dashboards/docker-compose.yml"
+      - "!dashboards/setup-metabase.sh"
+      - ".github/workflows/terraform-plan.yml"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: staging
+    defaults:
+      run:
+        working-directory: dashboards
+    env:
+      TF_VAR_metabase_url: ${{ vars.METABASE_URL }}
+      TF_VAR_metabase_admin_email: ${{ vars.METABASE_ADMIN_EMAIL }}
+      TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
+      TF_VAR_database_host: ${{ secrets.DATABASE_HOST }}
+      TF_VAR_database_name: ${{ vars.DATABASE_NAME }}
+      TF_VAR_database_ssl: "true"
+      TF_VAR_bigquery_enabled: ${{ vars.BIGQUERY_ENABLED || 'false' }}
+      TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
+      TF_VAR_gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - name: Authenticate to Google Cloud
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: |
+          echo '${{ secrets.BIGQUERY_SA_KEY }}' > ${{ github.workspace }}/gcp-key.json
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
+
+      - name: Build Terraform credential JSON variables
+        run: |
+          global_creds=$(jq -cn \
+            --arg user "$GLOBAL_DB_USER" \
+            --arg pass "$GLOBAL_DB_PASS" \
+            '{username: $user, password: $pass}')
+          tenant_creds=$(jq -cn \
+            --arg nc_user "$NC_DB_USER" \
+            --arg nc_pass "$NC_DB_PASS" \
+            --arg co_user "$CO_DB_USER" \
+            --arg co_pass "$CO_DB_PASS" \
+            '{nc: {username: $nc_user, password: $nc_pass}, co: {username: $co_user, password: $co_pass}}')
+          echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
+          echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
+        env:
+          GLOBAL_DB_USER: ${{ secrets.GLOBAL_DB_USER }}
+          GLOBAL_DB_PASS: ${{ secrets.GLOBAL_DB_PASS }}
+          NC_DB_USER: ${{ secrets.NC_DB_USER }}
+          NC_DB_PASS: ${{ secrets.NC_DB_PASS }}
+          CO_DB_USER: ${{ secrets.CO_DB_USER }}
+          CO_DB_PASS: ${{ secrets.CO_DB_PASS }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color
+        continue-on-error: true
+
+      - name: Comment PR with Plan
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Plan 📖
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Environment: \`staging\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Fail if Terraform Plan Failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
