@@ -1,6 +1,7 @@
 {{
   config(
     materialized='table',
+    post_hook="{{ setup_white_label_rls(this.name) }}",
     description='Materialized mart for previous benefits'
   )
 }}
