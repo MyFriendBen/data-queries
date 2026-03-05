@@ -15,7 +15,7 @@ To enable these automatic checks on your machine:
 
 1. **Install pre-commit**:
    ```bash
-   pip3 install pre-commit
+   pip install pre-commit
    ```
 
 2. **Setup Git Hooks**:
@@ -26,7 +26,7 @@ To enable these automatic checks on your machine:
 
 3. **Install dbt Requirements**:
    ```bash
-   pip3 install -r dbt/requirements.txt
+   pip install -r dbt/requirements.txt
    ```
 
 ## How to Use

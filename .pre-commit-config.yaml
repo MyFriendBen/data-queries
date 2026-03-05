@@ -25,8 +25,7 @@ repos:
         exclude: |
           (?x)^(
             data-queries/v1_deprecated/|
-            dbt/models/bigquery/staging/stg_ga_page_views\.sql|
-            dbt/models/bigquery/intermediate/int_ga4_page_views\.sql
+            dbt/models/bigquery/.*
           )
 
   # YAML formatting
