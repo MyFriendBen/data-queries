@@ -4,7 +4,6 @@
     post_hook="{{ setup_white_label_rls(this.name) }}"
 ) }}
 
-SELECT
-    *
+SELECT *
 FROM {{ ref('int_income') }}
 ORDER BY white_label_id, screener_id, id
