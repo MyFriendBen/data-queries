@@ -170,9 +170,9 @@ SELECT
     END as opt_in_status,
 
     -- Total benefits eligible
-    cs.non_tax_credit_benefits_annual,
-    cs.tax_credits_annual,
-    (cs.non_tax_credit_benefits_annual + cs.tax_credits_annual) as total_benefits_annual,
+    COALESCE(cs.non_tax_credit_benefits_annual, 0) as non_tax_credit_benefits_annual,
+    COALESCE(cs.tax_credits_annual, 0) as tax_credits_annual,
+    (COALESCE(cs.non_tax_credit_benefits_annual, 0) + COALESCE(cs.tax_credits_annual, 0)) as total_benefits_annual,
 
     -- Individual CO-relevant program eligibility (value > 0 means eligible)
     -- SNAP

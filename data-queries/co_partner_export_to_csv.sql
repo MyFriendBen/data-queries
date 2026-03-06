@@ -161,9 +161,9 @@ SELECT
     END as opt_in_status,
 
     -- Total benefits eligible
-    cs.non_tax_credit_benefits_annual,
-    cs.tax_credits_annual,
-    (cs.non_tax_credit_benefits_annual + cs.tax_credits_annual) as total_benefits_annual,
+    COALESCE(cs.non_tax_credit_benefits_annual, 0) as non_tax_credit_benefits_annual,
+    COALESCE(cs.tax_credits_annual, 0) as tax_credits_annual,
+    (COALESCE(cs.non_tax_credit_benefits_annual, 0) + COALESCE(cs.tax_credits_annual, 0)) as total_benefits_annual,
 
     -- Individual CO-relevant program eligibility (value > 0 means eligible)
     -- SNAP
@@ -258,4 +258,5 @@ SELECT
 FROM co_screens cs
 LEFT JOIN user_optins uo ON cs.id = uo.screen_id
 ORDER BY cs.submission_date DESC
-) TO '/Users/jm/code/mfb/data-queries/co_partner_export.csv' WITH CSV HEADER
+-- NOTE: Update the output path below before running
+) TO '/path/to/output/co_partner_export.csv' WITH CSV HEADER

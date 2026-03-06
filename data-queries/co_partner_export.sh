@@ -1,16 +1,17 @@
 #!/bin/bash
 
 # CO Partner Data Export Script
-# Usage: ./co_partner_export.sh "postgres://user:pass@host:5432/dbname"
+# Usage: ./co_partner_export.sh CONNECTION_STRING [OUTPUT_FILE]
 
 if [ -z "$1" ]; then
-    echo "Usage: ./co_partner_export.sh CONNECTION_STRING"
-    echo "Example: ./co_partner_export.sh \"postgres://user:pass@host:5432/dbname\""
+    echo "Usage: ./co_partner_export.sh CONNECTION_STRING [OUTPUT_FILE]"
+    echo "Example: ./co_partner_export.sh \"postgres://user:pass@host:5432/dbname\" ./export.csv"
     exit 1
 fi
 
 CONNECTION_STRING="$1"
-OUTPUT_FILE="/Users/jm/code/mfb/data-queries/co_partner_export.csv"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OUTPUT_FILE="${2:-$SCRIPT_DIR/co_partner_export.csv}"
 
 echo "Exporting CO partner data to $OUTPUT_FILE..."
 
@@ -93,9 +94,9 @@ SELECT
     COALESCE(uo.send_updates, false) as opted_in_updates,
     COALESCE(uo.tcpa_consent, false) as tcpa_consent,
     CASE WHEN uo.send_offers = true OR uo.send_updates = true THEN 'Opted In' ELSE 'Not Opted In' END as opt_in_status,
-    cs.non_tax_credit_benefits_annual,
-    cs.tax_credits_annual,
-    (cs.non_tax_credit_benefits_annual + cs.tax_credits_annual) as total_benefits_annual,
+    COALESCE(cs.non_tax_credit_benefits_annual, 0) as non_tax_credit_benefits_annual,
+    COALESCE(cs.tax_credits_annual, 0) as tax_credits_annual,
+    (COALESCE(cs.non_tax_credit_benefits_annual, 0) + COALESCE(cs.tax_credits_annual, 0)) as total_benefits_annual,
     CASE WHEN COALESCE(cs.co_snap_annual, 0) > 0 THEN 1 ELSE 0 END as eligible_co_snap,
     cs.co_snap_annual,
     CASE WHEN COALESCE(cs.co_medicaid_annual, 0) > 0 THEN 1 ELSE 0 END as eligible_co_medicaid,
@@ -156,8 +157,7 @@ ORDER BY cs.submission_date DESC
 
 if [ $? -eq 0 ]; then
     echo "Export complete: $OUTPUT_FILE"
-    echo "Row count:"
-    wc -l < "$OUTPUT_FILE"
+    echo "$(($(wc -l < "$OUTPUT_FILE") - 1)) data rows (excluding header)"
 else
     echo "Export failed"
     exit 1
