@@ -2,6 +2,18 @@
 
 This document lists all secrets and variables needed for Terraform workflows.
 
+## Why Secrets Live Where They Do
+
+Secrets and variables are stored at different levels based on scope and sensitivity:
+
+| Storage Level | What Goes Here | Why |
+|---------------|---------------|-----|
+| **Repository-level secrets** | `TF_API_TOKEN` | Authenticates to Terraform Cloud, which is shared infrastructure across all environments. One token accesses all workspaces. Stored at the repo level so both staging and production workflows can use it without duplication. |
+| **Environment variables** | `METABASE_URL`, `METABASE_ADMIN_EMAIL`, `DATABASE_NAME`, `BIGQUERY_ENABLED`, `GCP_PROJECT_ID` | Non-sensitive, environment-specific configuration. Variables are visible in logs and workflow files. Different per environment (staging Metabase URL vs production Metabase URL). |
+| **Environment secrets** | `METABASE_ADMIN_PASSWORD`, `DATABASE_HOST`, all `*_DB_USER`/`*_DB_PASS` | Sensitive credentials that differ per environment. GitHub encrypts these and masks them in logs. Environment-scoped so staging credentials can't accidentally be used against production. |
+| **Heroku config vars** | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`, `MB_SITE_URL` | Runtime config for Metabase containers. These are read by the Metabase process at startup, not by GitHub Actions. Heroku config vars are the standard way to configure Heroku apps. |
+| **Terraform Cloud** | Terraform state files | State contains resource IDs and sensitive values in plaintext. Terraform Cloud encrypts state at rest, provides locking to prevent concurrent applies, and keeps separate state per workspace (`mfb-dashboards-staging` vs `mfb-dashboards-production`). Chosen over GCS because GCP org policy blocks service account key creation needed for GCS auth. |
+
 ## How to Add Secrets/Variables
 
 ### Step 1: Create Environments
@@ -20,11 +32,24 @@ See sections below for what to add at each level.
 
 ## Repository-Level Secrets
 
-These are shared across all environments. Add them at **Settings → Secrets and variables → Actions → Secrets tab → "New repository secret"**.
+Shared across all environments. Add at **Settings → Secrets and variables → Actions → Secrets tab → "New repository secret"**.
 
 | Secret Name | Description | How to Get It |
 |-------------|-------------|---------------|
-| `TF_API_TOKEN` | Terraform Cloud API token | From https://app.terraform.io → User Settings → Tokens |
+| `TF_API_TOKEN` | Terraform Cloud API token (authenticates to all workspaces in the MyFriendBen org) | From https://app.terraform.io → User Settings → Tokens |
+
+---
+
+## Terraform Cloud Workspaces
+
+Each environment has its own workspace for isolated state. Create these at https://app.terraform.io:
+
+| Workspace Name | Environment | Execution Mode |
+|---------------|-------------|----------------|
+| `mfb-dashboards-staging` | staging | Local |
+| `mfb-dashboards-production` | production | Local |
+
+**Execution Mode = "Local"** means GitHub Actions runs `plan`/`apply` — Terraform Cloud only stores state and provides locking.
 
 ---
 
@@ -95,8 +120,9 @@ Metabase runs on Heroku and needs persistent credentials. Options:
 
 ### When Ready to Enable:
 1. Add `BIGQUERY_SA_KEY` secret to the environment (full JSON content of the service account key)
-2. Change `BIGQUERY_ENABLED` variable to `true`
-3. Run `terraform apply` — BigQuery data source and cards will be created automatically
+2. Add `GCP_PROJECT_ID` variable to the environment
+3. Change `BIGQUERY_ENABLED` variable to `true`
+4. Run `terraform apply` — BigQuery data source and cards will be created automatically
 
 ---
 
@@ -164,6 +190,10 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 ### Repository-Level
 - [ ] Add `TF_API_TOKEN` as a repository secret (Settings → Secrets and variables → Actions)
 
+### Terraform Cloud
+- [ ] Create workspace `mfb-dashboards-staging` (execution mode: Local)
+- [ ] Create workspace `mfb-dashboards-production` (execution mode: Local)
+
 ### Staging
 - [ ] Create `staging` GitHub Environment
 - [ ] Ensure `analytics` schema exists in staging database
@@ -184,5 +214,6 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 ### BigQuery (Deferred)
 - [ ] Resolve GCP org policy for service account keys (or set up Workload Identity Federation)
 - [ ] Add `BIGQUERY_SA_KEY` secret to both environments
+- [ ] Add `GCP_PROJECT_ID` variable to both environments
 - [ ] Set `BIGQUERY_ENABLED` to `true` in both environments
 - [ ] Run `terraform apply` to create BigQuery data sources

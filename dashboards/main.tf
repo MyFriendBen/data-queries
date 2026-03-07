@@ -3,9 +3,6 @@ terraform {
 
   cloud {
     organization = "MyFriendBen"
-    workspaces {
-      tags = ["dashboards"]
-    }
   }
 
   required_providers {

@@ -18,6 +18,7 @@ jobs:
       run:
         working-directory: dashboards
     env:
+      TF_WORKSPACE: mfb-dashboards-staging
       TF_VAR_metabase_url: ${{ vars.METABASE_URL }}
       TF_VAR_metabase_admin_email: ${{ vars.METABASE_ADMIN_EMAIL }}
       TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
