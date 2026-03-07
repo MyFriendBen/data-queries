@@ -52,8 +52,7 @@ jobs:
         if: vars.BIGQUERY_ENABLED == 'true'
         run: |
           echo '${{ secrets.BIGQUERY_SA_KEY }}' > ${{ github.workspace }}/gcp-key.json
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/gcp-key.json" >> "$GITHUB_ENV"
 
       - name: Build Terraform credential JSON variables
         run: |
