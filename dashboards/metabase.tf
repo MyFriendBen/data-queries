@@ -75,8 +75,8 @@ resource "metabase_database" "tenant_postgres" {
       host             = var.database_host
       port             = var.database_port
       dbname           = var.database_name
-      user             = var.tenant_db_credentials[each.key].username
-      password         = var.tenant_db_credentials[each.key].password
+      user             = local.tenant_credentials[each.key].username
+      password         = local.tenant_credentials[each.key].password
       ssl              = var.database_ssl
       tunnel-enabled   = false
       advanced-options = false

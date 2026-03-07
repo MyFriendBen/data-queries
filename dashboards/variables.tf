@@ -132,5 +132,13 @@ variable "bigquery_enabled" {
 locals {
   # Use content if provided, otherwise read from file path (if it exists)
   bigquery_key_from_file = fileexists(var.bigquery_service_account_key_path) ? file(var.bigquery_service_account_key_path) : null
-  bigquery_key           = coalesce(var.bigquery_service_account_key_content, local.bigquery_key_from_file)
+  bigquery_key           = var.bigquery_enabled ? coalesce(var.bigquery_service_account_key_content, local.bigquery_key_from_file) : ""
+
+  # Build tenant credentials with fallback to global credentials for tenants not explicitly configured
+  tenant_credentials = {
+    for key, tenant in var.tenants : key => lookup(var.tenant_db_credentials, key, {
+      username = var.global_db_credentials.username
+      password = var.global_db_credentials.password
+    })
+  }
 }
