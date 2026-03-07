@@ -57,7 +57,11 @@ jobs:
             --arg nc_pass "$NC_DB_PASS" \
             --arg co_user "$CO_DB_USER" \
             --arg co_pass "$CO_DB_PASS" \
-            '{nc: {username: $nc_user, password: $nc_pass}, co: {username: $co_user, password: $co_pass}}')
+            '
+              {}
+              + (if $nc_user != "" and $nc_pass != "" then {nc: {username: $nc_user, password: $nc_pass}} else {} end)
+              + (if $co_user != "" and $co_pass != "" then {co: {username: $co_user, password: $co_pass}} else {} end)
+            ')
           echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
           echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
         env:
