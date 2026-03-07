@@ -44,12 +44,17 @@ Shared across all environments. Add at **Settings → Secrets and variables → 
 
 Each environment has its own workspace for isolated state. Create these at https://app.terraform.io:
 
+1. Click **"New Workspace"**
+2. Select **"CLI-driven workflow"**
+3. Name it (see table below)
+4. Create the workspace
+
 | Workspace Name | Environment | Execution Mode |
 |---------------|-------------|----------------|
 | `mfb-dashboards-staging` | staging | Local |
 | `mfb-dashboards-production` | production | Local |
 
-**Execution Mode = "Local"** means GitHub Actions runs `plan`/`apply` — Terraform Cloud only stores state and provides locking.
+The CLI-driven workflow sets execution mode to **Local**, meaning GitHub Actions runs `plan`/`apply` and Terraform Cloud only stores state and provides locking.
 
 ---
 

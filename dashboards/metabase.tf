@@ -90,11 +90,11 @@ resource "metabase_database" "tenant_postgres" {
 
 # Wait for Metabase to sync database schemas before creating cards/dashboards
 resource "time_sleep" "wait_for_database_sync" {
-  depends_on = concat(
-    var.bigquery_enabled ? [metabase_database.bigquery[0]] : [],
-    [metabase_database.postgres],
-    [for db in metabase_database.tenant_postgres : db]
-  )
+  depends_on = [
+    metabase_database.bigquery,
+    metabase_database.postgres,
+    metabase_database.tenant_postgres,
+  ]
 
   create_duration = "${var.database_sync_wait_seconds}s"
 }
