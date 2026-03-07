@@ -51,8 +51,9 @@ Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets b
 | `METABASE_URL` | Staging Metabase URL | `https://mfb-metabase-staging-0805953c70da.herokuapp.com` |
 | `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | (your admin email) |
 | `DATABASE_NAME` | Staging database name | From `heroku pg:credentials:url` output |
-| `GCP_PROJECT_ID` | Google Cloud project ID | `mfb-data` |
 | `BIGQUERY_ENABLED` | Enable BigQuery data source | `false` (see [BigQuery section](#bigquery-authentication-blocked)) |
+
+**Not needed until BigQuery is enabled:** `GCP_PROJECT_ID`, `BIGQUERY_SA_KEY`
 
 ### Secrets (Settings → Environments → staging → Secrets)
 
@@ -108,8 +109,8 @@ Same secrets/variables as staging, but with **production values**:
 - Different `METABASE_URL` (production Metabase)
 - Different `DATABASE_HOST` (production database)
 - Different admin password
-- Same `GCP_PROJECT_ID` (unless using separate GCP projects)
 - `BIGQUERY_ENABLED` = `false` until BigQuery auth is resolved
+- `GCP_PROJECT_ID` and `BIGQUERY_SA_KEY` only needed when BigQuery is enabled
 
 ### Production Database Users (RLS)
 
