@@ -12,7 +12,17 @@ Environments are managed in **repository settings**, not the Actions dashboard.
 2. Click **"New environment"**, name it `staging`, click **"Configure environment"**
 3. Repeat to create a `production` environment
 
-### Step 2: Add Secrets and Variables
+### Step 2: Add Repository-Level Secrets
+
+Some secrets are shared across all environments and live at the **repository level** (not inside an environment).
+
+Go to **Settings → Secrets and variables → Actions → Secrets tab → "New repository secret"**:
+
+| Secret Name | Description | How to Get It |
+|-------------|-------------|---------------|
+| `TF_API_TOKEN` | Terraform Cloud API token | From https://app.terraform.io → User Settings → Tokens |
+
+### Step 3: Add Environment Secrets and Variables
 
 Within each environment's settings page:
 - Click **"Add environment secret"** to add secrets
@@ -152,6 +162,9 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 ---
 
 ## Checklist
+
+### Repository-Level
+- [ ] Add `TF_API_TOKEN` as a repository secret (Settings → Secrets and variables → Actions)
 
 ### Staging
 - [ ] Create `staging` GitHub Environment
