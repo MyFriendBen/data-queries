@@ -1,7 +1,8 @@
 {{
   config(
     materialized='table',
-    description='Materialized mart for screener analytics - optimized for dashboard performance'
+    description='Materialized mart for screener analytics - optimized for dashboard performance',
+    post_hook="{{ setup_white_label_rls(this.name) }}"
   )
 }}
 

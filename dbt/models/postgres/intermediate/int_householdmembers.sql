@@ -3,8 +3,8 @@
     description='Intermediate model for household members enriched with screener data'
 ) }}
 
-select
-    d.id as screener_id,
+SELECT
+    d.id AS screener_id,
     d.white_label_id,
     d.partner,
     d.submission_date,
@@ -28,6 +28,6 @@ select
     sh.birth_year_month,
     sh.frontend_id,
     sh.is_care_worker
-from {{ ref('stg_householdmembers') }} sh
-inner join {{ ref('int_complete_screener_data') }} d
-    on sh.screen_id = d.id
+FROM {{ ref('stg_householdmembers') }} AS sh
+INNER JOIN {{ ref('int_complete_screener_data') }} AS d
+    ON sh.screen_id = d.id
