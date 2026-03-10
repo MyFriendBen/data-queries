@@ -83,14 +83,15 @@ resource "metabase_card" "ga_completed_to_click_rate" {
   })
 }
 
-# KPI: Completion Time — median seconds from /step-1 to /results
-# Displayed as average of daily median values; use native SQL for more precision if needed
+# KPI: Completion Time — true median from session-grain data
+# Uses APPROX_QUANTILES on int_ga4_sessions so the result is the actual p50 across all sessions,
+# not an average of pre-aggregated daily medians which would vary with bucketing.
 resource "metabase_card" "ga_median_completion_time" {
   for_each = var.tenants
 
   json = jsonencode({
-    name                = "Completion Time"
-    description         = "Median session duration from screener start (/step-1) to completion (/results), in seconds"
+    name                = "Median Completion Time"
+    description         = "Median session duration from screener start (/step-1) to completion (/results)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -99,7 +100,22 @@ resource "metabase_card" "ga_median_completion_time" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT CONCAT(LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':', LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':', LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')) FROM (SELECT CAST(ROUND(AVG(median_completion_time_seconds), 0) AS INT64) AS secs FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND median_completion_time_seconds IS NOT NULL)"
+        query         = <<-SQL
+          SELECT CONCAT(
+            LPAD(CAST(DIV(secs, 3600)            AS STRING), 2, '0'), ':',
+            LPAD(CAST(DIV(MOD(secs, 3600), 60)   AS STRING), 2, '0'), ':',
+            LPAD(CAST(MOD(secs, 60)              AS STRING), 2, '0')
+          )
+          FROM (
+            SELECT CAST(ROUND(
+              APPROX_QUANTILES(completion_time_seconds, 100 IGNORE NULLS)[OFFSET(50)],
+              0
+            ) AS INT64) AS secs
+            FROM `${local.bq_dataset}.int_ga4_sessions`
+            WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+              AND completion_time_seconds IS NOT NULL
+          )
+        SQL
         template-tags = {}
       }
     }
