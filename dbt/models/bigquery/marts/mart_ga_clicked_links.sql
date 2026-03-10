@@ -9,15 +9,15 @@
 -- Shows which external domains users click to from the screener results page
 
 with session_state as (
-    -- Get state_code per session from page views
+    -- Get state_code per session from page views; keyed by session only so midnight-spanning
+    -- sessions are attributed correctly regardless of which calendar date the click falls on
     select
-        event_date,
         user_pseudo_id,
         ga_session_id,
         max(state_code) as state_code
     from {{ ref('int_ga4_page_views') }}
     where ga_session_id is not null
-    group by event_date, user_pseudo_id, ga_session_id
+    group by user_pseudo_id, ga_session_id
 ),
 
 clicks_with_state as (
@@ -32,8 +32,7 @@ clicks_with_state as (
         coalesce(s.state_code, 'unknown') as state_code
     from {{ ref('stg_ga_link_clicks') }} c
     left join session_state s
-        on c.event_date = s.event_date
-        and c.user_pseudo_id = s.user_pseudo_id
+        on c.user_pseudo_id = s.user_pseudo_id
         and c.ga_session_id = s.ga_session_id
     where c.ga_session_id is not null
 )
@@ -50,7 +49,7 @@ select
     is_outbound,
 
     count(*) as total_clicks,
-    count(distinct ga_session_id) as sessions_with_clicks,
+    count(distinct concat(user_pseudo_id, '_', ga_session_id)) as sessions_with_clicks,
     count(distinct user_pseudo_id) as users_with_clicks,
 
     current_timestamp() as updated_at

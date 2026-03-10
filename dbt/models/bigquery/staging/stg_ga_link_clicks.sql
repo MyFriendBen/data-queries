@@ -26,6 +26,13 @@ select
     max(case when ep.key = 'link_domain' then ep.value.string_value end) as link_domain,
     max(case when ep.key = 'outbound' then ep.value.string_value end) as is_outbound,
 
+    -- Origin page where the click occurred; used downstream to isolate results-page clicks
+    max(case when ep.key = 'page_location' then ep.value.string_value end) as page_location,
+    regexp_extract(
+        max(case when ep.key = 'page_location' then ep.value.string_value end),
+        r'https?://[^/]+(/.*)$'
+    ) as page_path,
+
     -- Click timestamp
     timestamp_micros(event_timestamp) as click_datetime
 

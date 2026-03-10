@@ -15,7 +15,7 @@ select
     session_medium,
     session_source,
 
-    count(distinct ga_session_id) as total_sessions,
+    count(distinct concat(user_pseudo_id, '_', ga_session_id)) as total_sessions,
     count(distinct user_pseudo_id) as total_users,
 
     current_timestamp() as updated_at

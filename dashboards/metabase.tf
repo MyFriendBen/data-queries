@@ -202,13 +202,13 @@ locals {
     tx                = "tx"
     il                = "il"
     ma                = "ma"
-    cesn              = "cesn"              # NOTE: update if CESN uses a specific state code
-    co_tax_calculator = "co_tax_calculator" # NOTE: update if CO Tax Calculator uses a state code
+    cesn              = "co" # shares Colorado GA4 data; update if CESN gets its own state tracking
+    co_tax_calculator = "co" # shares Colorado GA4 data; update if CO Tax Calculator gets its own state tracking
   }
 
   # Convenience prefix for BigQuery table references in native SQL
-  # Format: `project_id.dataset` — no trailing dot
-  bq_dataset = "`${var.gcp_project_id}.${var.bigquery_analytics_dataset}`"
+  # Usage: wrap the full table path in backticks at the call site: `${local.bq_dataset}.table_name`
+  bq_dataset = "${var.gcp_project_id}.${var.bigquery_analytics_dataset}"
 }
 
 # Card following GitHub example exactly but with our BigQuery table

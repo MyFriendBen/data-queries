@@ -20,7 +20,7 @@ resource "metabase_card" "ga_total_visitors" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT SUM(total_sessions) FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
+        query         = "SELECT SUM(total_sessions) FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
         template-tags = {}
       }
     }
@@ -46,7 +46,7 @@ resource "metabase_card" "ga_started_screener_pct" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_started_screener) * 100.0 / NULLIF(SUM(total_sessions), 0), 1) AS STRING), '%') FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
+        query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_started_screener) * 100.0 / NULLIF(SUM(total_sessions), 0), 1) AS STRING), '%') FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
         template-tags = {}
       }
     }
@@ -72,7 +72,7 @@ resource "metabase_card" "ga_completed_to_click_rate" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_clicked_after_completion) * 100.0 / NULLIF(SUM(sessions_completed_screener), 0), 1) AS STRING), '%') FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
+        query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_clicked_after_completion) * 100.0 / NULLIF(SUM(sessions_completed_screener), 0), 1) AS STRING), '%') FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
         template-tags = {}
       }
     }
@@ -99,7 +99,7 @@ resource "metabase_card" "ga_median_completion_time" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT CONCAT(LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':', LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':', LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')) FROM (SELECT CAST(ROUND(AVG(median_completion_time_seconds), 0) AS INT64) AS secs FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND median_completion_time_seconds IS NOT NULL)"
+        query         = "SELECT CONCAT(LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':', LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':', LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')) FROM (SELECT CAST(ROUND(AVG(median_completion_time_seconds), 0) AS INT64) AS secs FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND median_completion_time_seconds IS NOT NULL)"
         template-tags = {}
       }
     }
@@ -129,16 +129,16 @@ resource "metabase_card" "ga_conversion_funnel" {
       native = {
         query         = <<-SQL
           SELECT 'Total Visitors' AS funnel_step, SUM(total_sessions) AS session_count, 1 AS step_order
-          FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
           UNION ALL
           SELECT 'Started Screener', SUM(sessions_started_screener), 2
-          FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
           UNION ALL
           SELECT 'Completed Screener', SUM(sessions_completed_screener), 3
-          FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
           UNION ALL
           SELECT 'Clicked Link', SUM(sessions_clicked_after_completion), 4
-          FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
           ORDER BY step_order
         SQL
         template-tags = {}
@@ -170,7 +170,33 @@ resource "metabase_card" "ga_conversion_funnel_table" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT 'Total Visitors' AS funnel_step, SUM(total_sessions) AS session_count, 1 AS step_order FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' UNION ALL SELECT 'Started Screener', SUM(sessions_started_screener), 2 FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' UNION ALL SELECT 'Completed Screener', SUM(sessions_completed_screener), 3 FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' UNION ALL SELECT 'Clicked Link', SUM(sessions_clicked_after_completion), 4 FROM ${local.bq_dataset}.mart_ga_kpi_summary WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' ORDER BY step_order"
+        query         = <<-SQL
+          WITH totals AS (
+            SELECT
+              SUM(total_sessions)                    AS a,
+              SUM(sessions_started_screener)         AS b,
+              SUM(sessions_completed_screener)       AS c,
+              SUM(sessions_clicked_after_completion) AS d
+            FROM `${local.bq_dataset}.mart_ga_kpi_summary`
+            WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          ),
+          steps AS (
+            SELECT 'Total Visitors'     AS funnel_step, a AS session_count, a AS prev_count, 1 AS step_order FROM totals
+            UNION ALL
+            SELECT 'Started Screener',   b, a, 2 FROM totals
+            UNION ALL
+            SELECT 'Completed Screener', c, b, 3 FROM totals
+            UNION ALL
+            SELECT 'Clicked Link',       d, c, 4 FROM totals
+          )
+          SELECT
+            funnel_step,
+            session_count,
+            ROUND(session_count * 100.0 / NULLIF(prev_count, 0), 1) AS conversion_pct,
+            prev_count - session_count                               AS drop_off
+          FROM steps
+          ORDER BY step_order
+        SQL
         template-tags = {}
       }
     }
@@ -197,7 +223,7 @@ resource "metabase_card" "ga_traffic_mediums_bar" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT session_medium, session_source, SUM(total_sessions) AS sessions FROM ${local.bq_dataset}.mart_ga_traffic_mediums WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium, session_source ORDER BY sessions DESC"
+        query         = "SELECT session_medium, SUM(total_sessions) AS sessions FROM `${local.bq_dataset}.mart_ga_traffic_mediums` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium ORDER BY sessions DESC"
         template-tags = {}
       }
     }
@@ -226,7 +252,7 @@ resource "metabase_card" "ga_traffic_mediums_table" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT session_medium, session_source, SUM(total_sessions) AS sessions, SUM(total_users) AS users FROM ${local.bq_dataset}.mart_ga_traffic_mediums WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium, session_source ORDER BY sessions DESC"
+        query         = "SELECT session_medium, session_source, SUM(total_sessions) AS sessions, SUM(total_users) AS users FROM `${local.bq_dataset}.mart_ga_traffic_mediums` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium, session_source ORDER BY sessions DESC"
         template-tags = {}
       }
     }
@@ -252,7 +278,7 @@ resource "metabase_card" "ga_clicked_links_bar" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks FROM ${local.bq_dataset}.mart_ga_clicked_links WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC LIMIT 10"
+        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC LIMIT 10"
         template-tags = {}
       }
     }
@@ -281,7 +307,7 @@ resource "metabase_card" "ga_clicked_links_table" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks, SUM(sessions_with_clicks) AS sessions, SUM(users_with_clicks) AS users FROM ${local.bq_dataset}.mart_ga_clicked_links WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC"
+        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks, SUM(sessions_with_clicks) AS sessions, SUM(users_with_clicks) AS users FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC"
         template-tags = {}
       }
     }
