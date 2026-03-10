@@ -5,5 +5,5 @@
   )
 }}
 
-select *
-from {{ source('django_apps', 'screener_expense') }}
+SELECT *
+FROM {{ source('django_apps', 'screener_expense') }}

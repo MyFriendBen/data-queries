@@ -5,20 +5,22 @@
   )
 }}
 
-with snapshots_count as (
-    select
+WITH snapshots_count AS (
+    SELECT
         screen_id,
-        count(distinct id) as snapshots
-    from {{ source('django_apps', 'screener_eligibilitysnapshot') }}
-    group by screen_id
+        count(DISTINCT id) AS snapshots
+    FROM {{ source('django_apps', 'screener_eligibilitysnapshot') }}
+    GROUP BY screen_id
 )
 
-select
+SELECT
     sc.screen_id,
-    (select id
-        from {{ source('django_apps', 'screener_eligibilitysnapshot') }} sel
-        where sel.screen_id = sc.screen_id
-        order by sel.submission_date desc
-        limit 1) as latest_snapshot_id,
+    (
+        SELECT id
+        FROM {{ source('django_apps', 'screener_eligibilitysnapshot') }} AS sel
+        WHERE sel.screen_id = sc.screen_id
+        ORDER BY sel.submission_date DESC
+        LIMIT 1
+    ) AS latest_snapshot_id,
     sc.snapshots
-from snapshots_count sc
+FROM snapshots_count AS sc
