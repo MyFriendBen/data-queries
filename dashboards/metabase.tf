@@ -307,17 +307,103 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode([
+    # ── All-Time Performance (tab 2) ────────────────────────────────────────
     {
-      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
-      # Assigning existing card to "All-Time Performance" tab (ID 2)
-      dashboard_tab_id       = 2
-      row                    = 0
-      col                    = 0
-      size_x                 = 6
-      size_y                 = 4
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    }
+      card_id            = tonumber(metabase_card.tenant_screen_count[each.key].id)
+      dashboard_tab_id   = 2
+      row                = 0, col = 0, size_x = 6, size_y = 4
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+
+    # ── Households (tab 4) ──────────────────────────────────────────────────
+    # Row 0: KPI scalars (6 cards, each 4 wide × 3 tall)
+    {
+      card_id            = tonumber(metabase_card.households_completed_screeners[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 0, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_median_size[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 4, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_median_assets[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 8, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_median_annual_income[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 12, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_median_monthly_income[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 16, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_median_monthly_expenses[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 0, col = 20, size_x = 4, size_y = 3
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    # Row 3: Age distribution charts side by side (each 12 wide × 8 tall)
+    {
+      card_id            = tonumber(metabase_card.households_head_age_distribution[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 3, col = 0, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_all_member_age_distribution[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 3, col = 12, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    # Row 11: Household size breakdown + Languages pie side by side
+    {
+      card_id            = tonumber(metabase_card.households_size_breakdown[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 11, col = 0, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_languages[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 11, col = 12, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    # Row 19: Income breakdown + Assets breakdown side by side
+    {
+      card_id            = tonumber(metabase_card.households_income_breakdown[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 19, col = 0, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_assets_breakdown[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 19, col = 12, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    # Row 27: Income streams + Common expenses side by side
+    {
+      card_id            = tonumber(metabase_card.households_income_streams[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 27, col = 0, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
+    {
+      card_id            = tonumber(metabase_card.households_common_expenses[each.key].id)
+      dashboard_tab_id   = 4
+      row                = 27, col = 12, size_x = 12, size_y = 8
+      parameter_mappings = [], series = [], visualization_settings = {}
+    },
   ])
 }

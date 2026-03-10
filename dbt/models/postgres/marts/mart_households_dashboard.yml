@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: mart_households_dashboard
+    description: >
+      Pre-aggregated mart for the Households dashboard page in Metabase.
+      One row per completed screener. Contains all data needed for the 6 KPI
+      scalars and 6 charts on the Households page, matching the Looker Studio
+      NC dashboard at https://lookerstudio.google.com/reporting/84ceeb5a-e1ee-4850-910b-5b3a5ccfb2cd/page/p_o3q7bcq1rd
+      Census Bureau age bins are used throughout: <5, 5-18, 19-24, 25-44, 45-64, 65+
+    columns:
+      - name: screener_id
+        description: "Screener ID (primary key)"
+        tests:
+          - not_null
+          - unique
+
+      - name: white_label_id
+        description: "White label organization ID — used for row-level security."
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner derived from referrer_code / referral_source."
+
+      - name: submission_date
+        description: "Date the screener was submitted."
+
+      - name: request_language_code
+        description: "Human-readable language name (e.g. English, Spanish) from the screener request."
+
+      - name: household_size
+        description: "Number of household members counted from screener_householdmember."
+
+      - name: monthly_income
+        description: "Total monthly income across all income streams, normalized to monthly."
+
+      - name: monthly_expenses
+        description: "Total monthly expenses across all expense streams, normalized to monthly."
+
+      - name: annual_income
+        description: "monthly_income * 12."
+
+      - name: household_assets
+        description: "Total household assets in dollars as entered on the screener."
+
+      - name: head_age_bin
+        description: "Census Bureau age bin for the head of household: 0-18, 19-24, 25-44, 45-64, 65+"
+
+      - name: head_age_bin_order
+        description: "Sort order for head_age_bin (1=youngest, 5=oldest)."
+
+      - name: members_age_lt5
+        description: "Count of household members under age 5."
+
+      - name: members_age_5_18
+        description: "Count of household members aged 5-18."
+
+      - name: members_age_19_24
+        description: "Count of household members aged 19-24."
+
+      - name: members_age_25_44
+        description: "Count of household members aged 25-44."
+
+      - name: members_age_45_64
+        description: "Count of household members aged 45-64."
+
+      - name: members_age_65plus
+        description: "Count of household members aged 65 or older."
+
+      - name: total_members
+        description: "Total count of household members."
+
+      - name: annual_income_bin
+        description: "Annual income bracket: $0-15K, $15-30K, $30-45K, $45-60K, $60-75K, $75-100K, $100K+"
+
+      - name: annual_income_bin_order
+        description: "Sort order for annual_income_bin."
+
+      - name: assets_bin
+        description: "Household assets bracket: $0-1K, $1-2K, $2-5K, $5-10K, $10-50K, $50K+"
+
+      - name: assets_bin_order
+        description: "Sort order for assets_bin."
