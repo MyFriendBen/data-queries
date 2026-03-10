@@ -105,6 +105,7 @@ SELECT
 FROM analytics.mart_current_benefits
 CROSS JOIN totals t
 GROUP BY benefit
+HAVING SUM(count) > 0
 ORDER BY SUM(count) DESC
 EOF
       }
@@ -193,7 +194,6 @@ SELECT
     count as "# of Screeners",
     count::float / NULLIF(t.total_count, 0) as "% of Screeners"
 FROM qualified_benefits, totals t
-WHERE count > 0
 ORDER BY count DESC
 EOF
       }
