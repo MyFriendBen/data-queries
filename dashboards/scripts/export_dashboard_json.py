@@ -3,6 +3,8 @@ import json
 import http.client
 import sys
 import argparse
+from urllib.parse import urlparse
+import re
 
 def load_tfvars():
     """Parse terraform.tfvars for Metabase credentials."""
@@ -19,13 +21,12 @@ def load_tfvars():
                 continue
             if "=" in line:
                 key, val = line.split("=", 1)
-                val = val.split("#")[0].strip()
+                val = re.split(r'\s+#', val, maxsplit=1)[0].strip()
                 creds[key.strip()] = val.strip().strip('"').strip("'")
     return creds
 
 def get_metabase_session(url, email, password):
     """Authenticate with Metabase and return session ID."""
-    from urllib.parse import urlparse
     parsed_url = urlparse(url)
     host = parsed_url.netloc
     path_prefix = parsed_url.path.rstrip('/')
@@ -56,7 +57,6 @@ def get_metabase_session(url, email, password):
 
 def fetch_metabase_dashboard(url, session_id, dashboard_id):
     """Fetch dashboard JSON from Metabase."""
-    from urllib.parse import urlparse
     parsed_url = urlparse(url)
     host = parsed_url.netloc
     path_prefix = parsed_url.path.rstrip('/')
@@ -98,7 +98,7 @@ def main():
         print("Error: credentials missing in terraform.tfvars")
         sys.exit(1)
         
-    print(f"Connecting to Metabase...")
+    print("Connecting to Metabase...")
     session_id = get_metabase_session(url, email, password)
     if not session_id:
         sys.exit(1)
@@ -124,11 +124,11 @@ def main():
         try:
             parsed_json = json.loads(json_content)
             json.dump(parsed_json, f, indent=2)
-        except:
+        except json.JSONDecodeError:
             f.write(json_content)
 
     print(f"\nSuccess! Dashboard JSON saved to {output_file}")
-    print(f"You can now run generate_hcl.py to convert this into Terraform HCL.")
+    print("You can now run generate_hcl.py to convert this into Terraform HCL.")
 
 if __name__ == "__main__":
     main()

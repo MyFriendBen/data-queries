@@ -19,7 +19,7 @@ def load_env():
     with open(env_path, "r") as f:
         for line in f:
             if line.startswith("ANTHROPIC_API_KEY="):
-                return line.strip().split("=")[1]
+                return line.strip().split("=", 1)[1]
     
     print("Error: ANTHROPIC_API_KEY not found in .env")
     sys.exit(1)
@@ -93,6 +93,21 @@ def main():
         with open(tf_path, "r") as f:
             reference_code = f.read()
 
+    # Truncate reference code safely to avoid cutting mid-resource
+    def trim_to_resource_boundary(text, limit):
+        if len(text) <= limit:
+            return text
+        trimmed = text[:limit]
+
+        last_boundary = -1
+        for marker in ["\nresource ", "\nmodule ", "\nlocals ", "\nvariable ", "\ndata ", "\nprovider "]:
+            pos = trimmed.rfind(marker)
+            if pos > last_boundary:
+                last_boundary = pos
+        if last_boundary != -1:
+            return text[:last_boundary] + "\n# ... [truncated]"
+        return trimmed + "\n# ... [truncated]"
+
     system_prompt = f"""You are a Terraform expert specialized in the 'flovouin/metabase' provider.
 Your task is to convert Metabase dashboard JSON into Terraform HCL.
 
@@ -159,7 +174,7 @@ resource "metabase_dashboard" "tenant_analytics" {{
 ```
 
 EXISTING CODE FOR CONTEXT:
-{reference_code[:4000]} 
+{trim_to_resource_boundary(reference_code, 4000)}
 """
 
     user_prompt = f"""Convert this Metabase dashboard JSON into a TEMPLATIZED Terraform resource named "tenant_analytics" that uses for_each = var.tenants.
@@ -168,7 +183,7 @@ Ensure it looks exactly like the existing "tenant_analytics" dashboard but updat
 JSON DATA:
 {json_content}
 """
-    print(f"Generating Terraform HCL...")
+    print("Generating Terraform HCL...")
     generated_code = call_anthropic_api(api_key, system_prompt, user_prompt)
     
     # Extraction logic
@@ -176,6 +191,8 @@ JSON DATA:
         generated_code = generated_code.split("```hcl")[1].split("```")[0].strip()
     elif "```" in generated_code:
         generated_code = generated_code.split("```")[1].split("```")[0].strip()
+    else:
+        print("Warning: No code blocks found in response. Output may contain explanatory text.")
 
     # Determine output path
     output_file = args.output
@@ -189,7 +206,7 @@ JSON DATA:
         f.write(generated_code)
         
     print(f"\nSuccess! Code saved to {output_file}")
-    print(f"You can now review the file and manually copy the blocks you want into metabase.tf.")
+    print("You can now review the file and manually copy the blocks you want into metabase.tf.")
 
 if __name__ == "__main__":
     main()
