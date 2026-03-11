@@ -35,6 +35,7 @@ clicks_with_state as (
         on c.user_pseudo_id = s.user_pseudo_id
         and c.ga_session_id = s.ga_session_id
     where c.ga_session_id is not null
+        and c.page_path like '%/results%' -- isolate clicks from results page to focus on post-completion behavior
 )
 
 select
