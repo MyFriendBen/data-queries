@@ -31,9 +31,9 @@ locals {
 resource "metabase_database" "bigquery" {
   name = "MFB BigQuery Analytics"
   bigquery_details = {
-    service_account_key      = local.bigquery_key
-    project_id               = var.gcp_project_id
-    dataset_filters_type     = "all"
+    service_account_key  = local.bigquery_key
+    project_id           = var.gcp_project_id
+    dataset_filters_type = "all"
   }
 }
 
@@ -44,14 +44,14 @@ resource "metabase_database" "postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host     = var.database_host
-      port     = var.database_port
-      dbname   = var.database_name
-      user     = var.global_db_credentials.username
-      password = var.global_db_credentials.password
-      ssl      = var.database_ssl
-      tunnel-enabled    = false
-      advanced-options  = false
+      host             = var.database_host
+      port             = var.database_port
+      dbname           = var.database_name
+      user             = var.global_db_credentials.username
+      password         = var.global_db_credentials.password
+      ssl              = var.database_ssl
+      tunnel-enabled   = false
+      advanced-options = false
     })
 
     redacted_attributes = [
@@ -70,14 +70,14 @@ resource "metabase_database" "tenant_postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host     = var.database_host
-      port     = var.database_port
-      dbname   = var.database_name
-      user     = var.tenant_db_credentials[each.key].username
-      password = var.tenant_db_credentials[each.key].password
-      ssl      = var.database_ssl
-      tunnel-enabled    = false
-      advanced-options  = false
+      host             = var.database_host
+      port             = var.database_port
+      dbname           = var.database_name
+      user             = var.tenant_db_credentials[each.key].username
+      password         = var.tenant_db_credentials[each.key].password
+      ssl              = var.database_ssl
+      tunnel-enabled   = false
+      advanced-options = false
     })
 
     redacted_attributes = [

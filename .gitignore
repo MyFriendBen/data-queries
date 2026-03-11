@@ -20,3 +20,7 @@ venv/
 *.tfstate.*.backup
 terraform.tfvars
 *.tfplan
+
+# dashboards scripts
+dashboards/scripts/generated/
+
