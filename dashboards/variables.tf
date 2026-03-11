@@ -40,6 +40,26 @@ variable "tenants" {
       name         = "co"
       display_name = "Colorado"
     }
+    tx = {
+      name         = "tx"
+      display_name = "Texas"
+    }
+    il = {
+      name         = "il"
+      display_name = "Illinois"
+    }
+    ma = {
+      name         = "ma"
+      display_name = "Massachusetts"
+    }
+    cesn = {
+      name         = "cesn"
+      display_name = "CESN"
+    }
+    co_tax_calculator = {
+      name         = "co_tax_calculator"
+      display_name = "CO Tax Calculator"
+    }
   }
 }
 

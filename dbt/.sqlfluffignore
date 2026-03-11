@@ -1,0 +1,8 @@
+# dbt compile output — generated files, no need to lint
+target/
+
+# dbt package dependencies — external packages, not our code
+dbt_packages/
+
+# Jinja macros — SQLFluff can't parse these reliably
+macros/

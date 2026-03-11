@@ -1,165 +1,165 @@
 -- # This query will create a previous_benefits table
 -- This table is used as a source for Looker Studio dashboards.
-create materialized view
-    data_previous_benefits as
+CREATE MATERIALIZED VIEW
+data_previous_benefits AS
 
-with base as (
-    select
-        white_label_id
-        ,partner
-        ,sum(case when has_acp = true then 1 else 0 end)                     as acp
-        ,sum(case when has_andcs = true then 1 else 0 end)                     as andcs
-        ,sum(case when has_ccb = true then 1 else 0 end)                     as ccb
-        ,sum(case when has_ccap = true then 1 else 0 end)                     as ccap
-        ,sum(case when has_ccdf = true then 1 else 0 end)                     as ccdf
-        ,sum(case when has_cdhcs = true then 1 else 0 end)                     as cdhcs
-        ,sum(case when has_chp = true then 1 else 0 end)                     as chp
-        ,sum(case when has_chs = true then 1 else 0 end)                     as chs
-        ,sum(case when has_co_andso = true then 1 else 0 end)                     as co_andso
-        ,sum(case when has_coctc = true then 1 else 0 end)                     as coctc
-        ,sum(case when has_coeitc = true then 1 else 0 end)                     as coeitc
-        ,sum(case when has_cowap = true then 1 else 0 end)                     as cowap
-        ,sum(case when has_cpcr = true then 1 else 0 end)                     as cpcr
-        ,sum(case when has_csfp = true then 1 else 0 end)                     as csfp
-        ,sum(case when has_ctc = true then 1 else 0 end)                     as ctc
-        ,sum(case when has_dpp = true then 1 else 0 end)                     as dpp
-        ,sum(case when has_ede = true then 1 else 0 end)                     as ede
-        ,sum(case when has_eitc = true then 1 else 0 end)                     as eitc
-        ,sum(case when has_erc = true then 1 else 0 end)                     as erc
-        ,sum(case when has_fatc = true then 1 else 0 end)                     as fatc
-        ,sum(case when has_leap = true then 1 else 0 end)                     as leap
-        ,sum(case when has_lifeline = true then 1 else 0 end)                     as lifeline
-        ,sum(case when has_ma_eaedc = true then 1 else 0 end)                     as ma_eaedc
-        ,sum(case when has_ma_macfc = true then 1 else 0 end)                     as ma_macfc
-        ,sum(case when has_ma_maeitc = true then 1 else 0 end)                     as ma_maeitc
-        ,sum(case when has_ma_mbta = true then 1 else 0 end)                     as ma_mbta
-        ,sum(case when has_ma_ssp = true then 1 else 0 end)                     as ma_ssp
-        ,sum(case when has_medicaid = true then 1 else 0 end)                     as medicaid
-        ,sum(case when has_mydenver = true then 1 else 0 end)                     as mydenver
-        ,sum(case when has_nc_lieap = true then 1 else 0 end)                     as nc_lieap
-        ,sum(case when has_nccip = true then 1 else 0 end)                     as nccip
-        ,sum(case when has_ncscca = true then 1 else 0 end)                     as ncscca
-        ,sum(case when has_ncwap = true then 1 else 0 end)                     as ncwap
-        ,sum(case when has_nfp = true then 1 else 0 end)                     as nfp
-        ,sum(case when has_nslp = true then 1 else 0 end)                     as nslp
-        ,sum(case when has_oap = true then 1 else 0 end)                     as oap
-        ,sum(case when has_pell_grant = true then 1 else 0 end)                     as pell_grant
-        ,sum(case when has_rag = true then 1 else 0 end)                     as rag
-        ,sum(case when has_rtdlive = true then 1 else 0 end)                     as rtdlive
-        ,sum(case when has_section_8 = true then 1 else 0 end)                     as section_8
-        ,sum(case when has_snap = true then 1 else 0 end)                     as snap
-        ,sum(case when has_ssi = true then 1 else 0 end)                     as ssi
-        ,sum(case when has_sunbucks = true then 1 else 0 end)                     as sunbucks
-        ,sum(case when has_tanf = true then 1 else 0 end)                     as tanf
-        ,sum(case when has_ubp = true then 1 else 0 end)                     as ubp
-        ,sum(case when has_upk = true then 1 else 0 end)                     as upk
-        ,sum(case when has_va = true then 1 else 0 end)                     as va
-        ,sum(case when has_wic = true then 1 else 0 end)                     as wic
-    from data
-    group by white_label_id, partner
-    )
+WITH base AS (
+    SELECT
+        white_label_id,
+        partner,
+        sum(CASE WHEN has_acp = TRUE THEN 1 ELSE 0 END) AS acp,
+        sum(CASE WHEN has_andcs = TRUE THEN 1 ELSE 0 END) AS andcs,
+        sum(CASE WHEN has_ccb = TRUE THEN 1 ELSE 0 END) AS ccb,
+        sum(CASE WHEN has_ccap = TRUE THEN 1 ELSE 0 END) AS ccap,
+        sum(CASE WHEN has_ccdf = TRUE THEN 1 ELSE 0 END) AS ccdf,
+        sum(CASE WHEN has_cdhcs = TRUE THEN 1 ELSE 0 END) AS cdhcs,
+        sum(CASE WHEN has_chp = TRUE THEN 1 ELSE 0 END) AS chp,
+        sum(CASE WHEN has_chs = TRUE THEN 1 ELSE 0 END) AS chs,
+        sum(CASE WHEN has_co_andso = TRUE THEN 1 ELSE 0 END) AS co_andso,
+        sum(CASE WHEN has_coctc = TRUE THEN 1 ELSE 0 END) AS coctc,
+        sum(CASE WHEN has_coeitc = TRUE THEN 1 ELSE 0 END) AS coeitc,
+        sum(CASE WHEN has_cowap = TRUE THEN 1 ELSE 0 END) AS cowap,
+        sum(CASE WHEN has_cpcr = TRUE THEN 1 ELSE 0 END) AS cpcr,
+        sum(CASE WHEN has_csfp = TRUE THEN 1 ELSE 0 END) AS csfp,
+        sum(CASE WHEN has_ctc = TRUE THEN 1 ELSE 0 END) AS ctc,
+        sum(CASE WHEN has_dpp = TRUE THEN 1 ELSE 0 END) AS dpp,
+        sum(CASE WHEN has_ede = TRUE THEN 1 ELSE 0 END) AS ede,
+        sum(CASE WHEN has_eitc = TRUE THEN 1 ELSE 0 END) AS eitc,
+        sum(CASE WHEN has_erc = TRUE THEN 1 ELSE 0 END) AS erc,
+        sum(CASE WHEN has_fatc = TRUE THEN 1 ELSE 0 END) AS fatc,
+        sum(CASE WHEN has_leap = TRUE THEN 1 ELSE 0 END) AS leap,
+        sum(CASE WHEN has_lifeline = TRUE THEN 1 ELSE 0 END) AS lifeline,
+        sum(CASE WHEN has_ma_eaedc = TRUE THEN 1 ELSE 0 END) AS ma_eaedc,
+        sum(CASE WHEN has_ma_macfc = TRUE THEN 1 ELSE 0 END) AS ma_macfc,
+        sum(CASE WHEN has_ma_maeitc = TRUE THEN 1 ELSE 0 END) AS ma_maeitc,
+        sum(CASE WHEN has_ma_mbta = TRUE THEN 1 ELSE 0 END) AS ma_mbta,
+        sum(CASE WHEN has_ma_ssp = TRUE THEN 1 ELSE 0 END) AS ma_ssp,
+        sum(CASE WHEN has_medicaid = TRUE THEN 1 ELSE 0 END) AS medicaid,
+        sum(CASE WHEN has_mydenver = TRUE THEN 1 ELSE 0 END) AS mydenver,
+        sum(CASE WHEN has_nc_lieap = TRUE THEN 1 ELSE 0 END) AS nc_lieap,
+        sum(CASE WHEN has_nccip = TRUE THEN 1 ELSE 0 END) AS nccip,
+        sum(CASE WHEN has_ncscca = TRUE THEN 1 ELSE 0 END) AS ncscca,
+        sum(CASE WHEN has_ncwap = TRUE THEN 1 ELSE 0 END) AS ncwap,
+        sum(CASE WHEN has_nfp = TRUE THEN 1 ELSE 0 END) AS nfp,
+        sum(CASE WHEN has_nslp = TRUE THEN 1 ELSE 0 END) AS nslp,
+        sum(CASE WHEN has_oap = TRUE THEN 1 ELSE 0 END) AS oap,
+        sum(CASE WHEN has_pell_grant = TRUE THEN 1 ELSE 0 END) AS pell_grant,
+        sum(CASE WHEN has_rag = TRUE THEN 1 ELSE 0 END) AS rag,
+        sum(CASE WHEN has_rtdlive = TRUE THEN 1 ELSE 0 END) AS rtdlive,
+        sum(CASE WHEN has_section_8 = TRUE THEN 1 ELSE 0 END) AS section_8,
+        sum(CASE WHEN has_snap = TRUE THEN 1 ELSE 0 END) AS snap,
+        sum(CASE WHEN has_ssi = TRUE THEN 1 ELSE 0 END) AS ssi,
+        sum(CASE WHEN has_sunbucks = TRUE THEN 1 ELSE 0 END) AS sunbucks,
+        sum(CASE WHEN has_tanf = TRUE THEN 1 ELSE 0 END) AS tanf,
+        sum(CASE WHEN has_ubp = TRUE THEN 1 ELSE 0 END) AS ubp,
+        sum(CASE WHEN has_upk = TRUE THEN 1 ELSE 0 END) AS upk,
+        sum(CASE WHEN has_va = TRUE THEN 1 ELSE 0 END) AS va,
+        sum(CASE WHEN has_wic = TRUE THEN 1 ELSE 0 END) AS wic
+    FROM data
+    GROUP BY white_label_id, partner
+)
 
-select
-    unnest(array[
-        'ACP'
-        ,'ANDCS'
-        ,'CCB'
-        ,'CCAP'
-        ,'CCDF'
-        ,'CDHCS'
-        ,'CHP'
-        ,'CHS'
-        ,'CO ANDSO'
-        ,'COCTC'
-        ,'COEITC'
-        ,'COWAP'
-        ,'CPCR'
-        ,'CSFP'
-        ,'CTC'
-        ,'DPP'
-        ,'EDE'
-        ,'EITC'
-        ,'ERC'
-        ,'FATC'
-        ,'LEAP'
-        ,'Lifeline'
-        ,'MA EAEDC'
-        ,'MA CFC'
-        ,'MA EITC'
-        ,'MA MBTA'
-        ,'MA SSP'
-        ,'Medicaid'
-        ,'My Denver'
-        ,'NC LIEAP'
-        ,'NCCIP'
-        ,'NC SCCA'
-        ,'NC WAP'
-        ,'NFP'
-        ,'NSLP'
-        ,'OAP'
-        ,'Pell Grant'
-        ,'RAG'
-        ,'RTD Live'
-        ,'Section 8'
-        ,'SNAP'
-        ,'SSI'
-        ,'Sunbucks'
-        ,'TANF'
-        ,'UBP'
-        ,'UPK'
-        ,'VA'
-        ,'WIC'
-        ]) as Benefit
-    ,unnest(array[
-        acp
-        ,andcs
-        ,ccb
-        ,ccap
-        ,ccdf
-        ,cdhcs
-        ,chp
-        ,chs
-        ,co_andso
-        ,coctc
-        ,coeitc
-        ,cowap
-        ,cpcr
-        ,csfp
-        ,ctc
-        ,dpp
-        ,ede
-        ,eitc
-        ,erc
-        ,fatc
-        ,leap
-        ,lifeline
-        ,ma_eaedc
-        ,ma_macfc
-        ,ma_maeitc
-        ,ma_mbta
-        ,ma_ssp
-        ,medicaid
-        ,mydenver
-        ,nc_lieap
-        ,nccip
-        ,ncscca
-        ,ncwap
-        ,nfp
-        ,nslp
-        ,oap
-        ,pell_grant
-        ,rag
-        ,rtdlive
-        ,section_8
-        ,snap
-        ,ssi
-        ,sunbucks
-        ,tanf
-        ,ubp
-        ,upk
-        ,va
-        ,wic
-        ]) as Count
-    ,white_label_id
-    ,partner
-from base;
+SELECT
+    white_label_id,
+    partner,
+    unnest(ARRAY[
+        'ACP',
+        'ANDCS',
+        'CCB',
+        'CCAP',
+        'CCDF',
+        'CDHCS',
+        'CHP',
+        'CHS',
+        'CO ANDSO',
+        'COCTC',
+        'COEITC',
+        'COWAP',
+        'CPCR',
+        'CSFP',
+        'CTC',
+        'DPP',
+        'EDE',
+        'EITC',
+        'ERC',
+        'FATC',
+        'LEAP',
+        'Lifeline',
+        'MA EAEDC',
+        'MA CFC',
+        'MA EITC',
+        'MA MBTA',
+        'MA SSP',
+        'Medicaid',
+        'My Denver',
+        'NC LIEAP',
+        'NCCIP',
+        'NC SCCA',
+        'NC WAP',
+        'NFP',
+        'NSLP',
+        'OAP',
+        'Pell Grant',
+        'RAG',
+        'RTD Live',
+        'Section 8',
+        'SNAP',
+        'SSI',
+        'Sunbucks',
+        'TANF',
+        'UBP',
+        'UPK',
+        'VA',
+        'WIC'
+    ]) AS benefit,
+    unnest(ARRAY[
+        acp,
+        andcs,
+        ccb,
+        ccap,
+        ccdf,
+        cdhcs,
+        chp,
+        chs,
+        co_andso,
+        coctc,
+        coeitc,
+        cowap,
+        cpcr,
+        csfp,
+        ctc,
+        dpp,
+        ede,
+        eitc,
+        erc,
+        fatc,
+        leap,
+        lifeline,
+        ma_eaedc,
+        ma_macfc,
+        ma_maeitc,
+        ma_mbta,
+        ma_ssp,
+        medicaid,
+        mydenver,
+        nc_lieap,
+        nccip,
+        ncscca,
+        ncwap,
+        nfp,
+        nslp,
+        oap,
+        pell_grant,
+        rag,
+        rtdlive,
+        section_8,
+        snap,
+        ssi,
+        sunbucks,
+        tanf,
+        ubp,
+        upk,
+        va,
+        wic
+    ]) AS count
+FROM base;

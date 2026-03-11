@@ -1,12 +1,12 @@
 -- # Create the Expenses table
-create materialized view
-    data_expenses as
+CREATE MATERIALIZED VIEW
+data_expenses AS
 
-select
-    d.id as screener_id
-    ,d.submission_date
-    ,d.white_label_id
-    ,se.*
-from screener_expense se
-left join data d on se.screen_id=d.id
-where se.screen_id in(d.id)
+SELECT
+    se.*,
+    d.id AS screener_id,
+    d.submission_date,
+    d.white_label_id
+FROM screener_expense AS se
+LEFT JOIN data AS d ON se.screen_id = d.id
+WHERE se.screen_id IN (d.id)

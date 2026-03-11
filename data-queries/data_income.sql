@@ -1,12 +1,12 @@
 -- # Create the Income Stream table
-create materialized view
-    data_income as
+CREATE MATERIALIZED VIEW
+data_income AS
 
-select
-    d.id as screener_id
-    ,d.submission_date
-    ,d.white_label_id
-    ,si.*
-from screener_incomestream si
-left join data d on si.screen_id=d.id
-where si.screen_id in(d.id)
+SELECT
+    si.*,
+    d.id AS screener_id,
+    d.submission_date,
+    d.white_label_id
+FROM screener_incomestream AS si
+LEFT JOIN data AS d ON si.screen_id = d.id
+WHERE si.screen_id IN (d.id)
