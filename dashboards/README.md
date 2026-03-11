@@ -73,18 +73,18 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Import the singleton collection permissions graph**
+**5. Initialize Terraform and import the singleton collection permissions graph**
 
-Metabase exposes collection permissions as a single global object that must be imported into Terraform state before it can be managed. Run this once after completing the initial Metabase setup wizard:
+Metabase exposes collection permissions as a single global object that must be imported into Terraform state before it can be managed. Initialize Terraform first (to install providers), then run the import once:
 
 ```bash
+terraform init
 terraform import metabase_collection_graph.graph 1
 ```
 
 **6. Run Terraform**
 
 ```bash
-terraform init
 terraform plan   # review changes
 terraform apply
 ```

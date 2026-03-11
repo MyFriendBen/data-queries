@@ -105,12 +105,8 @@ resource "metabase_collection_graph" "graph" {
 #      second layer.
 #
 #   3. Collection permissions (managed by metabase_collection_graph above)
-#      are sufficient to control which dashboards each group can see.
-#
-# If data-level permissions are needed in the future (e.g. to restrict
-# which groups can run ad-hoc queries), import the graph and explicitly
-# enumerate *all* group/database pairs including Metabase built-ins:
-#
-#   terraform import metabase_permissions_graph.graph 1
+#      are sufficient to control which dashboards each group can see, which
+#      fully satisfies the requirements: Global group sees everything,
+#      tenant groups see only their own collection.
 #
 # =============================================================================
