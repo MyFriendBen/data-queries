@@ -83,15 +83,16 @@ resource "metabase_card" "ga_completed_to_click_rate" {
   })
 }
 
-# KPI: Completion Time — true median from session-grain data
-# Uses APPROX_QUANTILES on int_ga4_sessions so the result is the actual p50 across all sessions,
-# not an average of pre-aggregated daily medians which would vary with bucketing.
+# KPI: Completion Time — average of daily medians from mart_ga_kpi_summary
+# Each daily row already holds an APPROX_QUANTILES p50 computed at session grain (see mart).
+# AVG across days is an approximation of the true overall median but avoids querying the
+# intermediate schema (dbt +schema: internal → different BigQuery dataset).
 resource "metabase_card" "ga_median_completion_time" {
   for_each = var.tenants
 
   json = jsonencode({
-    name                = "Median Completion Time"
-    description         = "Median session duration from screener start (/step-1) to completion (/results)"
+    name                = "Completion Time (approx. median)"
+    description         = "Approximate median session duration from screener start to completion; average of daily p50 values"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -100,22 +101,7 @@ resource "metabase_card" "ga_median_completion_time" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT CONCAT(
-            LPAD(CAST(DIV(secs, 3600)            AS STRING), 2, '0'), ':',
-            LPAD(CAST(DIV(MOD(secs, 3600), 60)   AS STRING), 2, '0'), ':',
-            LPAD(CAST(MOD(secs, 60)              AS STRING), 2, '0')
-          )
-          FROM (
-            SELECT CAST(ROUND(
-              APPROX_QUANTILES(completion_time_seconds, 100 IGNORE NULLS)[OFFSET(50)],
-              0
-            ) AS INT64) AS secs
-            FROM `${local.bq_dataset}.int_ga4_sessions`
-            WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
-              AND completion_time_seconds IS NOT NULL
-          )
-        SQL
+        query         = "SELECT CONCAT(LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':', LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':', LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')) FROM (SELECT CAST(ROUND(AVG(median_completion_time_seconds), 0) AS INT64) AS secs FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND median_completion_time_seconds IS NOT NULL)"
         template-tags = {}
       }
     }
@@ -314,7 +300,7 @@ resource "metabase_card" "ga_clicked_links_table" {
 
   json = jsonencode({
     name                = "Clicked Links (Detail)"
-    description         = "Outbound link domains with click, session, and user counts"
+    description         = "Outbound link domains with click counts"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -323,7 +309,7 @@ resource "metabase_card" "ga_clicked_links_table" {
       database = tonumber(metabase_database.bigquery.id)
       type     = "native"
       native = {
-        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks, SUM(sessions_with_clicks) AS sessions, SUM(users_with_clicks) AS users FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC"
+        query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC"
         template-tags = {}
       }
     }
