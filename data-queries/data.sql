@@ -287,52 +287,175 @@ base_table_1 AS NOT MATERIALIZED (
         ss.alternate_path,
         lesbsi.snapshots,
         -- # Infer the referral partner(s) that brought the head of household to MFB
-        ss.is_test,
-        ss.is_test_data,
-        ss.is_verified,
-        ss.completed,
-        ss.start_date AS start_timestamp,
-        ss.submission_date AS submission_timestamp,
-        ss.agree_to_tos,
-        ss.referrer_code,
-        ss.referral_source,
-        ss.utm_id,
-        ss.utm_source,
-        ss.utm_medium,
-        ss.utm_campaign,
-        ss.utm_content,
-        ss.utm_term,
-        ss.is_13_or_older,
-        ss.last_tax_filing_year,
-        ss.zipcode,
-        ss.county,
-        ss.household_assets,
-        ss.housing_situation,
-        ss.household_size,
-        htap."<18 (#)",
-        htap."<18 (%)",
-        htap."18-24 (#)",
-        htap."18-24 (%)",
-        htap."25-34 (#)",
-        htap."25-34 (%)",
-        htap."35-49 (#)",
-        htap."35-49 (%)",
-        htap."50-64 (#)",
-        htap."50-64 (%)",
-        htap."65-84 (#)",
-        htap."65-84 (%)",
-        htap.">84 (#)",
-        htap.">84 (%)",
-        mibsi.monthly_income,
-        mebsi.monthly_expenses,
-        ss.has_ssdi,
-        ss.has_chp_hi,
-        ss.has_employer_hi,
-        ss.has_medicaid_hi,
-        ss.has_medicare_hi,
-        ss.has_no_hi,
-        ss.has_private_hi,
-        ss.has_benefits,
+        ,case
+            when ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' then 'Test'
+            when ss.referrer_code is null or trim(ss.referrer_code) = '' then
+                case
+                    when ss.referral_source is null or trim(ss.referral_source) = '' then 'No Partner'
+                    when ss.referral_source is not null and ss.referral_source in (select * from all_referrer_codes) then drc2.partner
+                    else 'Other'
+                end
+            when ss.referrer_code is not null and trim(ss.referrer_code) <> '' then
+                case
+                    when ss.referral_source is null or trim(ss.referral_source) = '' then drc1.partner
+                    when trim(ss.referral_source) = trim(ss.referrer_code) and trim(ss.referral_source) in (select * from all_referrer_codes) then drc1.partner
+                    when trim(ss.referral_source) <> trim(ss.referrer_code) then
+                        case
+                            when trim(ss.referral_source) in (select * from all_referrer_codes) then concat(drc1.partner,', ',drc2.partner)
+                            when trim(ss.referrer_code) in (select * from all_referrer_codes) then drc1.partner
+                            else 'Other'
+                        end
+                    else 'Other'
+                end
+            else 'Other'
+        end as partner
+        ,ss.is_test
+        ,ss.is_test_data
+        ,ss.is_verified
+        ,ss.completed
+        ,ss.start_date as start_timestamp
+        ,ss.start_date::date as start_date
+        ,to_char(start_date, 'ID') as start_day
+        ,to_char(start_date, 'HH24') as start_hour
+        ,ss.submission_date as submission_timestamp
+        ,ss.submission_date::date as submission_date
+        ,to_char(submission_date, 'ID') as submission_day
+        ,to_char(submission_date, 'HH24') as submission_hour
+        ,ss.agree_to_tos
+        ,ss.referrer_code
+        ,ss.referral_source
+        ,ss.utm_id
+        ,ss.utm_source
+        ,ss.utm_medium
+        ,ss.utm_campaign
+        ,ss.utm_content
+        ,ss.utm_term
+        ,CASE
+            WHEN ss.request_language_code='af' THEN 'Afrikaans'
+            WHEN ss.request_language_code='ar' THEN 'Arabic'
+            WHEN ss.request_language_code='ar-dz' THEN 'Algerian Arabic'
+            WHEN ss.request_language_code='ast' THEN 'Asturian'
+            WHEN ss.request_language_code='az' THEN 'Azerbaijani'
+            WHEN ss.request_language_code='bg' THEN 'Bulgarian'
+            WHEN ss.request_language_code='be' THEN 'Belarusian'
+            WHEN ss.request_language_code='bn' THEN 'Bengali'
+            WHEN ss.request_language_code='br' THEN 'Breton'
+            WHEN ss.request_language_code='bs' THEN 'Bosnian'
+            WHEN ss.request_language_code='ca' THEN 'Catalan'
+            WHEN ss.request_language_code='ckb' THEN 'Central Kurdish (Sorani)'
+            WHEN ss.request_language_code='cs' THEN 'Czech'
+            WHEN ss.request_language_code='cy' THEN 'Welsh'
+            WHEN ss.request_language_code='da' THEN 'Danish'
+            WHEN ss.request_language_code='de' THEN 'German'
+            WHEN ss.request_language_code='dsb' THEN 'Lower Sorbian'
+            WHEN ss.request_language_code='el' THEN 'Greek'
+            WHEN ss.request_language_code='en' THEN 'English'
+            WHEN ss.request_language_code='en-us' THEN 'English'
+            WHEN ss.request_language_code='en-au' THEN 'Australian English'
+            WHEN ss.request_language_code='en-gb' THEN 'British English'
+            WHEN ss.request_language_code='eo' THEN 'Esperanto'
+            WHEN ss.request_language_code='es' THEN 'Spanish'
+            WHEN ss.request_language_code='es-ar' THEN 'Argentinian Spanish'
+            WHEN ss.request_language_code='es-co' THEN 'Colombian Spanish'
+            WHEN ss.request_language_code='es-mx' THEN 'Mexican Spanish'
+            WHEN ss.request_language_code='es-ni' THEN 'Nicaraguan Spanish'
+            WHEN ss.request_language_code='es-ve' THEN 'Venezuelan Spanish'
+            WHEN ss.request_language_code='et' THEN 'Estonian'
+            WHEN ss.request_language_code='eu' THEN 'Basque'
+            WHEN ss.request_language_code='fa' THEN 'Persian'
+            WHEN ss.request_language_code='fi' THEN 'Finnish'
+            WHEN ss.request_language_code='fr' THEN 'French'
+            WHEN ss.request_language_code='fy' THEN 'Frisian'
+            WHEN ss.request_language_code='ga' THEN 'Irish'
+            WHEN ss.request_language_code='gd' THEN 'Scottish Gaelic'
+            WHEN ss.request_language_code='gl' THEN 'Galician'
+            WHEN ss.request_language_code='he' THEN 'Hebrew'
+            WHEN ss.request_language_code='hi' THEN 'Hindi'
+            WHEN ss.request_language_code='hr' THEN 'Croatian'
+            WHEN ss.request_language_code='hsb' THEN 'Upper Sorbian'
+            WHEN ss.request_language_code='hu' THEN 'Hungarian'
+            WHEN ss.request_language_code='hy' THEN 'Armenian'
+            WHEN ss.request_language_code='ia' THEN 'Interlingua'
+            WHEN ss.request_language_code='id' THEN 'Indonesian'
+            WHEN ss.request_language_code='ig' THEN 'Igbo'
+            WHEN ss.request_language_code='io' THEN 'Ido'
+            WHEN ss.request_language_code='is' THEN 'Icelandic'
+            WHEN ss.request_language_code='it' THEN 'Italian'
+            WHEN ss.request_language_code='ja' THEN 'Japanese'
+            WHEN ss.request_language_code='ka' THEN 'Georgian'
+            WHEN ss.request_language_code='kab' THEN 'Kabyle'
+            WHEN ss.request_language_code='kk' THEN 'Kazakh'
+            WHEN ss.request_language_code='km' THEN 'Khmer'
+            WHEN ss.request_language_code='kn' THEN 'Kannada'
+            WHEN ss.request_language_code='ko' THEN 'Korean'
+            WHEN ss.request_language_code='ky' THEN 'Kyrgyz'
+            WHEN ss.request_language_code='lb' THEN 'Luxembourgish'
+            WHEN ss.request_language_code='lt' THEN 'Lithuanian'
+            WHEN ss.request_language_code='lv' THEN 'Latvian'
+            WHEN ss.request_language_code='mk' THEN 'Macedonian'
+            WHEN ss.request_language_code='ml' THEN 'Malayalam'
+            WHEN ss.request_language_code='mn' THEN 'Mongolian'
+            WHEN ss.request_language_code='mr' THEN 'Marathi'
+            WHEN ss.request_language_code='ms' THEN 'Malay'
+            WHEN ss.request_language_code='my' THEN 'Burmese'
+            WHEN ss.request_language_code='nb' THEN 'Norwegian Bokmål'
+            WHEN ss.request_language_code='ne' THEN 'Nepali'
+            WHEN ss.request_language_code='nl' THEN 'Dutch'
+            WHEN ss.request_language_code='nn' THEN 'Norwegian Nynorsk'
+            WHEN ss.request_language_code='os' THEN 'Ossetic'
+            WHEN ss.request_language_code='pa' THEN 'Punjabi'
+            WHEN ss.request_language_code='pl' THEN 'Polish'
+            WHEN ss.request_language_code='pt' THEN 'Portuguese'
+            WHEN ss.request_language_code='pt-br' THEN 'Brazilian Portuguese'
+            WHEN ss.request_language_code='ro' THEN 'Romanian'
+            WHEN ss.request_language_code='ru' THEN 'Russian'
+            WHEN ss.request_language_code='sk' THEN 'Slovak'
+            WHEN ss.request_language_code='sl' THEN 'Slovenian'
+            WHEN ss.request_language_code='sq' THEN 'Albanian'
+            WHEN ss.request_language_code='sr' THEN 'Serbian'
+            WHEN ss.request_language_code='sr-latn' THEN 'Serbian Latin'
+            WHEN ss.request_language_code='sv' THEN 'Swedish'
+            WHEN ss.request_language_code='sw' THEN 'Swahili'
+            WHEN ss.request_language_code='ta' THEN 'Tamil'
+            WHEN ss.request_language_code='te' THEN 'Telugu'
+            WHEN ss.request_language_code='tg' THEN 'Tajik'
+            WHEN ss.request_language_code='th' THEN 'Thai'
+            WHEN ss.request_language_code='tk' THEN 'Turkmen'
+            WHEN ss.request_language_code='tr' THEN 'Turkish'
+            WHEN ss.request_language_code='tt' THEN 'Tatar'
+            WHEN ss.request_language_code='udm' THEN 'Udmurt'
+            WHEN ss.request_language_code='ug' THEN 'Uyghur'
+            WHEN ss.request_language_code='uk' THEN 'Ukrainian'
+            WHEN ss.request_language_code='ur' THEN 'Urdu'
+            WHEN ss.request_language_code='uz' THEN 'Uzbek'
+            WHEN ss.request_language_code='vi' THEN 'Vietnamese'
+            WHEN ss.request_language_code='zh-hans' THEN 'Simplified Chinese'
+            WHEN ss.request_language_code='zh-hant' THEN 'Traditional Chinese'
+            ELSE '(blank)'
+        END as request_language_code
+        ,ss.is_13_or_older
+        ,ss.last_tax_filing_year
+        ,ss.zipcode
+        ,ss.county
+        ,ss.household_assets
+        ,ss.housing_situation
+        ,ss.household_size
+        ,htap."<18 (#)"
+        ,htap."<18 (%)"
+        ,htap."18-24 (#)"
+        ,htap."18-24 (%)"
+        ,htap."25-34 (#)"
+        ,htap."25-34 (%)"
+        ,htap."35-49 (#)"
+        ,htap."35-49 (%)"
+        ,htap."50-64 (#)"
+        ,htap."50-64 (%)"
+        ,htap."65-84 (#)"
+        ,htap."65-84 (%)"
+        ,htap.">84 (#)"
+        ,htap.">84 (%)"
+        ,mibsi.monthly_income
+        ,mebsi.monthly_expenses
 
         -- # Health Insurance
         ss.has_acp,
@@ -797,14 +920,13 @@ base_table_2 AS NOT MATERIALIZED (
     FROM base_table_1 AS bt1
 )
 
-SELECT
-    *,
-    non_tax_credit_benefits_annual / 12 AS non_tax_credit_benefits_monthly,
-    tax_credits_annual / 12 AS tax_credits_monthly
-FROM base_table_2
-WHERE
-    completed = TRUE
-    AND is_test = FALSE
-    AND is_test_data = FALSE
+select *
+    ,non_tax_credit_benefits_annual/12 as non_tax_credit_benefits_monthly
+    ,tax_credits_annual/12 as tax_credits_monthly
+from base_table_2
+where completed=true
+    and is_test=false
+    and is_test_data=false
+    and partner IS DISTINCT FROM 'Test'
 --     and white_label_id=4
 ORDER BY id

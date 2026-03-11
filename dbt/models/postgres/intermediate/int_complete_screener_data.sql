@@ -535,11 +535,11 @@ base_table_2 AS (
 
 SELECT
     *,
-    non_tax_credit_benefits_annual / 12 AS non_tax_credit_benefits_monthly,
-    tax_credits_annual / 12 AS tax_credits_monthly
-FROM base_table_2
-WHERE
-    completed = TRUE
-    AND is_test = FALSE
-    AND is_test_data = FALSE
+    non_tax_credit_benefits_annual / 12 as non_tax_credit_benefits_monthly,
+    tax_credits_annual / 12 as tax_credits_monthly
+from base_table_2
+where completed = true
+    and is_test = false
+    and is_test_data = false
+    and partner IS DISTINCT FROM 'Test'
     -- and white_label_id=4
