@@ -38,7 +38,6 @@
 resource "metabase_card" "households_completed_screeners" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Completed Screeners"
@@ -65,7 +64,6 @@ resource "metabase_card" "households_completed_screeners" {
 resource "metabase_card" "households_median_size" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Median Household Size"
@@ -92,7 +90,6 @@ resource "metabase_card" "households_median_size" {
 resource "metabase_card" "households_median_assets" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Median Household Assets"
@@ -123,7 +120,6 @@ resource "metabase_card" "households_median_assets" {
 resource "metabase_card" "households_median_annual_income" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Median Annual Income"
@@ -154,7 +150,6 @@ resource "metabase_card" "households_median_annual_income" {
 resource "metabase_card" "households_median_monthly_income" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Median Monthly Income"
@@ -185,7 +180,6 @@ resource "metabase_card" "households_median_monthly_income" {
 resource "metabase_card" "households_median_monthly_expenses" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "Median Monthly Expenses"
@@ -217,7 +211,6 @@ resource "metabase_card" "households_median_monthly_expenses" {
 resource "metabase_card" "households_head_age_distribution" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What are the ages of the heads of household?"
@@ -261,7 +254,6 @@ resource "metabase_card" "households_head_age_distribution" {
 resource "metabase_card" "households_all_member_age_distribution" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What are the ages of all household members?"
@@ -274,29 +266,28 @@ resource "metabase_card" "households_all_member_age_distribution" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
       native = { query = <<-SQL
-          WITH member_totals AS (
-            SELECT sum(total_members) AS grand_total
-            FROM analytics.mart_households_dashboard
-          ),
-          age_counts AS (
+          WITH age_counts AS (
             SELECT
-              '<5'    AS "Age Group", 1 AS sort_order, sum(members_age_lt5)    AS cnt FROM analytics.mart_households_dashboard
+              '<5'    AS "Age Group", 1 AS sort_order, sum(members_age_lt5)   AS cnt FROM analytics.mart_households_dashboard
             UNION ALL
-            SELECT '5-18',  2, sum(members_age_5_18)    FROM analytics.mart_households_dashboard
+            SELECT '5-18',  2, sum(members_age_5_18)   FROM analytics.mart_households_dashboard
             UNION ALL
-            SELECT '19-24', 3, sum(members_age_19_24)   FROM analytics.mart_households_dashboard
+            SELECT '19-24', 3, sum(members_age_19_24)  FROM analytics.mart_households_dashboard
             UNION ALL
-            SELECT '25-44', 4, sum(members_age_25_44)   FROM analytics.mart_households_dashboard
+            SELECT '25-44', 4, sum(members_age_25_44)  FROM analytics.mart_households_dashboard
             UNION ALL
-            SELECT '45-64', 5, sum(members_age_45_64)   FROM analytics.mart_households_dashboard
+            SELECT '45-64', 5, sum(members_age_45_64)  FROM analytics.mart_households_dashboard
             UNION ALL
-            SELECT '65+',   6, sum(members_age_65plus)  FROM analytics.mart_households_dashboard
+            SELECT '65+',   6, sum(members_age_65plus) FROM analytics.mart_households_dashboard
           )
           SELECT
             ac."Age Group",
-            ac.cnt              AS "Count",
-            round(ac.cnt * 100.0 / mt.grand_total, 1) AS "Percentage"
-          FROM age_counts ac, member_totals mt
+            coalesce(ac.cnt, 0)                                                        AS "Count",
+            round(
+              coalesce(ac.cnt, 0) * 100.0 / nullif(sum(coalesce(ac.cnt, 0)) OVER (), 0),
+              1
+            )                                                                          AS "Percentage"
+          FROM age_counts ac
           ORDER BY ac.sort_order;
         SQL
       }
@@ -320,7 +311,6 @@ resource "metabase_card" "households_all_member_age_distribution" {
 resource "metabase_card" "households_size_breakdown" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What is the breakdown of household sizes?"
@@ -363,7 +353,6 @@ resource "metabase_card" "households_size_breakdown" {
 resource "metabase_card" "households_income_breakdown" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What is the breakdown of household income?"
@@ -407,7 +396,6 @@ resource "metabase_card" "households_income_breakdown" {
 resource "metabase_card" "households_assets_breakdown" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What is the breakdown of household assets?"
@@ -451,7 +439,6 @@ resource "metabase_card" "households_assets_breakdown" {
 resource "metabase_card" "households_languages" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What languages are spoken in these households?"
@@ -490,7 +477,6 @@ resource "metabase_card" "households_languages" {
 resource "metabase_card" "households_income_streams" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What income streams do households have?"
@@ -515,28 +501,14 @@ resource "metabase_card" "households_income_streams" {
       }
     }
     parameter_mappings = []
-    display            = "pie"
+    display            = "bar"
     visualization_settings = {
-      "pie.dimension"          = "Income Type"
-      "pie.metric"             = "Number of Households"
-      "pie.show_legend"        = true
-      "pie.show_total"         = true
-      "pie.percent_visibility" = "inside"
-      "version"                = 2
-      "column_settings" = {
-        "[\"name\",\"wages\"]"          = { "color" = "#293457" }
-        "[\"name\",\"selfEmployment\"]" = { "color" = "#B85A27" }
-        "[\"name\",\"disability\"]"     = { "color" = "#F9D45C" }
-        "[\"name\",\"unemployment\"]"   = { "color" = "#ED6E6E" }
-        "[\"name\",\"pension\"]"        = { "color" = "#A989C5" }
-        "[\"name\",\"socialSecurity\"]" = { "color" = "#4EAAB2" }
-        "[\"name\",\"veteran\"]"        = { "color" = "#EF8C8C" }
-        "[\"name\",\"alimony\"]"        = { "color" = "#98D9D9" }
-        "[\"name\",\"childSupport\"]"   = { "color" = "#F2A86F" }
-        "[\"name\",\"rental\"]"         = { "color" = "#7172AD" }
-        "[\"name\",\"investment\"]"     = { "color" = "#6FCF97" }
-        "[\"name\",\"other\"]"          = { "color" = "#BDBDBD" }
-      }
+      "graph.dimensions"            = ["Income Type"]
+      "graph.metrics"               = ["Number of Households"]
+      "graph.x_axis.title_text"     = "Income Type"
+      "graph.y_axis.title_text"     = "Number of Households"
+      "graph.show_values"           = true
+      "graph.label_value_frequency" = "all"
     }
     parameters = []
   })
@@ -548,7 +520,6 @@ resource "metabase_card" "households_income_streams" {
 resource "metabase_card" "households_common_expenses" {
   for_each = var.tenants
 
-  lifecycle { ignore_changes = [json] }
 
   json = jsonencode({
     name                = "What are the most common expenses?"
@@ -573,24 +544,14 @@ resource "metabase_card" "households_common_expenses" {
       }
     }
     parameter_mappings = []
-    display            = "pie"
+    display            = "bar"
     visualization_settings = {
-      "pie.dimension"          = "Expense Type"
-      "pie.metric"             = "Number of Households"
-      "pie.show_legend"        = true
-      "pie.show_total"         = true
-      "pie.percent_visibility" = "inside"
-      "version"                = 2
-      "column_settings" = {
-        "[\"name\",\"rent\"]"         = { "color" = "#509EE3" }
-        "[\"name\",\"childCare\"]"    = { "color" = "#84BB4C" }
-        "[\"name\",\"childSupport\"]" = { "color" = "#F9D45C" }
-        "[\"name\",\"internet\"]"     = { "color" = "#A989C5" }
-        "[\"name\",\"telephone\"]"    = { "color" = "#F2A86F" }
-        "[\"name\",\"utilities\"]"    = { "color" = "#4EAAB2" }
-        "[\"name\",\"medical\"]"      = { "color" = "#ED6E6E" }
-        "[\"name\",\"other\"]"        = { "color" = "#BDBDBD" }
-      }
+      "graph.dimensions"            = ["Expense Type"]
+      "graph.metrics"               = ["Number of Households"]
+      "graph.x_axis.title_text"     = "Expense Type"
+      "graph.y_axis.title_text"     = "Number of Households"
+      "graph.show_values"           = true
+      "graph.label_value_frequency" = "all"
     }
     parameters = []
   })
