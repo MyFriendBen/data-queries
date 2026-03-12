@@ -595,3 +595,173 @@ resource "metabase_card" "households_common_expenses" {
     parameters = []
   })
 }
+
+
+# ---------------------------------------------------------------------------
+# Tab 4 dashboard layout — referenced by metabase.tf via local.tenant_tab_4_cards
+# ---------------------------------------------------------------------------
+locals {
+  tenant_tab_4_cards = {
+    for k, v in var.tenants : k => [
+      # Row 0: KPI scalars (6 cards, each 4 wide × 3 tall)
+      {
+        card_id                = tonumber(metabase_card.households_completed_screeners[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 0
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_median_size[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 4
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_median_assets[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 8
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_median_annual_income[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 12
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_median_monthly_income[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 16
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_median_monthly_expenses[k].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 20
+        size_x                 = 4
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 3: Age distribution charts side by side (each 12 wide × 8 tall)
+      {
+        card_id                = tonumber(metabase_card.households_head_age_distribution[k].id)
+        dashboard_tab_id       = 4
+        row                    = 3
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_all_member_age_distribution[k].id)
+        dashboard_tab_id       = 4
+        row                    = 3
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 11: Household size breakdown + Languages pie side by side
+      {
+        card_id                = tonumber(metabase_card.households_size_breakdown[k].id)
+        dashboard_tab_id       = 4
+        row                    = 11
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_languages[k].id)
+        dashboard_tab_id       = 4
+        row                    = 11
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 19: Income breakdown + Assets breakdown side by side
+      {
+        card_id                = tonumber(metabase_card.households_income_breakdown[k].id)
+        dashboard_tab_id       = 4
+        row                    = 19
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_assets_breakdown[k].id)
+        dashboard_tab_id       = 4
+        row                    = 19
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 27: Income streams + Common expenses side by side
+      {
+        card_id                = tonumber(metabase_card.households_income_streams[k].id)
+        dashboard_tab_id       = 4
+        row                    = 27
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.households_common_expenses[k].id)
+        dashboard_tab_id       = 4
+        row                    = 27
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ]
+  }
+}
