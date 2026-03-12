@@ -48,12 +48,9 @@ resource "metabase_card" "households_completed_screeners" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_households_dashboard;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_households_dashboard;" }
     }
     parameter_mappings     = []
     display                = "scalar"
@@ -78,12 +75,9 @@ resource "metabase_card" "households_median_size" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_size) AS \"Median Household Size\" FROM analytics.mart_households_dashboard;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_size) AS \"Median Household Size\" FROM analytics.mart_households_dashboard;" }
     }
     parameter_mappings     = []
     display                = "scalar"
@@ -108,12 +102,9 @@ resource "metabase_card" "households_median_assets" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_assets) AS \"Median Household Assets\" FROM analytics.mart_households_dashboard WHERE household_assets IS NOT NULL;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_assets) AS \"Median Household Assets\" FROM analytics.mart_households_dashboard WHERE household_assets IS NOT NULL;" }
     }
     parameter_mappings = []
     display            = "scalar"
@@ -142,12 +133,9 @@ resource "metabase_card" "households_median_annual_income" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY annual_income) AS \"Median Annual Income\" FROM analytics.mart_households_dashboard WHERE annual_income IS NOT NULL;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY annual_income) AS \"Median Annual Income\" FROM analytics.mart_households_dashboard WHERE annual_income IS NOT NULL;" }
     }
     parameter_mappings = []
     display            = "scalar"
@@ -176,12 +164,9 @@ resource "metabase_card" "households_median_monthly_income" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_income) AS \"Median Monthly Income\" FROM analytics.mart_households_dashboard WHERE monthly_income IS NOT NULL;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_income) AS \"Median Monthly Income\" FROM analytics.mart_households_dashboard WHERE monthly_income IS NOT NULL;" }
     }
     parameter_mappings = []
     display            = "scalar"
@@ -210,12 +195,9 @@ resource "metabase_card" "households_median_monthly_expenses" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS \"Median Monthly Expenses\" FROM analytics.mart_households_dashboard WHERE monthly_expenses IS NOT NULL;"
-      }]
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS \"Median Monthly Expenses\" FROM analytics.mart_households_dashboard WHERE monthly_expenses IS NOT NULL;" }
     }
     parameter_mappings = []
     display            = "scalar"
@@ -245,11 +227,9 @@ resource "metabase_card" "households_head_age_distribution" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             head_age_bin                                          AS "Age Group",
             head_age_bin_order                                    AS "Sort Order",
@@ -260,7 +240,7 @@ resource "metabase_card" "households_head_age_distribution" {
           GROUP BY head_age_bin, head_age_bin_order
           ORDER BY head_age_bin_order;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "bar"
@@ -291,11 +271,9 @@ resource "metabase_card" "households_all_member_age_distribution" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           WITH member_totals AS (
             SELECT sum(total_members) AS grand_total
             FROM analytics.mart_households_dashboard
@@ -321,7 +299,7 @@ resource "metabase_card" "households_all_member_age_distribution" {
           FROM age_counts ac, member_totals mt
           ORDER BY ac.sort_order;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "bar"
@@ -352,11 +330,9 @@ resource "metabase_card" "households_size_breakdown" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             CASE WHEN household_size >= 8 THEN '8+' ELSE household_size::text END AS "Household Size",
             CASE WHEN household_size >= 8 THEN 8    ELSE household_size         END AS sort_order,
@@ -366,7 +342,7 @@ resource "metabase_card" "households_size_breakdown" {
           GROUP BY 1, 2
           ORDER BY sort_order;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "bar"
@@ -397,11 +373,9 @@ resource "metabase_card" "households_income_breakdown" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             annual_income_bin                                     AS "Income Range",
             annual_income_bin_order                               AS sort_order,
@@ -412,7 +386,7 @@ resource "metabase_card" "households_income_breakdown" {
           GROUP BY annual_income_bin, annual_income_bin_order
           ORDER BY annual_income_bin_order;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "bar"
@@ -443,11 +417,9 @@ resource "metabase_card" "households_assets_breakdown" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             assets_bin                                            AS "Assets Range",
             assets_bin_order                                      AS sort_order,
@@ -458,7 +430,7 @@ resource "metabase_card" "households_assets_breakdown" {
           GROUP BY assets_bin, assets_bin_order
           ORDER BY assets_bin_order;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "bar"
@@ -489,11 +461,9 @@ resource "metabase_card" "households_languages" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             coalesce(request_language_code, '(blank)') AS "Language",
             count(*)                                    AS "Count",
@@ -502,7 +472,7 @@ resource "metabase_card" "households_languages" {
           GROUP BY request_language_code
           ORDER BY "Count" DESC;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "pie"
@@ -530,11 +500,9 @@ resource "metabase_card" "households_income_streams" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             i.type                          AS "Income Type",
             count(DISTINCT i.screener_id)   AS "Number of Households"
@@ -544,7 +512,7 @@ resource "metabase_card" "households_income_streams" {
           GROUP BY i.type
           ORDER BY "Number of Households" DESC;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "pie"
@@ -590,11 +558,9 @@ resource "metabase_card" "households_common_expenses" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database   = tonumber(metabase_database.tenant_postgres[each.key].id)
-      "lib/type" = "mbql/query"
-      stages = [{
-        "lib/type" = "mbql.stage/native"
-        native     = <<-SQL
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      type     = "native"
+      native = { query = <<-SQL
           SELECT
             e.type                          AS "Expense Type",
             count(DISTINCT e.screener_id)   AS "Number of Households"
@@ -604,7 +570,7 @@ resource "metabase_card" "households_common_expenses" {
           GROUP BY e.type
           ORDER BY "Number of Households" DESC;
         SQL
-      }]
+      }
     }
     parameter_mappings = []
     display            = "pie"
