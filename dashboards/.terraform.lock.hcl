@@ -5,6 +5,7 @@ provider "registry.terraform.io/flovouin/metabase" {
   version     = "0.14.1"
   constraints = "~> 0.14"
   hashes = [
+    "h1:G3soPLBSpSm+MUrZlbuA45aXsWqHdkcR0qOBTNfnOnI=",
     "h1:h7nZXxXFKqpC1xz5sKg/PUDgr1MOwnSz2xj4VWXmGHs=",
     "zh:0eb02e8f7fd39bac7ffce9333932386ec5f2f5429261296e5d072e5cfbe146d4",
     "zh:1aeab4f3888034e080a77c384dd0b5069e33722045239b2ee9ff3bf8d60b164d",
@@ -25,8 +26,10 @@ provider "registry.terraform.io/flovouin/metabase" {
 }
 
 provider "registry.terraform.io/hashicorp/time" {
-  version = "0.13.1"
+  version     = "0.13.1"
+  constraints = "~> 0.13"
   hashes = [
+    "h1:5l8PAnxPdoUPqNPuv1dAr3efcCCtSCnY+Vj2nSGkQmw=",
     "h1:ZT5ppCNIModqk3iOkVt5my8b8yBHmDpl663JtXAIRqM=",
     "zh:02cb9aab1002f0f2a94a4f85acec8893297dc75915f7404c165983f720a54b74",
     "zh:04429b2b31a492d19e5ecf999b116d396dac0b24bba0d0fb19ecaefe193fdb8f",
