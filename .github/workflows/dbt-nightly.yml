@@ -37,6 +37,7 @@ jobs:
       DB_PASS: ${{ secrets.GLOBAL_DB_PASS }}
       DB_NAME: ${{ vars.DATABASE_NAME }}
       DB_SSLMODE: require
+      PGSSLMODE: require
       DB_SCHEMA: analytics
     steps:
       - uses: actions/checkout@v4
@@ -67,8 +68,7 @@ jobs:
             -h "$DB_HOST" \
             -U "$DB_USER" \
             -d "$DB_NAME" \
-            -c "CREATE SCHEMA IF NOT EXISTS analytics;" \
-            "sslmode=require"
+            -c "CREATE SCHEMA IF NOT EXISTS analytics;"
 
       - name: Run dbt build
         run: |
