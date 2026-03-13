@@ -9,6 +9,7 @@ benefits:
       port: "{{ env_var('DB_PORT', 5432) }}"
       dbname: "{{ env_var('DB_NAME') }}"
       schema: "{{ env_var('DB_SCHEMA', 'analytics') }}"
+      sslmode: "{{ env_var('DB_SSLMODE', 'prefer') }}"
       threads: 4
       connect_timeout: 30
 
