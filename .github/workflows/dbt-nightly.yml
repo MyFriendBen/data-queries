@@ -78,6 +78,40 @@ jobs:
           fi
           dbt build $FLAGS
 
+      - name: Trigger Metabase schema sync
+        run: |
+          METABASE_API="${METABASE_URL}/api"
+
+          # Get session token
+          SESSION=$(curl -sf -X POST "${METABASE_API}/session" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${METABASE_ADMIN_EMAIL}\", \"password\": \"${METABASE_ADMIN_PASSWORD}\"}" \
+            | jq -r '.id')
+
+          if [ -z "$SESSION" ] || [ "$SESSION" = "null" ]; then
+            echo "::warning::Failed to authenticate with Metabase — skipping sync"
+            exit 0
+          fi
+
+          # Get all database IDs and trigger sync on each
+          DB_IDS=$(curl -sf "${METABASE_API}/database" \
+            -H "X-Metabase-Session: ${SESSION}" \
+            | jq -r '.data[].id')
+
+          for DB_ID in $DB_IDS; do
+            echo "Syncing database ${DB_ID}..."
+            curl -sf -X POST "${METABASE_API}/database/${DB_ID}/sync_schema" \
+              -H "X-Metabase-Session: ${SESSION}"
+          done
+
+          echo "Waiting 30s for Metabase to complete sync..."
+          sleep 30
+          echo "Sync triggered for all databases."
+        env:
+          METABASE_URL: ${{ vars.METABASE_URL }}
+          METABASE_ADMIN_EMAIL: ${{ vars.METABASE_ADMIN_EMAIL }}
+          METABASE_ADMIN_PASSWORD: ${{ secrets.METABASE_ADMIN_PASSWORD }}
+
       - name: Upload dbt artifacts
         if: always()
         uses: actions/upload-artifact@v4
