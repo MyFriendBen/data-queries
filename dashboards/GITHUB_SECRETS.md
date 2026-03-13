@@ -176,6 +176,23 @@ Use these separate credentials for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secre
 
 ---
 
+## dbt Nightly Workflow
+
+The `dbt-nightly.yml` workflow reuses the same staging environment secrets as Terraform — no new secrets are needed:
+
+| dbt env var | GitHub secret/variable |
+|-------------|----------------------|
+| `DB_HOST` | `DATABASE_HOST` (secret) |
+| `DB_USER` | `GLOBAL_DB_USER` (secret) |
+| `DB_PASS` | `GLOBAL_DB_PASS` (secret) |
+| `DB_NAME` | `DATABASE_NAME` (variable) |
+| `DB_SSLMODE` | Hardcoded to `require` |
+| `DB_SCHEMA` | Hardcoded to `analytics` |
+
+The workflow runs nightly at 6 AM UTC against staging. Production runs require manual dispatch from the `main` branch.
+
+---
+
 ## Prerequisite: Analytics Schema
 
 Ensure the `analytics` schema exists in both staging and production databases:
