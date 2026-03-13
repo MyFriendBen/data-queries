@@ -316,18 +316,22 @@ resource "metabase_dashboard" "tenant_analytics" {
     { id = 5, name = "Benefits & Immediate Needs" }
   ])
 
-  cards_json = jsonencode([
-    {
-      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
-      # Assigning existing card to "All-Time Performance" tab (ID 2)
-      dashboard_tab_id       = 2
-      row                    = 0
-      col                    = 0
-      size_x                 = 6
-      size_y                 = 4
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    }
-  ])
+  cards_json = jsonencode(concat(
+    # Tab 2: All-Time Performance
+    [
+      {
+        card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      }
+    ],
+    # Tab 5: Benefits & Immediate Needs
+    local.tenant_tab_5_cards[each.key]
+  ))
 }
