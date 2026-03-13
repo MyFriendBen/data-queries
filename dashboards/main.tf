@@ -1,6 +1,13 @@
 terraform {
   required_version = ">= 1.0.0, < 2.0.0"
 
+  cloud {
+    organization = "MyFriendBen"
+    workspaces {
+      tags = ["dashboards"]
+    }
+  }
+
   required_providers {
     metabase = {
       source  = "flovouin/metabase"
