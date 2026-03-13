@@ -94,14 +94,21 @@ jobs:
           fi
 
           # Get all database IDs and trigger sync on each
-          DB_IDS=$(curl -sf "${METABASE_API}/database" \
+          DB_IDS=$(curl -s "${METABASE_API}/database" \
             -H "X-Metabase-Session: ${SESSION}" \
             | jq -r '.data[].id')
 
+          if [ -z "$DB_IDS" ]; then
+            echo "::warning::No databases found or failed to fetch database list — skipping sync"
+            exit 0
+          fi
+
           for DB_ID in $DB_IDS; do
             echo "Syncing database ${DB_ID}..."
-            curl -sf -X POST "${METABASE_API}/database/${DB_ID}/sync_schema" \
-              -H "X-Metabase-Session: ${SESSION}"
+            if ! curl -sf -X POST "${METABASE_API}/database/${DB_ID}/sync_schema" \
+              -H "X-Metabase-Session: ${SESSION}"; then
+              echo "::warning::Failed to sync database ${DB_ID}"
+            fi
           done
 
           echo "Waiting 30s for Metabase to complete sync..."
