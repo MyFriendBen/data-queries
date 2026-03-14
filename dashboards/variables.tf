@@ -111,6 +111,12 @@ variable "bigquery_service_account_key_content" {
   default     = null
 }
 
+variable "bigquery_analytics_dataset" {
+  description = "BigQuery dataset name where dbt analytics marts are materialized (matches dbt profile dataset)"
+  type        = string
+  default     = "analytics"
+}
+
 variable "database_sync_wait_seconds" {
   description = "Seconds to wait for Metabase to sync database schemas before creating cards/dashboards"
   type        = number
