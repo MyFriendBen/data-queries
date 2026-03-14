@@ -8,6 +8,13 @@ Metabase infrastructure deployed through terraform with multi-tenant analytics.
 
 - Docker and Docker Compose installed
 - BigQuery service account key saved to `./secrets/bigquerykey.json` (or customize path via `bigquery_service_account_key_path` in terraform.tfvars)
+- dbt Google Analytics mart models built in BigQuery (required for the GA dashboard tab). Run these before `terraform apply`:
+
+```bash
+dbt run --select mart_ga_kpi_summary mart_ga_traffic_mediums mart_ga_clicked_links
+```
+
+> These models live in `dbt/models/bigquery/marts/`. If your dbt dataset name differs from the default (`analytics`), set `bigquery_analytics_dataset` in `terraform.tfvars`.
 
 ### Setup Steps
 
@@ -71,6 +78,7 @@ cp terraform.tfvars.example terraform.tfvars
 # - Database credentials for each tenant (from step 3)
 # - GCP project ID for BigQuery
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
+# Note: bigquery_analytics_dataset defaults to "analytics" — only override if your dbt profile uses a different dataset name
 ```
 
 **5. Run Terraform**
@@ -147,7 +155,24 @@ locals {
 }
 ```
 
-### 3. Create Database User
+### 3. Add Tenant GA4 State Code
+
+In `metabase.tf`, add the new tenant's GA4 state code to `tenant_ga_state_codes`:
+
+```hcl
+locals {
+  tenant_ga_state_codes = {
+    nc  = "nc"
+    co  = "co"
+    tx  = "tx"   # ← existing
+    new = "xx"   # ← add new tenant's state_code from GA4
+  }
+}
+```
+
+> **Note:** If the new tenant shares GA4 tracking with an existing state (like `cesn` and `co_tax_calculator` both use `"co"`), use that state's code and add a comment to revisit once they have dedicated GA4 tracking.
+
+### 4. Create Database User
 
 Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
 
@@ -168,11 +193,17 @@ EOF
 unset DB_PASSWORD
 ```
 
-### 4. Deploy New Tenant
+### 5. Deploy New Tenant
 
 ```bash
-terraform plan  # Review changes
-terraform apply  # Deploy new configuration
+terraform plan   # Review changes
+terraform apply  # First apply will fail with 409 on collection graph — this is expected
+
+# Re-sync the collection graph (creating new collections increments Metabase's
+# revision counter, making the cached state stale), then re-apply:
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
+terraform apply  # Should succeed now
 ```
 
 ## Troubleshooting
