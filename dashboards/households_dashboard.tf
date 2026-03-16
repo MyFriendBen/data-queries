@@ -282,11 +282,14 @@ resource "metabase_card" "households_all_member_age_distribution" {
           )
           SELECT
             ac."Age Group",
-            coalesce(ac.cnt, 0)                                                        AS "Count",
-            round(
-              coalesce(ac.cnt, 0) * 100.0 / nullif(sum(coalesce(ac.cnt, 0)) OVER (), 0),
-              1
-            )                                                                          AS "Percentage"
+            coalesce(ac.cnt, 0)                                                                   AS "Count",
+            coalesce(
+              round(
+                coalesce(ac.cnt, 0) * 100.0 / nullif(sum(coalesce(ac.cnt, 0)) OVER (), 0),
+                1
+              ),
+              0
+            )                                                                                     AS "Percentage"
           FROM age_counts ac
           ORDER BY ac.sort_order;
         SQL
@@ -441,8 +444,8 @@ resource "metabase_card" "households_languages" {
 
 
   json = jsonencode({
-    name                = "What languages are spoken in these households?"
-    description         = "Distribution of households by language used during screening"
+    name                = "What language was used for the screener?"
+    description         = "Distribution of households by language selected during screening"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
