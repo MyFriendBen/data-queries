@@ -318,6 +318,6 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ],
     # Tab 5: Benefits & Immediate Needs
-    local.tenant_tab_5_cards[each.key]
+    local.tenant_dashboard_benefits_needs_layout[each.key]
   ))
 }
