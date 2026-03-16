@@ -130,9 +130,12 @@ The Terraform output `tenant_group_ids` lists the numeric ID of each tenant grou
 
 ### Permission Model
 
-- **Global group** — `write` access to the Global collection and all tenant collections; unrestricted query access to BigQuery and all PostgreSQL databases.
-- **Tenant group** — `read` access to their own tenant collection only; query-builder access to their own tenant-scoped PostgreSQL database.
-- **All Users (built-in)** — no collection access and no query access by default, so unauthenticated / unassigned users see nothing.
+- **Global group** — `write` access to the Global collection and all tenant collections.
+- **Tenant group** — `read` access to their own tenant collection only.
+- **All Users (built-in)** — no collection access by default.
+
+> **Note:** Database/query permissions are not managed by `permissions.tf` collection graph resources.
+> Data isolation is enforced via PostgreSQL RLS and Metabase-side database permission settings.
 
 ## Adding New Tenants
 
@@ -185,7 +188,7 @@ locals {
 }
 ```
 
-> **Note on permissions:** The `metabase_permissions_group.tenant` and all collection/data permission entries in `permissions.tf` use `for_each`/`for` over `var.tenants`, so the new group and its permissions are created automatically. No changes to `permissions.tf` are needed.
+> **Note on permissions:** The `metabase_permissions_group.tenant` and all collection permission entries in `permissions.tf` use `for_each`/`for` over `var.tenants`, so the new group and its collection permissions are created automatically. No changes to `permissions.tf` are needed. Database/query permissions are not managed here — see the Permission Model note above.
 
 ### 3. Create Database User
 
