@@ -78,11 +78,11 @@ resource "metabase_collection_graph" "graph" {
 
     # --- Per-tenant group: read-only access to their own collection ----------
     [
-      for key, col in local.tenant_collection_map : {
+      for key, tenant in var.tenants : {
         group      = metabase_permissions_group.tenant[key].id
-        collection = col.id
+        collection = local.tenant_collection_map[key].id
         permission = "read"
-      }
+      } if contains(keys(local.tenant_collection_map), key)
     ]
   )
 }
@@ -108,5 +108,16 @@ resource "metabase_collection_graph" "graph" {
 #      are sufficient to control which dashboards each group can see, which
 #      fully satisfies the requirements: Global group sees everything,
 #      tenant groups see only their own collection.
+#
+#   ⚠️  TRADE-OFF: Without managing data permissions, tenant group users can
+#      still access the Metabase query builder and query any connected database
+#      directly (not just via dashboards). RLS ensures they only see their own
+#      data rows, but they are not restricted from exploring other databases.
+#
+#      If query builder access needs to be locked down, manually set
+#      "No self-service" for the All Users group in Metabase UI:
+#        Admin → Permissions → Data → [database] → All Users → No self-service
+#      This applies to all users by default since tenant/global groups inherit
+#      from All Users unless explicitly overridden.
 #
 # =============================================================================

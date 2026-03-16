@@ -211,8 +211,14 @@ unset DB_PASSWORD
 ### 4. Deploy New Tenant
 
 ```bash
-terraform plan  # Review changes
-terraform apply  # Deploy new configuration
+terraform plan   # Review changes
+terraform apply  # First apply will fail with 409 on collection graph — this is expected
+
+# Re-sync the collection graph (creating new collections increments Metabase's
+# revision counter, making the cached state stale), then re-apply:
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
+terraform apply  # Should succeed now
 ```
 
 Terraform will automatically:
