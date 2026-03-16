@@ -69,6 +69,6 @@ locals {
   } 
 
   show_minibar_true = {
-    "show_mini_bar" = "true"
+    "show_mini_bar" = true
   }
 }
