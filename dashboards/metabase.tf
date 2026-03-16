@@ -5,29 +5,6 @@ provider "metabase" {
   password = var.metabase_admin_password
 }
 
-# Shared configuration template for screen count cards
-locals {
-  screen_count_card_config = {
-    name                = "Completed Screens"
-    description         = "Total count of completed screens from PostgreSQL"
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "query"
-    dataset_query = {
-      query = {
-        aggregation = [
-          ["count"]
-        ]
-      }
-      type = "query"
-    }
-    parameter_mappings     = []
-    display                = "scalar"
-    visualization_settings = {}
-    parameters             = []
-  }
-}
-
 resource "metabase_database" "bigquery" {
   name = "MFB BigQuery Analytics"
   bigquery_details = {
@@ -306,18 +283,8 @@ resource "metabase_dashboard" "tenant_analytics" {
     { id = 5, name = "Benefits & Immediate Needs" }
   ])
 
-  cards_json = jsonencode([
-    {
-      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
-      # Assigning existing card to "All-Time Performance" tab (ID 2)
-      dashboard_tab_id       = 2
-      row                    = 0
-      col                    = 0
-      size_x                 = 6
-      size_y                 = 4
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    }
-  ])
+  cards_json = jsonencode(concat(
+    # Tab 5: Benefits & Immediate Needs
+    local.tenant_tab_5_benefits_needs_layout[each.key]
+  ))
 }
