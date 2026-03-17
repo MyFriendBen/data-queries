@@ -535,7 +535,7 @@ base_table_1 AS NOT MATERIALIZED (
                             THEN drc2.partner
                         ELSE 'Other'
                     END
-            WHEN ss.referrer_code IS NOT NULL OR TRIM(ss.referrer_code) <> ''
+            WHEN ss.referrer_code IS NOT NULL AND TRIM(ss.referrer_code) <> ''
                 THEN
                     CASE
                         WHEN ss.referral_source IS NULL OR TRIM(ss.referral_source) = '' THEN drc1.partner
@@ -806,5 +806,6 @@ WHERE
     completed = TRUE
     AND is_test = FALSE
     AND is_test_data = FALSE
+    AND partner IS DISTINCT FROM 'Test'
 --     and white_label_id=4
 ORDER BY id
