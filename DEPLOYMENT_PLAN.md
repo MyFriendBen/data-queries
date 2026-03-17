@@ -29,7 +29,7 @@ Move from a fully local setup (Docker Compose Metabase, local dbt runs, Terrafor
 
 ### Goal
 
-Get Metabase running at a public URL so stakeholders can access dashboards.
+Get Metabase running in both staging and production environments using a Heroku Pipeline so stakeholders can access dashboards and changes can be tested before production release.
 
 ### Prerequisite: Create Wrapper Dockerfile and Entrypoint — ✅ Completed
 
@@ -55,6 +55,13 @@ COPY dashboards/heroku-entrypoint.sh /app/heroku-entrypoint.sh
 RUN chmod +x /app/heroku-entrypoint.sh
 CMD ["/app/heroku-entrypoint.sh"]
 ```
+
+### Environment Strategy
+
+Deploy to **both staging and production** using a **Heroku Pipeline** for controlled promotion:
+- Staging app: `mfb-metabase-staging` → connects to staging Django database
+- Production app: `mfb-metabase-production` → connects to production Django database
+- Pipeline enables: test in staging, then promote the exact same Docker image to production
 
 ### Deployment Options
 
@@ -100,51 +107,118 @@ To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebu
 
 2. **Create `heroku.yml`** if you choose Option A above.
 
-3. **Provision Heroku app + Postgres addon**
+3. **Provision Heroku Pipeline with staging and production apps**
 
    ```bash
-   heroku create mfb-metabase
-   heroku stack:set container -a mfb-metabase
-   heroku addons:create heroku-postgresql:essential-0 -a mfb-metabase
+   # Create the pipeline
+   heroku pipelines:create mfb-metabase --team=<your-team>  # omit --team if personal account
+
+   # Create staging app and add to pipeline
+   heroku create mfb-metabase-staging --team=<your-team>
+   heroku pipelines:add mfb-metabase --app=mfb-metabase-staging --stage=staging
+   heroku stack:set container -a mfb-metabase-staging
+   heroku addons:create heroku-postgresql:essential-0 -a mfb-metabase-staging
+
+   # Create production app and add to pipeline
+   heroku create mfb-metabase-production --team=<your-team>
+   heroku pipelines:add mfb-metabase --app=mfb-metabase-production --stage=production
+   heroku stack:set container -a mfb-metabase-production
+   heroku addons:create heroku-postgresql:essential-0 -a mfb-metabase-production
+
+   # Add git remotes for both apps
+   heroku git:remote -a mfb-metabase-staging -r heroku-staging
+   heroku git:remote -a mfb-metabase-production -r heroku-production
    ```
 
-4. **Configure Heroku environment variables**
+4. **Configure Heroku environment variables for both apps**
 
+   For **staging**:
    ```bash
-   # Metabase internal DB (parse from DATABASE_URL provided by addon)
-   # The entrypoint or Metabase can use JDBC_DATABASE_URL, or set individual vars:
-   heroku config:set MB_DB_TYPE=postgres -a mfb-metabase
-   heroku config:set MB_DB_CONNECTION_URI="<jdbc-url-from-addon>" -a mfb-metabase
+   # Metabase internal DB (uses DATABASE_URL from Postgres addon automatically)
+   heroku config:set MB_DB_TYPE=postgres -a mfb-metabase-staging
 
    # Required Metabase config
-   heroku config:set MB_SITE_URL="https://mfb-metabase-<hash>.herokuapp.com" -a mfb-metabase
-   heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-a-random-key>" -a mfb-metabase
-
+   heroku config:set MB_SITE_URL="https://mfb-metabase-staging-<hash>.herokuapp.com" -a mfb-metabase-staging
+   heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-a-random-key>" -a mfb-metabase-staging
    ```
 
-5. **Use Standard-2X dynos (1GB RAM) or higher**
+   For **production**:
+   ```bash
+   heroku config:set MB_DB_TYPE=postgres -a mfb-metabase-production
+   heroku config:set MB_SITE_URL="https://mfb-metabase-production-<hash>.herokuapp.com" -a mfb-metabase-production
+   heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-a-different-random-key>" -a mfb-metabase-production
+   ```
+
+   **Note:** Generate different encryption keys for staging and production. Use: `openssl rand -base64 32`
+
+5. **Use Standard-2X dynos (1GB RAM) or higher for both apps**
    - Metabase needs significant memory; Standard-1X (512MB) will likely OOM
 
    ```bash
-   heroku ps:type standard-2x -a mfb-metabase
+   heroku ps:type standard-2x -a mfb-metabase-staging
+   heroku ps:type standard-2x -a mfb-metabase-production
    ```
 
    - Monitor memory usage after deploy; upgrade to Performance-M if needed
 
-6. **Deploy** using Option A or B above
+6. **Deploy to staging first, then promote to production**
 
-7. **Complete Metabase setup wizard manually**
-   - Visit the Heroku app URL
+   Using **Option A (git push)**:
+   ```bash
+   # Deploy to staging
+   git push heroku-staging main
+
+   # Test staging thoroughly, then promote to production
+   heroku pipelines:promote -a mfb-metabase-staging
+   ```
+
+   Using **Option B (container registry)**:
+   ```bash
+   # Build and push to staging
+   docker build -f dashboards/Dockerfile.heroku -t registry.heroku.com/mfb-metabase-staging/web .
+   docker push registry.heroku.com/mfb-metabase-staging/web
+   heroku container:release web -a mfb-metabase-staging
+
+   # Test, then push to production
+   docker tag registry.heroku.com/mfb-metabase-staging/web registry.heroku.com/mfb-metabase-production/web
+   docker push registry.heroku.com/mfb-metabase-production/web
+   heroku container:release web -a mfb-metabase-production
+   ```
+
+7. **Complete Metabase setup wizard manually for both environments**
+
+   For **staging**:
+   - Visit the staging Heroku app URL
    - Create admin account (save credentials — Terraform uses these in Phase 3)
    - Skip data source setup (Terraform handles this in Phase 3)
 
-8. **Verify Metabase is healthy**
-   - Check `/api/health` endpoint returns OK
-   - Confirm Heroku Postgres addon is being used for Metabase internal state
+   For **production**:
+   - Visit the production Heroku app URL
+   - Create admin account (save credentials — Terraform uses these in Phase 3)
+   - Skip data source setup (Terraform handles this in Phase 3)
+
+   **Note:** Use different admin credentials for staging and production for security
+
+8. **Verify both Metabase instances are healthy**
+
+   For **staging**:
+   ```bash
+   curl https://mfb-metabase-staging-<hash>.herokuapp.com/api/health
+   heroku logs --tail -a mfb-metabase-staging  # Check for errors
+   ```
+
+   For **production**:
+   ```bash
+   curl https://mfb-metabase-production-<hash>.herokuapp.com/api/health
+   heroku logs --tail -a mfb-metabase-production
+   ```
+
+   Confirm both are using their respective Heroku Postgres addons for Metabase internal state
 
 ### Heroku Gotchas
 
-- **Heroku Postgres addon** is only for Metabase's internal metadata — it is not the analytics database. The analytics data lives in the production Django database.
+- **Heroku Pipeline promotion** copies the Docker image slug from staging to production, but does NOT copy config vars. Each app maintains its own environment variables (different database hosts, site URLs, encryption keys).
+- **Heroku Postgres addon** is only for Metabase's internal metadata — it is not the analytics database. The analytics data lives in the staging/production Django databases.
 - **`MB_DB_CONNECTION_URI`:** Heroku Postgres provides `DATABASE_URL` in postgres:// format. Metabase needs JDBC format. Either set `MB_DB_CONNECTION_URI` to the JDBC URL or set `MB_DB_HOST`, `MB_DB_PORT`, `MB_DB_DBNAME`, `MB_DB_USER`, `MB_DB_PASS` individually.
 - **BigQuery credentials:** Configured via Terraform (Phase 3), which passes the service account key content directly through the Metabase API — no filesystem or entrypoint involvement needed.
 
@@ -529,9 +603,11 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 | Step                                                       | Phase | Type   | Depends On          |
 | ---------------------------------------------------------- | ----- | ------ | ------------------- |
 | ~~Create wrapper Dockerfile + entrypoint~~  ✅             | 1     | Prereq | —                   |
-| Create heroku.yml (optional)                               | 1     | Prereq | —                   |
-| Provision Heroku app + Postgres addon                      | 1     | Step   | Prereq above        |
-| Configure Heroku env vars, deploy, setup wizard            | 1     | Step   | Above               |
+| ~~Create heroku.yml~~  ✅                                  | 1     | Prereq | —                   |
+| Provision Heroku Pipeline with staging + production apps   | 1     | Step   | Prereq above        |
+| Configure Heroku env vars for both apps                    | 1     | Step   | Above               |
+| Deploy to staging, then promote to production              | 1     | Step   | Above               |
+| Complete setup wizard for both environments                | 1     | Step   | Above               |
 | Store dbt secrets in GitHub Environments                   | 2     | Prereq | —                   |
 | Create RLS users + default privileges in staging & prod PG | 2     | Prereq | DB access           |
 | Create dbt nightly workflow, first successful run          | 2     | Step   | Prereqs above       |
@@ -539,5 +615,182 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 | Store Terraform secrets in GitHub Environments             | 3     | Prereq | Phase 1 admin creds |
 | First manual `terraform apply` (staging, then prod)        | 3     | Step   | Phases 1+2 complete |
 | Create Terraform plan/apply workflows                      | 3     | Step   | Manual apply worked |
+
+---
+
+## Staging Deployment Log
+
+Issues encountered during staging deployment and their resolutions, captured to streamline production deployment.
+
+### Heroku Docker Build Context
+
+**Issue:** `COPY dashboards/heroku-entrypoint.sh` failed because Heroku sets the Docker build context to the Dockerfile's directory, not the repo root.
+
+**Fix:** Changed Dockerfile `COPY` to use a relative path (`COPY heroku-entrypoint.sh`). The `heroku.yml` `context` property is not supported.
+
+### Metabase ENTRYPOINT vs CMD
+
+**Issue:** Using `CMD ["/app/heroku-entrypoint.sh"]` caused Metabase to interpret the entrypoint path as a Metabase command ("Unrecognized command"). The base Metabase image has its own ENTRYPOINT that receives CMD as arguments.
+
+**Fix:** Changed Dockerfile to use `ENTRYPOINT ["/app/heroku-entrypoint.sh"]` to fully override the base image entrypoint.
+
+### Metabase run_metabase.sh Not Found
+
+**Issue:** The entrypoint script called `/app/run_metabase.sh` which doesn't exist in Metabase v0.56.19.
+
+**Fix:** Changed entrypoint to call `java -jar metabase.jar` directly.
+
+### Metabase Database Connection
+
+**Issue:** Metabase crashed trying to connect to `localhost:5432` even though DATABASE_URL was set by the Heroku Postgres addon.
+
+**Fix:** Metabase does NOT automatically parse Heroku's `DATABASE_URL`. Set individual `MB_DB_HOST`, `MB_DB_PORT`, `MB_DB_DBNAME`, `MB_DB_USER`, `MB_DB_PASS`, and `MB_DB_SSL=true` config vars explicitly.
+
+### Memory (OOM)
+
+**Issue:** Basic dyno (512MB) caused `Error R15 (Memory quota vastly exceeded)` — Metabase used 1152MB (225%).
+
+**Fix:** Upgraded to Standard-2X (1GB RAM, ~$50/month). **Standard-2X is the minimum viable dyno for Metabase.**
+
+### Heroku Postgres Essential-Tier Limitations
+
+**Issue:** `heroku pg:credentials:create` fails on Essential-tier with "You can't create a custom credential on Essential-tier databases." Cannot create separate RLS database users.
+
+**Workaround:** Use the single default Heroku Postgres credential for all Metabase database connections on staging. Database-level RLS requires Standard-tier ($50/month) or higher.
+
+**Production note:** If production uses Standard-tier or higher, create separate RLS users via `heroku pg:credentials:create`.
+
+### GCP Service Account Key Creation Blocked
+
+**Issue:** GCP organization policy `iam.disableServiceAccountKeyCreation` prevents creating service account JSON keys needed for BigQuery access.
+
+**Workaround:** Made BigQuery conditional in Terraform (`bigquery_enabled` variable, defaults to `false`). Postgres dashboards work without it.
+
+**To resolve later:**
+- For GitHub Actions: Use Workload Identity Federation (OIDC, no key needed)
+- For Metabase on Heroku: Requires either an org policy exception for one service account key, a BigQuery proxy, or moving Metabase to GCP (Cloud Run)
+
+See `dashboards/GITHUB_SECRETS.md` for detailed next steps.
+
+### Terraform State Backend — GCS Requires Auth Too
+
+**Issue:** The GCS backend (`mfb-terraform-state` bucket) also needs GCP authentication. Since service account keys are blocked by the org policy, GitHub Actions workflows can't authenticate to GCS to read/write Terraform state.
+
+**Decision:** Switch from GCS to **Terraform Cloud** as the state backend. This avoids the GCP auth issue entirely — Terraform Cloud only needs an API token (stored as a GitHub Secret), provides free state storage, locking, and encryption at rest.
+
+**Next step:** See "Resume Point" section below.
+
+---
+
+## Production Deployment Checklist
+
+Quick-reference for deploying to production, incorporating lessons from staging:
+
+### Phase 1: Metabase on Heroku
+- [ ] Production app already provisioned in pipeline (`mfb-metabase-production`)
+- [ ] Set Heroku config vars (use `heroku pg:credentials:url` for the **production** Metabase Postgres addon):
+  ```bash
+  heroku config:set MB_DB_TYPE=postgres MB_DB_HOST=<host> MB_DB_PORT=5432 MB_DB_DBNAME=<dbname> MB_DB_USER=<user> MB_DB_PASS=<pass> MB_DB_SSL=true -a mfb-metabase-production
+  heroku config:set MB_SITE_URL="https://mfb-metabase-production-baf31df893fc.herokuapp.com" -a mfb-metabase-production
+  heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-new-key-with-openssl-rand-base64-32>" -a mfb-metabase-production
+  ```
+- [ ] Upgrade to Standard-2X dyno (required, 512MB will OOM):
+  ```bash
+  heroku ps:type standard-2x -a mfb-metabase-production
+  ```
+- [ ] Promote staging image to production:
+  ```bash
+  heroku pipelines:promote -a mfb-metabase-staging
+  ```
+- [ ] Complete Metabase setup wizard at production URL
+- [ ] Verify `/api/health` returns `{"status":"ok"}`
+
+### Phase 2: dbt (GitHub Actions)
+- [ ] Add production secrets to `production` GitHub Environment
+- [ ] Trigger `dbt-nightly` workflow for production (or wait for cron)
+
+### Phase 3: Terraform
+- [ ] Add production secrets/variables to `production` GitHub Environment
+- [ ] If production DB is Standard-tier+, create RLS users via `heroku pg:credentials:create`
+- [ ] Trigger `terraform-apply` workflow with `production` environment
+
+---
+
+## Resume Point (Start Here Monday)
+
+### What's Done
+- ✅ **Phase 1 staging**: Metabase running on Heroku at `https://mfb-metabase-staging-0805953c70da.herokuapp.com`
+  - Heroku Pipeline created (`mfb-metabase` with staging + production apps)
+  - Standard-2X dyno (required — 512MB OOMs)
+  - Setup wizard complete, admin account created
+  - Production app provisioned but not yet deployed
+- ✅ **Terraform config**: BigQuery made conditional, GCS backend configured (but blocked — see below)
+- ✅ **GitHub Actions workflows**: `terraform-plan.yml` and `terraform-apply.yml` created
+- ✅ **GitHub Environments**: `staging` and `production` created
+- ✅ **Analytics schema**: Created in staging database
+
+### What's Next (In Order)
+
+#### 1. Switch Terraform backend from GCS to Terraform Cloud (~15 min)
+
+GCS backend can't authenticate because the same GCP org policy blocks service account keys. Switch to Terraform Cloud:
+
+1. **Create a Terraform Cloud account** at https://app.terraform.io
+2. **Create an organization** (e.g., `mfb`)
+3. **Create a workspace** named `mfb-dashboards-staging`
+   - Set **Execution Mode** to **"Local"** (GitHub Actions runs plan/apply, TF Cloud only stores state)
+4. **Generate an API token**: User Settings → Tokens → Create an API token
+5. **Update `dashboards/main.tf`** — replace the `backend "gcs"` block:
+   ```hcl
+   terraform {
+     cloud {
+       organization = "mfb"
+       workspaces {
+         tags = ["dashboards"]
+       }
+     }
+   }
+   ```
+6. **Add GitHub Secret** `TF_API_TOKEN` (the API token from step 4) — this goes in the **repository-level** secrets (not environment-level, since both staging and production use the same TF Cloud org)
+7. **Update both workflow files** to pass the token:
+   ```yaml
+   - uses: hashicorp/setup-terraform@v3
+     with:
+       terraform_version: "1.9.x"
+       cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+   ```
+8. Run `terraform init` to initialize the new backend
+
+#### 2. Finish configuring GitHub Secrets for staging (~10 min)
+
+Follow checklist in `dashboards/GITHUB_SECRETS.md`:
+```bash
+# Get staging database credentials
+heroku pg:credentials:url -a cobenefits-api-staging
+```
+Add all variables and secrets to the `staging` GitHub Environment.
+
+#### 3. Push branch and merge PR (~5 min)
+
+```bash
+git push origin jmejia/mfb-681-data-deploy-to-heroku
+```
+Create PR, merge to `main`. The `terraform-apply` workflow will run automatically against staging.
+
+#### 4. Verify staging Terraform apply
+
+Check the Actions tab — Terraform should create:
+- Postgres data source (global + per-tenant) in Metabase
+- Collections (Global, North Carolina, Colorado)
+- Cards and dashboards
+
+#### 5. Deploy to production
+
+Follow the "Production Deployment Checklist" section above.
+
+### Deferred Items
+- **BigQuery integration**: Blocked by GCP org policy. See `dashboards/GITHUB_SECRETS.md` for resolution paths.
+- **dbt nightly workflow** (Phase 2): `.github/workflows/dbt-nightly.yml` not yet created.
+- **Database-level RLS**: Only available on Heroku Postgres Standard-tier+. Staging uses single credential.
 
 ---
