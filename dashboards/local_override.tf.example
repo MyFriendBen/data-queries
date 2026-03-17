@@ -1,0 +1,15 @@
+# local_override.tf.example
+#
+# This file shows how to override the Terraform Cloud backend
+# for local development.
+#
+# Usage:
+#   cp local_override.tf.example local_override.tf
+#
+# local_override.tf is gitignored - it only exists on your machine.
+# CI/CD (GitHub Actions) does NOT have this file, so it continues
+# using Terraform Cloud for staging and production.
+
+terraform {
+  backend "local" {}
+}

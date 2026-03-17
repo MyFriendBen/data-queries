@@ -175,6 +175,29 @@ terraform plan  # Review changes
 terraform apply  # Deploy new configuration
 ```
 
+## Local Terraform State for Development
+
+Production uses Terraform Cloud for state (configured in `main.tf`). Running
+`terraform init` locally will fail with a token error unless you override the
+backend using a gitignored override file.
+
+**1. Copy the example override file:**
+
+```bash
+cp local_override.tf.example local_override.tf
+```
+
+**2. Run Terraform normally:**
+
+```bash
+terraform init    # uses local state, no Terraform Cloud token needed
+terraform plan
+terraform apply
+```
+
+`local_override.tf` is gitignored — CI/CD never sees it, so GitHub Actions
+continues using Terraform Cloud for staging and production.
+
 ## Troubleshooting
 
 ### Dashboard shows "No data"
@@ -196,3 +219,4 @@ terraform destroy
 git checkout <other-branch>
 terraform apply
 ```
+
