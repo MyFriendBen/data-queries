@@ -312,138 +312,142 @@ resource "metabase_dashboard" "tenant_analytics" {
   # Metabase returns cards sorted by dashboard_tab_id ascending.
   # Tab 1 (Google Analytics) cards must come before tab 2 (All-Time Performance) to avoid
   # the provider "inconsistent result" error on cards_json round-trip comparison.
-  cards_json = jsonencode([
-    # ── Google Analytics tab (ID 1) ──────────────────────────────────────────
-    # Row 0: 4 KPI scalar cards side-by-side (each 6 wide × 3 tall)
-    {
-      card_id          = tonumber(metabase_card.ga_total_visitors[each.key].id)
-      dashboard_tab_id = 1
-      row              = 0
-      col              = 0
-      size_x           = 6
-      size_y           = 3
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    {
-      card_id          = tonumber(metabase_card.ga_started_screener_pct[each.key].id)
-      dashboard_tab_id = 1
-      row              = 0
-      col              = 6
-      size_x           = 6
-      size_y           = 3
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    {
-      card_id          = tonumber(metabase_card.ga_completed_to_click_rate[each.key].id)
-      dashboard_tab_id = 1
-      row              = 0
-      col              = 12
-      size_x           = 6
-      size_y           = 3
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    {
-      card_id          = tonumber(metabase_card.ga_median_completion_time[each.key].id)
-      dashboard_tab_id = 1
-      row              = 0
-      col              = 18
-      size_x           = 6
-      size_y           = 3
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
+  cards_json = jsonencode(concat(
+    # ── Google Analytics tab (ID 1) — only when BigQuery is enabled ───────────
+    var.bigquery_enabled ? [
+      # Row 0: 4 KPI scalar cards side-by-side (each 6 wide × 3 tall)
+      {
+        card_id          = tonumber(metabase_card.ga_total_visitors[each.key].id)
+        dashboard_tab_id = 1
+        row              = 0
+        col              = 0
+        size_x           = 6
+        size_y           = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.ga_started_screener_pct[each.key].id)
+        dashboard_tab_id = 1
+        row              = 0
+        col              = 6
+        size_x           = 6
+        size_y           = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.ga_completed_to_click_rate[each.key].id)
+        dashboard_tab_id = 1
+        row              = 0
+        col              = 12
+        size_x           = 6
+        size_y           = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.ga_median_completion_time[each.key].id)
+        dashboard_tab_id = 1
+        row              = 0
+        col              = 18
+        size_x           = 6
+        size_y           = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
 
-    # Row 3: Conversion funnel bar chart (12 wide × 6 tall)
-    {
-      card_id          = tonumber(metabase_card.ga_conversion_funnel[each.key].id)
-      dashboard_tab_id = 1
-      row              = 3
-      col              = 0
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    # Row 3: Conversion funnel detail table (right, 12 wide)
-    {
-      card_id          = tonumber(metabase_card.ga_conversion_funnel_table[each.key].id)
-      dashboard_tab_id = 1
-      row              = 3
-      col              = 12
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
+      # Row 3: Conversion funnel bar chart (12 wide × 6 tall)
+      {
+        card_id          = tonumber(metabase_card.ga_conversion_funnel[each.key].id)
+        dashboard_tab_id = 1
+        row              = 3
+        col              = 0
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 3: Conversion funnel detail table (right, 12 wide)
+      {
+        card_id          = tonumber(metabase_card.ga_conversion_funnel_table[each.key].id)
+        dashboard_tab_id = 1
+        row              = 3
+        col              = 12
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
 
-    # Row 9: Traffic Mediums — bar chart (left) + detail table (right)
-    {
-      card_id          = tonumber(metabase_card.ga_traffic_mediums_bar[each.key].id)
-      dashboard_tab_id = 1
-      row              = 9
-      col              = 0
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    {
-      card_id          = tonumber(metabase_card.ga_traffic_mediums_table[each.key].id)
-      dashboard_tab_id = 1
-      row              = 9
-      col              = 12
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
+      # Row 9: Traffic Mediums — bar chart (left) + detail table (right)
+      {
+        card_id          = tonumber(metabase_card.ga_traffic_mediums_bar[each.key].id)
+        dashboard_tab_id = 1
+        row              = 9
+        col              = 0
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.ga_traffic_mediums_table[each.key].id)
+        dashboard_tab_id = 1
+        row              = 9
+        col              = 12
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
 
-    # Row 15: Clicked Links — bar chart (left) + detail table (right)
-    {
-      card_id          = tonumber(metabase_card.ga_clicked_links_bar[each.key].id)
-      dashboard_tab_id = 1
-      row              = 15
-      col              = 0
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
-    {
-      card_id          = tonumber(metabase_card.ga_clicked_links_table[each.key].id)
-      dashboard_tab_id = 1
-      row              = 15
-      col              = 12
-      size_x           = 12
-      size_y           = 6
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    },
+      # Row 15: Clicked Links — bar chart (left) + detail table (right)
+      {
+        card_id          = tonumber(metabase_card.ga_clicked_links_bar[each.key].id)
+        dashboard_tab_id = 1
+        row              = 15
+        col              = 0
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.ga_clicked_links_table[each.key].id)
+        dashboard_tab_id = 1
+        row              = 15
+        col              = 12
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ] : [],
 
     # ── All-Time Performance tab (ID 2) — must come after tab 1 cards ────────
-    {
-      card_id          = tonumber(metabase_card.tenant_screen_count[each.key].id)
-      dashboard_tab_id = 2
-      row              = 0
-      col              = 0
-      size_x           = 6
-      size_y           = 4
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    }
-  ])
+    [
+      {
+        card_id          = tonumber(metabase_card.tenant_screen_count[each.key].id)
+        dashboard_tab_id = 2
+        row              = 0
+        col              = 0
+        size_x           = 6
+        size_y           = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      }
+    ]
+  ))
 }

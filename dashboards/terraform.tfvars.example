@@ -82,6 +82,8 @@ metabase_admin_password = "your_admin_password"  # Set during Metabase setup
 
 # BigQuery Configuration
 gcp_project_id = "your-gcp-project-id"
+bigquery_enabled = true
+bigquery_service_account_key_path = "{...}"
 
 # Local development: specify path to service account key file (defaults to ./secrets/bigquerykey.json)
 # bigquery_service_account_key_path = "./secrets/bigquerykey.json"

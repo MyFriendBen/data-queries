@@ -7,7 +7,7 @@
 
 # KPI: Total Visitors — COUNT of distinct sessions
 resource "metabase_card" "ga_total_visitors" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Total Visitors"
@@ -17,7 +17,7 @@ resource "metabase_card" "ga_total_visitors" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT SUM(total_sessions) FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
@@ -33,7 +33,7 @@ resource "metabase_card" "ga_total_visitors" {
 
 # KPI: Started Screener % — sessions that hit /step-1 as % of total sessions
 resource "metabase_card" "ga_started_screener_pct" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Started Screener"
@@ -43,7 +43,7 @@ resource "metabase_card" "ga_started_screener_pct" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_started_screener) * 100.0 / NULLIF(SUM(total_sessions), 0), 1) AS STRING), '%') FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
@@ -59,7 +59,7 @@ resource "metabase_card" "ga_started_screener_pct" {
 
 # KPI: Completed to Click Rate (D/C ratio) — sessions that completed AND clicked / sessions completed
 resource "metabase_card" "ga_completed_to_click_rate" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Completed to Click Rate"
@@ -69,7 +69,7 @@ resource "metabase_card" "ga_completed_to_click_rate" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT CONCAT(CAST(ROUND(SUM(sessions_clicked_after_completion) * 100.0 / NULLIF(SUM(sessions_completed_screener), 0), 1) AS STRING), '%') FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'"
@@ -88,7 +88,7 @@ resource "metabase_card" "ga_completed_to_click_rate" {
 # AVG across days is an approximation of the true overall median but avoids querying the
 # intermediate schema (dbt +schema: internal → different BigQuery dataset).
 resource "metabase_card" "ga_median_completion_time" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Completion Time (approx. median)"
@@ -98,7 +98,7 @@ resource "metabase_card" "ga_median_completion_time" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT CONCAT(LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':', LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':', LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')) FROM (SELECT CAST(ROUND(AVG(median_completion_time_seconds), 0) AS INT64) AS secs FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND median_completion_time_seconds IS NOT NULL)"
@@ -116,7 +116,7 @@ resource "metabase_card" "ga_median_completion_time" {
 # NOTE: display = "bar" is used here. The team can change to "funnel" in the Metabase UI
 # since the data is pre-shaped as step rows; a funnel display may render better visually.
 resource "metabase_card" "ga_conversion_funnel" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Conversion Funnel"
@@ -126,7 +126,7 @@ resource "metabase_card" "ga_conversion_funnel" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = <<-SQL
@@ -159,7 +159,7 @@ resource "metabase_card" "ga_conversion_funnel" {
 }
 # Conversion Funnel — detail table: step-by-step breakdown with counts and percentages
 resource "metabase_card" "ga_conversion_funnel_table" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Conversion Funnel (Detail)"
@@ -169,7 +169,7 @@ resource "metabase_card" "ga_conversion_funnel_table" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = <<-SQL
@@ -212,7 +212,7 @@ resource "metabase_card" "ga_conversion_funnel_table" {
 
 # Traffic Mediums — bar chart: sessions by medium/channel
 resource "metabase_card" "ga_traffic_mediums_bar" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Traffic Mediums"
@@ -222,7 +222,7 @@ resource "metabase_card" "ga_traffic_mediums_bar" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT session_medium, SUM(total_sessions) AS sessions FROM `${local.bq_dataset}.mart_ga_traffic_mediums` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium ORDER BY sessions DESC"
@@ -241,7 +241,7 @@ resource "metabase_card" "ga_traffic_mediums_bar" {
 
 # Traffic Mediums — table: full breakdown with source detail
 resource "metabase_card" "ga_traffic_mediums_table" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Traffic Mediums (Detail)"
@@ -251,7 +251,7 @@ resource "metabase_card" "ga_traffic_mediums_table" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT session_medium, session_source, SUM(total_sessions) AS sessions, SUM(total_users) AS users FROM `${local.bq_dataset}.mart_ga_traffic_mediums` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' GROUP BY session_medium, session_source ORDER BY sessions DESC"
@@ -267,7 +267,7 @@ resource "metabase_card" "ga_traffic_mediums_table" {
 
 # Clicked Links — bar chart: top outbound domains
 resource "metabase_card" "ga_clicked_links_bar" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Clicked Links"
@@ -277,7 +277,7 @@ resource "metabase_card" "ga_clicked_links_bar" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC LIMIT 10"
@@ -296,7 +296,7 @@ resource "metabase_card" "ga_clicked_links_bar" {
 
 # Clicked Links — table: full domain breakdown with session/user counts
 resource "metabase_card" "ga_clicked_links_table" {
-  for_each = var.tenants
+  for_each = var.bigquery_enabled ? var.tenants : {}
 
   json = jsonencode({
     name                = "Clicked Links (Detail)"
@@ -306,7 +306,7 @@ resource "metabase_card" "ga_clicked_links_table" {
     cache_ttl           = null
     query_type          = "native"
     dataset_query = {
-      database = tonumber(metabase_database.bigquery.id)
+      database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
         query         = "SELECT link_domain, SUM(total_clicks) AS total_clicks FROM `${local.bq_dataset}.mart_ga_clicked_links` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND is_outbound = 'true' GROUP BY link_domain ORDER BY total_clicks DESC"
