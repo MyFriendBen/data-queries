@@ -276,25 +276,25 @@ resource "metabase_dashboard" "analytics" {
   cards_json = jsonencode(concat(
     var.bigquery_enabled ? [
       {
-        card_id = tonumber(metabase_card.conversion_funnel[0].id)
-        row = 0
-        col = 0
-        size_x = 12
-        size_y = 8
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.conversion_funnel[0].id)
+        row                    = 0
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ] : [],
     [
       {
-        card_id = tonumber(metabase_card.screen_count.id)
-        row = var.bigquery_enabled ? 8 : 0
-        col = 0
-        size_x = 6
-        size_y = 4
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.screen_count.id)
+        row                    = var.bigquery_enabled ? 8 : 0
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ]

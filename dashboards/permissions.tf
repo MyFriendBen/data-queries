@@ -91,33 +91,123 @@ resource "metabase_collection_graph" "graph" {
 # Data Permissions Graph
 # =============================================================================
 #
-# NOTE: We intentionally do NOT manage metabase_permissions_graph here.
+# Controls which groups can query which databases in the Metabase query builder.
 #
-# Reasons:
-#   1. The provider sends the *complete* graph to Metabase on every apply,
-#      including pre-existing group/database pairs (e.g. Metabase's built-in
-#      sample databases). Any pair not listed in our config is sent with
-#      view_data = nil, causing a 400 error from the API.
+# Rules:
+#   - All Users (1)  → no query access to any database (baseline deny for everyone)
+#   - Global group   → full query access (query-builder-and-native) to all databases
+#   - Tenant group   → query-builder access to their own tenant DB only;
+#                      no access to all other DBs
 #
-#   2. Data isolation is already enforced at the database level via
-#      row-level security (RLS) — each tenant DB user can only see their
-#      own white-label data. Metabase data permissions would be a redundant
-#      second layer.
+# This closes the gap that collection permissions alone cannot address: without
+# this, a user scoped to the NC group can still browse the CO database directly
+# via the Metabase query builder. This resource enforces data source isolation
+# at the Metabase permission layer (in addition to PostgreSQL RLS).
 #
-#   3. Collection permissions (managed by metabase_collection_graph above)
-#      are sufficient to control which dashboards each group can see, which
-#      fully satisfies the requirements: Global group sees everything,
-#      tenant groups see only their own collection.
+# ⚠️  IMPORTANT — this resource is a singleton and must be imported before the
+#    first apply (just like the collection graph):
 #
-#   ⚠️  TRADE-OFF: Without managing data permissions, tenant group users can
-#      still access the Metabase query builder and query any connected database
-#      directly (not just via dashboards). RLS ensures they only see their own
-#      data rows, but they are not restricted from exploring other databases.
+#      terraform import metabase_permissions_graph.graph 1
 #
-#      If query builder access needs to be locked down, manually set
-#      "No self-service" for the All Users group in Metabase UI:
-#        Admin → Permissions → Data → [database] → All Users → No self-service
-#      This applies to all users by default since tenant/global groups inherit
-#      from All Users unless explicitly overridden.
+# ⚠️  TRADE-OFF: The provider sends the *complete* graph to Metabase on every
+#    apply. Every group × database pair must be listed here. Missing pairs are
+#    sent as nil and will cause a 400 error. If a new built-in/sample database
+#    appears in Metabase (e.g. after an upgrade), add it to ignored_groups or
+#    enumerate it here.
 #
 # =============================================================================
+
+locals {
+  # All managed database IDs in one place for easy reuse across permission rules.
+  all_db_ids = concat(
+    [metabase_database.postgres.id],
+    [for k, db in metabase_database.tenant_postgres : db.id],
+    var.bigquery_enabled ? [metabase_database.bigquery[0].id] : []
+  )
+
+  # Databases that exist in Metabase but are NOT managed by Terraform
+  # (e.g. Metabase's built-in H2 sample database). Must be included in the
+  # complete graph to avoid a 400 from the API.
+  unmanaged_db_ids = [1, 2]
+
+  # Every database ID that must appear in the graph (managed + unmanaged).
+  all_known_db_ids = concat(local.all_db_ids, local.unmanaged_db_ids)
+}
+
+resource "metabase_permissions_graph" "graph" {
+  # Only ignore the Administrators group (id = 2) — its permissions cannot be
+  # changed via the API. All other groups are explicitly enumerated below.
+  ignored_groups = [2]
+
+  # advanced_permissions = false uses the free-tier permission model (view_data
+  # is always "unrestricted"; access is controlled via create_queries).
+  advanced_permissions = false
+
+  permissions = concat(
+    # --- All Users (group 1): no query access to any database ----------------
+    # Baseline deny. Every user starts with no query builder access.
+    # Must cover ALL databases (managed + unmanaged) to satisfy the API.
+    [
+      for db_id in local.all_known_db_ids : {
+        group          = 1
+        database       = tonumber(db_id)
+        view_data      = "unrestricted" # required by free-tier Metabase
+        create_queries = "no"
+      }
+    ],
+
+    # --- Global group: full access to all managed databases ------------------
+    [
+      for db_id in local.all_db_ids : {
+        group          = metabase_permissions_group.global.id
+        database       = tonumber(db_id)
+        view_data      = "unrestricted"
+        create_queries = "query-builder-and-native"
+      }
+    ],
+    # Global group on unmanaged DBs: no access needed, but must be listed
+    [
+      for db_id in local.unmanaged_db_ids : {
+        group          = metabase_permissions_group.global.id
+        database       = tonumber(db_id)
+        view_data      = "unrestricted"
+        create_queries = "no"
+      }
+    ],
+
+    # --- Per-tenant groups: query-builder on own DB only ---------------------
+    # For each tenant, grant access to their own DB and explicitly deny all others.
+    flatten([
+      for tenant_key, tenant in var.tenants : concat(
+        # Own database: allow query builder
+        [
+          {
+            group          = metabase_permissions_group.tenant[tenant_key].id
+            database       = tonumber(metabase_database.tenant_postgres[tenant_key].id)
+            view_data      = "unrestricted"
+            create_queries = "query-builder"
+          }
+        ],
+        # All other managed databases: no access
+        [
+          for db_id in local.all_db_ids : {
+            group          = metabase_permissions_group.tenant[tenant_key].id
+            database       = tonumber(db_id)
+            view_data      = "unrestricted"
+            create_queries = "no"
+          }
+          if tonumber(db_id) != tonumber(metabase_database.tenant_postgres[tenant_key].id)
+        ],
+        # Unmanaged databases: no access
+        [
+          for db_id in local.unmanaged_db_ids : {
+            group          = metabase_permissions_group.tenant[tenant_key].id
+            database       = tonumber(db_id)
+            view_data      = "unrestricted"
+            create_queries = "no"
+          }
+        ]
+      )
+    ])
+  )
+}

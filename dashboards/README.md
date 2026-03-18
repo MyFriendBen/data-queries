@@ -73,13 +73,26 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Initialize Terraform and import the singleton collection permissions graph**
+**5. Initialize Terraform and import the singleton permission graphs**
 
-Metabase exposes collection permissions as a single global object that must be imported into Terraform state before it can be managed. Initialize Terraform first (to install providers), then run the import once:
+Metabase exposes collection permissions and data permissions each as a single global object. Both must be imported into Terraform state before they can be managed. Initialize Terraform first (to install providers), then run both imports once:
+
+> **Running locally?** This project is configured to use HCP Terraform (Terraform Cloud) by default. To run locally instead, comment out the `cloud` block in `main.tf` before running `terraform init`:
+> ```hcl
+> # cloud {
+> #   organization = "MyFriendBen"
+> #   workspaces {
+> #     tags = ["dashboards"]
+> #   }
+> # }
+> ```
+> Then run `terraform init -reconfigure` to initialize with a local backend.
+> ⚠️ Remember to **uncomment the `cloud` block before committing** — otherwise CI will break.
 
 ```bash
 terraform init
 terraform import metabase_collection_graph.graph 1
+terraform import metabase_permissions_graph.graph 1
 ```
 
 **6. Run Terraform**
@@ -130,12 +143,17 @@ The Terraform output `tenant_group_ids` lists the numeric ID of each tenant grou
 
 ### Permission Model
 
-- **Global group** — `write` access to the Global collection and all tenant collections.
-- **Tenant group** — `read` access to their own tenant collection only.
-- **All Users (built-in)** — no collection access by default.
+Both collection and data permissions are managed by Terraform:
 
-> **Note:** Database/query permissions are not managed by `permissions.tf` collection graph resources.
-> Data isolation is enforced via PostgreSQL RLS and Metabase-side database permission settings.
+| Group | Collections | Query Builder (Data Sources) |
+|---|---|---|
+| **Global** | `write` on Global + all tenant collections | Full access (`query-builder-and-native`) to all databases |
+| **Tenant** (e.g. NC) | `read` on their own collection only | `query-builder` access to their own tenant DB only; no access to all others |
+| **All Users (built-in)** | No access | No access (baseline deny for all databases) |
+
+Data isolation is enforced at two layers:
+1. **Metabase data permissions** (managed here) — tenant group users cannot access other tenants' databases via the query builder.
+2. **PostgreSQL RLS** — even if a user somehow accessed another DB connection, they would only see rows matching their own `white_label_id`.
 
 ## Adding New Tenants
 
@@ -188,7 +206,7 @@ locals {
 }
 ```
 
-> **Note on permissions:** The `metabase_permissions_group.tenant` and all collection permission entries in `permissions.tf` use `for_each`/`for` over `var.tenants`, so the new group and its collection permissions are created automatically. No changes to `permissions.tf` are needed. Database/query permissions are not managed here — see the Permission Model note above.
+> **Note on permissions:** The `metabase_permissions_group.tenant`, collection permission entries, and data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`, so the new group, its collection permissions, and its data source permissions are all created automatically. No changes to `permissions.tf` are needed.
 
 ### 3. Create Database User
 
@@ -217,18 +235,20 @@ unset DB_PASSWORD
 terraform plan   # Review changes
 terraform apply  # First apply will fail with 409 on collection graph — this is expected
 
-# Re-sync the collection graph (creating new collections increments Metabase's
-# revision counter, making the cached state stale), then re-apply:
+# Re-sync both singleton graphs (creating new collections/databases increments
+# Metabase's revision counters, making cached state stale), then re-apply:
 terraform state rm metabase_collection_graph.graph
 terraform import metabase_collection_graph.graph 1
+terraform state rm metabase_permissions_graph.graph
+terraform import metabase_permissions_graph.graph 1
 terraform apply  # Should succeed now
 ```
 
 Terraform will automatically:
 - Create the new `<Display Name>` permissions group
-- Grant it read access to the new tenant collection
-- Grant it query-builder access to the new tenant database
-- Grant the Global group write access to the new collection and full DB access
+- Grant it `read` access to the new tenant collection
+- Grant it `query-builder` access to the new tenant database only
+- Grant the Global group `write` access to the new collection and full DB access
 
 After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
 
