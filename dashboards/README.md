@@ -206,6 +206,30 @@ terraform import metabase_collection_graph.graph 1
 terraform apply  # Should succeed now
 ```
 
+## Local Terraform State for Development
+
+CI/CD uses Terraform Cloud for state (configured in `main.tf`). Running
+`terraform init` locally will fail with a token error unless you override the
+backend using a gitignored override file.
+
+**1. Copy the example override file:**
+
+```bash
+cp local_override.tf.example local_override.tf
+```
+
+**2. Initialize Terraform:**
+
+```bash
+terraform init    # uses local state, no Terraform Cloud token needed
+```
+
+`terraform plan` and `terraform apply` require a locally running Metabase
+instance — see the Quick Start section above for that setup.
+
+`local_override.tf` is gitignored — CI/CD never sees it, so GitHub Actions
+continues using Terraform Cloud for staging and production.
+
 ## Troubleshooting
 
 ### Dashboard shows "No data"
@@ -227,3 +251,4 @@ terraform destroy
 git checkout <other-branch>
 terraform apply
 ```
+
