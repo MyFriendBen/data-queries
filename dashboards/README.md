@@ -177,7 +177,7 @@ terraform apply  # Deploy new configuration
 
 ## Local Terraform State for Development
 
-Production uses Terraform Cloud for state (configured in `main.tf`). Running
+CI/CD uses Terraform Cloud for state (configured in `main.tf`). Running
 `terraform init` locally will fail with a token error unless you override the
 backend using a gitignored override file.
 
