@@ -187,13 +187,14 @@ backend using a gitignored override file.
 cp local_override.tf.example local_override.tf
 ```
 
-**2. Run Terraform normally:**
+**2. Initialize Terraform:**
 
 ```bash
 terraform init    # uses local state, no Terraform Cloud token needed
-terraform plan
-terraform apply
 ```
+
+`terraform plan` and `terraform apply` require a locally running Metabase
+instance — see the Quick Start section above for that setup.
 
 `local_override.tf` is gitignored — CI/CD never sees it, so GitHub Actions
 continues using Terraform Cloud for staging and production.
