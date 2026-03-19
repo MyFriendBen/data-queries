@@ -253,25 +253,25 @@ resource "metabase_dashboard" "analytics" {
   cards_json = jsonencode(concat(
     var.bigquery_enabled ? [
       {
-        card_id = tonumber(metabase_card.conversion_funnel[0].id)
-        row = 0
-        col = 0
-        size_x = 12
-        size_y = 8
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.conversion_funnel[0].id)
+        row                    = 0
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ] : [],
     [
       {
-        card_id = tonumber(metabase_card.screen_count.id)
-        row = var.bigquery_enabled ? 8 : 0
-        col = 0
-        size_x = 6
-        size_y = 4
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.screen_count.id)
+        row                    = var.bigquery_enabled ? 8 : 0
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ]
@@ -293,18 +293,8 @@ resource "metabase_dashboard" "tenant_analytics" {
     { id = 5, name = "Benefits & Immediate Needs" }
   ])
 
-  cards_json = jsonencode([
-    {
-      card_id = tonumber(metabase_card.tenant_screen_count[each.key].id)
-      # Assigning existing card to "All-Time Performance" tab (ID 2)
-      dashboard_tab_id       = 2
-      row                    = 0
-      col                    = 0
-      size_x                 = 6
-      size_y                 = 4
-      parameter_mappings     = []
-      series                 = []
-      visualization_settings = {}
-    }
-  ])
+  cards_json = jsonencode(concat(
+    local.performance_dashboard_cards[each.key],
+    local.performance_30d_dashboard_cards[each.key]
+  ))
 }

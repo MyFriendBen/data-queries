@@ -33,7 +33,7 @@ locals {
     parameters             = []
     visualization_settings = {}
   }
-  
+
   # Template for scalar scorecards (simple counts)
   tenant_scorecard_config = merge(local.tenant_card_base_config, {
     display = "scalar"
@@ -45,13 +45,13 @@ locals {
       "column_settings" = {}
     }
   })
-  
+
   # Template for table cards with mini bars (flexible)
   tenant_table_card_config = merge(local.tenant_card_base_config, {
     display = "table"
     visualization_settings = {
       "table.column_widths" = []
-      "column_settings" = {}
+      "column_settings"     = {}
     }
   })
 
@@ -61,12 +61,12 @@ locals {
     "decimals"     = 0
   }
 
-  currency_format_0 = { 
-    "number_style" = "currency"
-    "currency" = "USD"
+  currency_format_0 = {
+    "number_style"   = "currency"
+    "currency"       = "USD"
     "currency_style" = "symbol"
-    "decimals" = 0 
-  } 
+    "decimals"       = 0
+  }
 
   show_minibar_true = {
     "show_mini_bar" = true
