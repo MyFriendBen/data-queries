@@ -5,29 +5,6 @@ provider "metabase" {
   password = var.metabase_admin_password
 }
 
-# Shared configuration template for screen count cards
-locals {
-  screen_count_card_config = {
-    name                = "Completed Screens"
-    description         = "Total count of completed screens from PostgreSQL"
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "query"
-    dataset_query = {
-      query = {
-        aggregation = [
-          ["count"]
-        ]
-      }
-      type = "query"
-    }
-    parameter_mappings     = []
-    display                = "scalar"
-    visualization_settings = {}
-    parameters             = []
-  }
-}
-
 resource "metabase_database" "bigquery" {
   count = var.bigquery_enabled ? 1 : 0
 

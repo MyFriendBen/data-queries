@@ -19,6 +19,7 @@ venv/
 *.tfstate.backup
 *.tfstate.*.backup
 terraform.tfvars
+local_override.tf
 *.tfplan
 
 # dashboards scripts
