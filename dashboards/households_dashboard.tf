@@ -30,7 +30,21 @@
 #
 #   Charts (pie/donut):
 #     12. Languages spoken
+#
+#   Charts (bar, count-based):
+#     13. Income streams
+#     14. Most common expenses
 # =============================================================================
+
+# ---------------------------------------------------------------------------
+# Dashboard-level shared settings
+# ---------------------------------------------------------------------------
+locals {
+  # Base config for bar charts on this tab — extends tenant_card_base_config
+  households_bar_chart_config = merge(local.tenant_card_base_config, {
+    display = "bar"
+  })
+}
 
 # ---------------------------------------------------------------------------
 # KPI 1: Completed Screeners
@@ -38,24 +52,16 @@
 resource "metabase_card" "households_completed_screeners" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Completed Screeners"
-    description         = "Total number of completed screeners"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Completed Screeners"
+    description   = "Total number of completed screeners"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_households_dashboard;" }
     }
-    parameter_mappings     = []
-    display                = "scalar"
-    visualization_settings = {}
-    parameters             = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -64,24 +70,16 @@ resource "metabase_card" "households_completed_screeners" {
 resource "metabase_card" "households_median_size" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Median Household Size"
-    description         = "Median number of members per household"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Household Size"
+    description   = "Median number of members per household"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_size) AS \"Median Household Size\" FROM analytics.mart_households_dashboard;" }
     }
-    parameter_mappings     = []
-    display                = "scalar"
-    visualization_settings = {}
-    parameters             = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -90,28 +88,21 @@ resource "metabase_card" "households_median_size" {
 resource "metabase_card" "households_median_assets" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Median Household Assets"
-    description         = "Median household assets in dollars"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Household Assets"
+    description   = "Median household assets in dollars"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY household_assets) AS \"Median Household Assets\" FROM analytics.mart_households_dashboard WHERE household_assets IS NOT NULL;" }
     }
-    parameter_mappings = []
-    display            = "scalar"
     visualization_settings = {
       "column_settings" = {
-        "[\"name\",\"Median Household Assets\"]" = { "number_style" = "currency", "currency" = "USD", "currency_style" = "symbol", "decimals" = 0 }
+        "[\"name\",\"Median Household Assets\"]" = local.currency_format_0
       }
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -120,28 +111,21 @@ resource "metabase_card" "households_median_assets" {
 resource "metabase_card" "households_median_annual_income" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Median Annual Income"
-    description         = "Median annual household income"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Annual Income"
+    description   = "Median annual household income"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY annual_income) AS \"Median Annual Income\" FROM analytics.mart_households_dashboard WHERE annual_income IS NOT NULL;" }
     }
-    parameter_mappings = []
-    display            = "scalar"
     visualization_settings = {
       "column_settings" = {
-        "[\"name\",\"Median Annual Income\"]" = { "number_style" = "currency", "currency" = "USD", "currency_style" = "symbol", "decimals" = 0 }
+        "[\"name\",\"Median Annual Income\"]" = local.currency_format_0
       }
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -150,28 +134,21 @@ resource "metabase_card" "households_median_annual_income" {
 resource "metabase_card" "households_median_monthly_income" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Median Monthly Income"
-    description         = "Median monthly household income"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Monthly Income"
+    description   = "Median monthly household income"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_income) AS \"Median Monthly Income\" FROM analytics.mart_households_dashboard WHERE monthly_income IS NOT NULL;" }
     }
-    parameter_mappings = []
-    display            = "scalar"
     visualization_settings = {
       "column_settings" = {
-        "[\"name\",\"Median Monthly Income\"]" = { "number_style" = "currency", "currency" = "USD", "currency_style" = "symbol", "decimals" = 0 }
+        "[\"name\",\"Median Monthly Income\"]" = local.currency_format_0
       }
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -180,28 +157,21 @@ resource "metabase_card" "households_median_monthly_income" {
 resource "metabase_card" "households_median_monthly_expenses" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "Median Monthly Expenses"
-    description         = "Median monthly household expenses"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Monthly Expenses"
+    description   = "Median monthly household expenses"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS \"Median Monthly Expenses\" FROM analytics.mart_households_dashboard WHERE monthly_expenses IS NOT NULL;" }
     }
-    parameter_mappings = []
-    display            = "scalar"
     visualization_settings = {
       "column_settings" = {
-        "[\"name\",\"Median Monthly Expenses\"]" = { "number_style" = "currency", "currency" = "USD", "currency_style" = "symbol", "decimals" = 0 }
+        "[\"name\",\"Median Monthly Expenses\"]" = local.currency_format_0
       }
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -211,17 +181,13 @@ resource "metabase_card" "households_median_monthly_expenses" {
 resource "metabase_card" "households_head_age_distribution" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What are the ages of the heads of household?"
-    description         = "Age distribution of heads of household using Census Bureau bins"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What are the ages of the heads of household?"
+    description   = "Age distribution of heads of household using Census Bureau bins"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             head_age_bin                                          AS "Age Group",
@@ -235,8 +201,6 @@ resource "metabase_card" "households_head_age_distribution" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"        = ["Age Group"]
       "graph.metrics"           = ["Percentage"]
@@ -244,8 +208,7 @@ resource "metabase_card" "households_head_age_distribution" {
       "graph.y_axis.title_text" = "% of Heads of Household"
       "graph.show_values"       = true
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -254,17 +217,13 @@ resource "metabase_card" "households_head_age_distribution" {
 resource "metabase_card" "households_all_member_age_distribution" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What are the ages of all household members?"
-    description         = "Age distribution across all household members using Census Bureau bins"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What are the ages of all household members?"
+    description   = "Age distribution across all household members using Census Bureau bins"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           WITH age_counts AS (
             SELECT
@@ -295,8 +254,6 @@ resource "metabase_card" "households_all_member_age_distribution" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"        = ["Age Group"]
       "graph.metrics"           = ["Percentage"]
@@ -304,8 +261,7 @@ resource "metabase_card" "households_all_member_age_distribution" {
       "graph.y_axis.title_text" = "% of All Members"
       "graph.show_values"       = true
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -314,17 +270,13 @@ resource "metabase_card" "households_all_member_age_distribution" {
 resource "metabase_card" "households_size_breakdown" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What is the breakdown of household sizes?"
-    description         = "Distribution of households by number of members"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What is the breakdown of household sizes?"
+    description   = "Distribution of households by number of members"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             CASE WHEN household_size >= 8 THEN '8+' ELSE household_size::text END AS "Household Size",
@@ -337,8 +289,6 @@ resource "metabase_card" "households_size_breakdown" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"        = ["Household Size"]
       "graph.metrics"           = ["Percentage"]
@@ -346,8 +296,7 @@ resource "metabase_card" "households_size_breakdown" {
       "graph.y_axis.title_text" = "% of Households"
       "graph.show_values"       = true
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -356,17 +305,13 @@ resource "metabase_card" "households_size_breakdown" {
 resource "metabase_card" "households_income_breakdown" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What is the breakdown of household income?"
-    description         = "Distribution of households by annual income bracket"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What is the breakdown of household income?"
+    description   = "Distribution of households by annual income bracket"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             annual_income_bin                                     AS "Income Range",
@@ -380,8 +325,6 @@ resource "metabase_card" "households_income_breakdown" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"        = ["Income Range"]
       "graph.metrics"           = ["Percentage"]
@@ -389,8 +332,7 @@ resource "metabase_card" "households_income_breakdown" {
       "graph.y_axis.title_text" = "% of Households"
       "graph.show_values"       = true
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -399,17 +341,13 @@ resource "metabase_card" "households_income_breakdown" {
 resource "metabase_card" "households_assets_breakdown" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What is the breakdown of household assets?"
-    description         = "Distribution of households by total assets bracket"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What is the breakdown of household assets?"
+    description   = "Distribution of households by total assets bracket"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             assets_bin                                            AS "Assets Range",
@@ -423,8 +361,6 @@ resource "metabase_card" "households_assets_breakdown" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"        = ["Assets Range"]
       "graph.metrics"           = ["Percentage"]
@@ -432,8 +368,7 @@ resource "metabase_card" "households_assets_breakdown" {
       "graph.y_axis.title_text" = "% of Households"
       "graph.show_values"       = true
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -442,17 +377,14 @@ resource "metabase_card" "households_assets_breakdown" {
 resource "metabase_card" "households_languages" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What language was used for the screener?"
-    description         = "Distribution of households by language selected during screening"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.tenant_card_base_config, {
+    name          = "What language was used for the screener?"
+    description   = "Distribution of households by language selected during screening"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    display       = "pie"
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             coalesce(request_language_code, '(blank)') AS "Language",
@@ -464,14 +396,11 @@ resource "metabase_card" "households_languages" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "pie"
     visualization_settings = {
       "pie.dimension" = "Language"
       "pie.metric"    = "Count"
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -480,17 +409,13 @@ resource "metabase_card" "households_languages" {
 resource "metabase_card" "households_income_streams" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What income streams do households have?"
-    description         = "Count of households reporting each type of income stream"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What income streams do households have?"
+    description   = "Count of households reporting each type of income stream"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             i.type                          AS "Income Type",
@@ -503,8 +428,6 @@ resource "metabase_card" "households_income_streams" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"            = ["Income Type"]
       "graph.metrics"               = ["Number of Households"]
@@ -513,8 +436,7 @@ resource "metabase_card" "households_income_streams" {
       "graph.show_values"           = true
       "graph.label_value_frequency" = "all"
     }
-    parameters = []
-  })
+  }))
 }
 
 # ---------------------------------------------------------------------------
@@ -523,17 +445,13 @@ resource "metabase_card" "households_income_streams" {
 resource "metabase_card" "households_common_expenses" {
   for_each = var.tenants
 
-
-  json = jsonencode({
-    name                = "What are the most common expenses?"
-    description         = "Count of households reporting each type of expense"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
+  json = jsonencode(merge(local.households_bar_chart_config, {
+    name          = "What are the most common expenses?"
+    description   = "Count of households reporting each type of expense"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = { query = <<-SQL
           SELECT
             e.type                          AS "Expense Type",
@@ -546,8 +464,6 @@ resource "metabase_card" "households_common_expenses" {
         SQL
       }
     }
-    parameter_mappings = []
-    display            = "bar"
     visualization_settings = {
       "graph.dimensions"            = ["Expense Type"]
       "graph.metrics"               = ["Number of Households"]
@@ -556,8 +472,7 @@ resource "metabase_card" "households_common_expenses" {
       "graph.show_values"           = true
       "graph.label_value_frequency" = "all"
     }
-    parameters = []
-  })
+  }))
 }
 
 
