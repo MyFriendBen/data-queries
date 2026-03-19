@@ -1,0 +1,130 @@
+name: dbt Nightly Build
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC (1 AM EST / 10 PM PST)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      full_refresh:
+        description: "Run dbt build with --full-refresh"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  dbt-build:
+    # Production runs only allowed from main branch
+    if: >-
+      github.event_name != 'workflow_dispatch'
+      || github.event.inputs.environment != 'production'
+      || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    defaults:
+      run:
+        working-directory: dbt
+    env:
+      DB_HOST: ${{ secrets.DATABASE_HOST }}
+      DB_USER: ${{ secrets.GLOBAL_DB_USER }}
+      DB_PASS: ${{ secrets.GLOBAL_DB_PASS }}
+      DB_NAME: ${{ vars.DATABASE_NAME }}
+      DB_SSLMODE: require
+      PGSSLMODE: require
+      DB_SCHEMA: analytics
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: dbt/requirements.txt
+
+      - name: Install dbt dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cp profiles.yml.example ~/.dbt/profiles.yml
+
+      - name: Install dbt packages
+        run: dbt deps
+
+      - name: Verify dbt connection
+        run: dbt debug
+
+      - name: Ensure analytics schema exists
+        run: |
+          PGPASSWORD="$DB_PASS" psql \
+            -h "$DB_HOST" \
+            -U "$DB_USER" \
+            -d "$DB_NAME" \
+            -c "CREATE SCHEMA IF NOT EXISTS analytics;"
+
+      - name: Run dbt build
+        run: |
+          FLAGS="--target postgres"
+          if [ "${{ github.event.inputs.full_refresh }}" = "true" ]; then
+            FLAGS="$FLAGS --full-refresh"
+          fi
+          dbt build $FLAGS
+
+      - name: Trigger Metabase schema sync
+        run: |
+          METABASE_API="${METABASE_URL}/api"
+
+          # Get session token
+          SESSION=$(curl -sf -X POST "${METABASE_API}/session" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${METABASE_ADMIN_EMAIL}\", \"password\": \"${METABASE_ADMIN_PASSWORD}\"}" \
+            | jq -r '.id')
+
+          if [ -z "$SESSION" ] || [ "$SESSION" = "null" ]; then
+            echo "::warning::Failed to authenticate with Metabase — skipping sync"
+            exit 0
+          fi
+
+          # Get all database IDs and trigger sync on each
+          DB_IDS=$(curl -s "${METABASE_API}/database" \
+            -H "X-Metabase-Session: ${SESSION}" \
+            | jq -r '.data[].id')
+
+          if [ -z "$DB_IDS" ]; then
+            echo "::warning::No databases found or failed to fetch database list — skipping sync"
+            exit 0
+          fi
+
+          for DB_ID in $DB_IDS; do
+            echo "Syncing database ${DB_ID}..."
+            if ! curl -sf -X POST "${METABASE_API}/database/${DB_ID}/sync_schema" \
+              -H "X-Metabase-Session: ${SESSION}"; then
+              echo "::warning::Failed to sync database ${DB_ID}"
+            fi
+          done
+
+          echo "Waiting 30s for Metabase to complete sync..."
+          sleep 30
+          echo "Sync triggered for all databases."
+        env:
+          METABASE_URL: ${{ vars.METABASE_URL }}
+          METABASE_ADMIN_EMAIL: ${{ vars.METABASE_ADMIN_EMAIL }}
+          METABASE_ADMIN_PASSWORD: ${{ secrets.METABASE_ADMIN_PASSWORD }}
+
+      - name: Upload dbt artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artifacts
+          path: |
+            dbt/target/manifest.json
+            dbt/target/run_results.json
+          retention-days: 7

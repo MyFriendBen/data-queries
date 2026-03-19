@@ -1,0 +1,7 @@
+# Overrides the Terraform Cloud backend with local state for development.
+# Usage: cp local_override.tf.example local_override.tf
+# This file is gitignored — CI/CD continues using Terraform Cloud.
+
+terraform {
+  backend "local" {}
+}
