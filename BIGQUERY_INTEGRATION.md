@@ -4,6 +4,16 @@
 
 The MyFriendBen analytics pipeline needs Google Analytics (GA4) data from BigQuery to populate the "Google Analytics" tab on each tenant dashboard. The dbt models and Terraform resources already exist but are disabled due to a GCP authentication blocker.
 
+### Decided Architecture
+
+```
+GitHub Actions (dbt + Terraform)  →  Workload Identity Federation (OIDC, no key)
+Metabase on Heroku                →  Service account key (org admin exception)
+```
+
+- **GitHub Actions** authenticates to BigQuery via Workload Identity Federation — no service account keys needed. The `google-github-actions/auth@v2` action handles OIDC token exchange.
+- **Metabase** connects directly to BigQuery using a service account JSON key. The new GCP project (`mfb-data`) has no org policy blocking key creation, so this is straightforward.
+
 ## What Already Exists
 
 ### dbt Models (ready, untested against real data)
@@ -52,13 +62,13 @@ bigquery:
 
 Currently only runs `--target postgres`. BigQuery target needs to be added once auth is resolved.
 
-## The Blocker
+## Authentication
 
-**GCP organization policy `iam.disableServiceAccountKeyCreation`** prevents creating service account JSON keys. This affects two systems differently:
+Two systems need BigQuery access, each using a different auth method.
 
 ### System 1: GitHub Actions (dbt + Terraform)
 
-**Status:** Solvable with Workload Identity Federation (no key needed)
+**Auth method:** Workload Identity Federation (no key needed)
 
 GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation can exchange a GitHub OIDC token for short-lived GCP credentials — no service account key file required.
 
@@ -133,26 +143,41 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
 7. **Add GitHub Environment variables:**
    - `BIGQUERY_ENABLED` = `true`
    - `GCP_PROJECT_ID` = your GCP project ID
-   - `GCP_ANALYTICS_TABLE` = your GA4 BigQuery dataset name (e.g., `analytics_XXXXXXX`)
+   - `GCP_ANALYTICS_TABLE` = your GA4 BigQuery dataset name (e.g., `analytics_335669714`)
 
 **dbt profile change needed:** The current `profiles.yml.example` uses `method: service-account` with `keyfile`. For Workload Identity, change to `method: oauth` or use Application Default Credentials (ADC) which `google-github-actions/auth@v2` sets up automatically. The dbt-bigquery adapter supports ADC when `method: oauth` is set, but in CI the `auth@v2` action writes a credential file and sets `GOOGLE_APPLICATION_CREDENTIALS`, which `method: service-account` + `keyfile` already reads. So the existing profile may work as-is if `GOOGLE_APPLICATION_CREDENTIALS` is set.
 
 ### System 2: Metabase on Heroku (runtime BigQuery access)
 
-**Status:** Harder to solve — Metabase needs persistent credentials, not short-lived OIDC tokens
+**Auth method:** Service account key
 
-Metabase's BigQuery driver expects a service account JSON key. It doesn't support Workload Identity Federation natively.
+Metabase's BigQuery driver expects a service account JSON key. The new GCP project (`mfb-data`) does not have the `iam.disableServiceAccountKeyCreation` org policy, so keys can be created directly — no org admin exception needed.
 
-**Options (pick one):**
+**Steps:**
 
-| Option | Effort | Tradeoff |
-|--------|--------|----------|
-| **A. Org admin exception** — Ask a GCP org admin to create a one-time exception for a single service account key | Low | Requires org admin cooperation. Key must be rotated manually. |
-| **B. Move Metabase to Cloud Run** — Run Metabase on GCP instead of Heroku, attach a service account directly | High | Eliminates Heroku dependency. Metabase can use attached SA identity. Significant migration effort. |
-| **C. BigQuery proxy** — Run a proxy (e.g., Cloud SQL Auth Proxy pattern) that handles auth and presents a simple interface to Metabase | Medium | Complex architecture. Adds another service to maintain. |
-| **D. Skip Metabase BigQuery** — Run dbt BigQuery models, materialize results back to Postgres, let Metabase read from Postgres only | Low | Adds latency (BigQuery → Postgres copy). But keeps Metabase auth simple. Only works if data volume is small. |
+1. Create the service account and key:
+   ```bash
+   # Create a dedicated service account for Metabase
+   gcloud iam service-accounts create metabase-bigquery \
+     --display-name="Metabase BigQuery Reader" \
+     --project=mfb-data
 
-**Recommended approach:** Start with **Option A** (org admin exception) for speed, or **Option D** (materialize to Postgres) if getting an exception is difficult. Option D means adding a step that exports `mart_screener_conversion_funnel` from BigQuery to the Postgres `analytics` schema, so Metabase only ever reads Postgres.
+   # Grant read-only BigQuery access
+   gcloud projects add-iam-policy-binding mfb-data \
+     --member="serviceAccount:metabase-bigquery@mfb-data.iam.gserviceaccount.com" \
+     --role="roles/bigquery.dataViewer"
+
+   gcloud projects add-iam-policy-binding mfb-data \
+     --member="serviceAccount:metabase-bigquery@mfb-data.iam.gserviceaccount.com" \
+     --role="roles/bigquery.jobUser"
+
+   # Create the key
+   gcloud iam service-accounts keys create metabase-bigquery-key.json \
+     --iam-account=metabase-bigquery@mfb-data.iam.gserviceaccount.com
+   ```
+2. Store the key content as `BIGQUERY_SA_KEY` GitHub Environment secret (Terraform passes it to Metabase via API)
+
+**Key rotation:** Service account keys should be rotated periodically. Create a new key, update the GitHub secret, run `terraform apply`, then delete the old key. No Metabase downtime required — the new key takes effect on the next Metabase restart or database sync.
 
 ## Environment Variables Summary
 
@@ -163,23 +188,143 @@ When BigQuery is enabled, these are needed:
 |----------|-------|-------|
 | `BIGQUERY_ENABLED` | `true` | GitHub Environment variable |
 | `GCP_PROJECT_ID` | Your GCP project ID | GitHub Environment variable |
-| `GCP_ANALYTICS_TABLE` | GA4 BigQuery dataset (e.g., `analytics_XXXXXXX`) | GitHub Environment variable |
+| `GCP_ANALYTICS_TABLE` | GA4 BigQuery dataset (e.g., `analytics_335669714`) | GitHub Environment variable |
+| `WIF_PROVIDER` | `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/providers/github` | GitHub Environment variable |
+| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com` | GitHub Environment variable |
 
-### GitHub Environment Secrets (if using service account key)
-| Secret | Value | Where |
-|--------|-------|-------|
-| `BIGQUERY_SA_KEY` | Full JSON content of service account key | GitHub Environment secret |
+### GitHub Environment Secrets
+| Secret | Value | Used By |
+|--------|-------|---------|
+| `BIGQUERY_SA_KEY` | Full JSON content of Metabase service account key | Terraform (passes to Metabase via API) |
 
-### Workload Identity (if using OIDC — no secrets needed)
-| Config | Value |
-|--------|-------|
-| Workload Identity Provider | `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/providers/github` |
-| Service Account | `github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com` |
+### Workload Identity Federation (GitHub Actions — no secrets needed)
 
-## Recommended Implementation Order
+The `google-github-actions/auth@v2` action exchanges a GitHub OIDC token for short-lived GCP credentials. It reads `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` from GitHub Environment variables and automatically sets `GOOGLE_APPLICATION_CREDENTIALS` for subsequent steps (dbt, Terraform).
 
-1. **Set up Workload Identity Federation** in GCP (unblocks GitHub Actions)
-2. **Add BigQuery target to `dbt-nightly.yml`** and test against real GA4 data
-3. **Decide on Metabase BigQuery auth** (org admin exception vs. materialize to Postgres)
-4. **Enable `bigquery_enabled` in Terraform** and add GA4 cards to tenant dashboards
-5. **Build out the "Google Analytics" tab** with conversion funnel charts
+## Prerequisite: Migrate GA4 Data to New GCP Project
+
+**Status:** Not started — must be completed before any other steps
+
+The GA4 BigQuery export currently lives in a previous organization's GCP project. We have read access to the data, but need to move it into our own GCP project before we can set up Workload Identity, dbt, or Metabase integration.
+
+### Projects
+
+| | Project Name | Project ID | Owner |
+|--|-------------|-----------|-------|
+| **Old (source)** | Benefits - MFB | `benefits-mfb` | Brian (Gary team) |
+| **New (target)** | mfb-data | `mfb-data` | MFB team |
+
+### Known issue: Historical data loss in `benefits-mfb`
+
+The `benefits-mfb` project is on the **BigQuery free sandbox**, which enforces a **60-day table expiration**. Tables older than 60 days are automatically and permanently deleted. As of March 2026, only ~60 days of `events_*` tables remain (back to approx. January 2026), despite the GA4 BigQuery link being active for 1-2 years.
+
+**Implications:**
+- Historical data beyond 60 days is gone from BigQuery and cannot be recovered by upgrading to a paid plan
+- Looker Studio dashboards showing older data are pulling from the GA4 reporting API (GA4's internal storage), not BigQuery
+- The GA4 reporting API retains data for up to 14 months, but provides aggregated metrics — not the raw event-level data that BigQuery exports
+- One table is expiring every day, so copying the remaining data is time-sensitive
+
+**Action items:**
+- [ ] Flag to Brian (Gary team) that `benefits-mfb` is losing data due to sandbox expiration
+- [ ] Verify `mfb-data` has billing enabled so the same expiration does not apply after migration
+- [ ] After cutover (Phase 3), decide as a team whether to backfill older data from the GA4 reporting API. This would provide aggregated metrics (sessions, conversions, page views by date) but not raw event-level data, and may not fit the existing dbt models without modification
+
+### Decisions (resolved)
+
+1. **GA4 property ownership** — We have admin access to the GA4 property and can manage BigQuery links.
+2. **Migration strategy** — Build-first, then cutover. GA4 only allows one BigQuery link at a time, so we cannot dual-link. Instead: copy historical data to `mfb-data`, build and validate dashboards against the copy, then switch the GA4 link and do a final catch-up copy to fill the gap. Old dashboards (owned by Brian/Gary team) continue working until the cutover.
+3. **What moves** — All available historical data (~60 days due to sandbox expiration), plus the GA4 export link once dashboards are ready.
+
+### Migration steps
+
+**Step 1: Create the dataset in `mfb-data`**
+
+```bash
+bq mk --dataset --location=US mfb-data:analytics_335669714
+```
+
+**Step 2: Copy historical data from old project to `mfb-data`**
+
+Use the copy script (`scripts/ga4-migration/copy_ga4_tables.sh`), which copies each date-sharded `events_*` table individually and logs completed tables to a manifest file (`scripts/ga4-migration/ga4_copy_manifest.log`).
+
+```bash
+# Preview what will be copied
+./scripts/ga4-migration/copy_ga4_tables.sh --dry-run
+
+# Run the copy
+./scripts/ga4-migration/copy_ga4_tables.sh
+```
+
+The script is resumable — if interrupted, re-run it and it will skip tables already in the manifest. The manifest also serves as a record of what was copied and when to resume from during the catch-up copy (Step 6).
+
+**Step 3: Verify the copy**
+
+- Compare row counts between old and new datasets for a sample of date-sharded tables
+- Validate dbt models run successfully against the copied data in `mfb-data`
+
+**Step 4: Build and validate dashboards**
+
+- Set up WIF, dbt, Metabase (Phases 1-2 below)
+- Build the GA tab with conversion funnel charts
+- Validate everything works against the copied historical data
+
+**Step 5: Cutover the GA4 link**
+
+Once dashboards are validated and ready for production:
+
+1. Note the current date — this marks the start of the gap period
+2. In GA4 Admin > Product Links > BigQuery Links, remove the link to `benefits-mfb`
+3. Add a new link pointing to `mfb-data` with the same export settings (daily/streaming, events)
+4. New events now flow to `mfb-data`
+
+**Step 6: Catch-up copy**
+
+Re-run the same copy script to pick up any new tables created since the initial copy:
+
+```bash
+./scripts/ga4-migration/copy_ga4_tables.sh
+```
+
+The script skips tables already in the manifest, so it will only copy the gap period tables.
+
+**Step 7: Coordinate with Brian (Gary team)**
+
+- Notify Brian that the old export has stopped and old dashboards will no longer receive new data
+- Old data in `benefits-mfb` remains accessible until the project owner deletes it
+
+### Permissions required
+
+In the **old project** (Benefits - MFB), the user running the copy needs:
+- `bigquery.tables.getData` on the source dataset (BigQuery Data Viewer role)
+- `bigquery.jobs.create` in the old project (BigQuery Job User role)
+
+In the **new project** (`mfb-data`):
+- `bigquery.datasets.create` (to create the target dataset, if not auto-created by GA4 link)
+- `bigquery.tables.create` + `bigquery.tables.updateData` (BigQuery Data Editor role)
+- `bigquery.jobs.create` (BigQuery Job User role)
+
+## Implementation Order
+
+### Phase 1: GCP Setup (manual — no code changes)
+
+Steps 1, 2, and 3 can be done in parallel. **Copy data ASAP** — the sandbox is deleting one table per day.
+
+1. **Verify `mfb-data` has billing enabled** — GCP Console > Billing. Required to avoid the same 60-day sandbox expiration.
+2. **Create dataset + copy historical data to `mfb-data`** — migration steps 1-3 above
+3. **Set up Workload Identity Federation** — run the `gcloud` commands in [System 1](#system-1-github-actions-dbt--terraform) above
+4. **Create Metabase service account + key** — see [System 2](#system-2-metabase-on-heroku-runtime-bigquery-access) above
+5. **Add GitHub Environment variables and secrets** — `BIGQUERY_ENABLED`, `GCP_PROJECT_ID`, `GCP_ANALYTICS_TABLE`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `BIGQUERY_SA_KEY`
+
+### Phase 2: Code Changes + Dashboard Build (against copied historical data)
+
+6. **Update `dbt-nightly.yml`** — add OIDC auth step + BigQuery target (conditional on `BIGQUERY_ENABLED`)
+7. **Test dbt BigQuery build** — trigger workflow manually, verify mart table is populated
+8. **Enable `bigquery_enabled = true` in Terraform** — set the GitHub Environment variable, run `terraform apply` to create BigQuery data source in Metabase
+9. **Add GA tab cards to tenant dashboards** — build conversion funnel charts for the "Google Analytics" tab
+
+### Phase 3: Cutover (after new dashboards are validated)
+
+10. **Switch the GA4 BigQuery link** from `benefits-mfb` to `mfb-data` — migration step 5
+11. **Run catch-up copy** for the gap period — migration step 6
+12. **Notify Brian (Gary team)** that old export has stopped — migration step 7
+13. **Team decision: backfill older historical data?** — Discuss whether to pull aggregated metrics from the GA4 reporting API for the period lost to sandbox expiration (see [known issue](#known-issue-historical-data-loss-in-benefits-mfb))
