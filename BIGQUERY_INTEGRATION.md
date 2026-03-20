@@ -63,18 +63,19 @@ BigQuery target already configured:
 ```yaml
 bigquery:
   type: bigquery
-  method: service-account
+  method: oauth
   project: "{{ env_var('GCP_PROJECT_ID') }}"
   dataset: analytics
   threads: 4
   timeout_seconds: 300
   location: US
-  keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
 ```
+
+Uses `method: oauth` so dbt-bigquery calls `google.auth.default()`, which reads the WIF credential file via `GOOGLE_APPLICATION_CREDENTIALS` (set automatically by `google-github-actions/auth@v2`).
 
 ### GitHub Actions (`dbt-nightly.yml`)
 
-Currently only runs `--target postgres`. BigQuery target needs to be added once auth is resolved.
+Runs `--target postgres` and conditionally `--target bigquery` (gated on `BIGQUERY_ENABLED`).
 
 ## Authentication
 
@@ -126,7 +127,12 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
      --project=mfb-data
    ```
 
-4. **Allow the GitHub repo to impersonate the service account:**
+4. **Enable the IAM Service Account Credentials API** (required for WIF token exchange):
+   ```bash
+   gcloud services enable iamcredentials.googleapis.com --project=mfb-data
+   ```
+
+5. **Allow the GitHub repo to impersonate the service account:**
    ```bash
    gcloud iam service-accounts add-iam-policy-binding \
      github-actions-dbt@mfb-data.iam.gserviceaccount.com \
@@ -135,7 +141,7 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
      --project=mfb-data
    ```
 
-5. **Update GitHub Actions workflows** to use `google-github-actions/auth@v2`:
+6. **Update GitHub Actions workflows** to use `google-github-actions/auth@v2`:
    ```yaml
    - uses: google-github-actions/auth@v2
      with:
@@ -145,7 +151,7 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
    # This sets GOOGLE_APPLICATION_CREDENTIALS automatically
    ```
 
-6. **Update `dbt-nightly.yml`** to add BigQuery target:
+7. **Update `dbt-nightly.yml`** to add BigQuery target:
    ```yaml
    - name: Run dbt build (BigQuery)
      if: vars.BIGQUERY_ENABLED == 'true'
@@ -155,12 +161,10 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
        GCP_ANALYTICS_TABLE: ${{ vars.GCP_ANALYTICS_TABLE }}
    ```
 
-7. **Add GitHub Environment variables:**
+8. **Add GitHub Environment variables:**
    - `BIGQUERY_ENABLED` = `true`
    - `GCP_PROJECT_ID` = your GCP project ID
    - `GCP_ANALYTICS_TABLE` = your GA4 BigQuery dataset name (e.g., `analytics_335669714`)
-
-**dbt profile change needed:** The current `profiles.yml.example` uses `method: service-account` with `keyfile`. For Workload Identity, change to `method: oauth` or use Application Default Credentials (ADC) which `google-github-actions/auth@v2` sets up automatically. The dbt-bigquery adapter supports ADC when `method: oauth` is set, but in CI the `auth@v2` action writes a credential file and sets `GOOGLE_APPLICATION_CREDENTIALS`, which `method: service-account` + `keyfile` already reads. So the existing profile may work as-is if `GOOGLE_APPLICATION_CREDENTIALS` is set.
 
 ### System 2: Metabase on Heroku (runtime BigQuery access)
 
@@ -372,8 +376,8 @@ Steps 1, 2, and 3 can be done in parallel. **Copy data ASAP** — the sandbox is
 
 ### Phase 2: Code Changes + Dashboard Build (against copied historical data)
 
-6. **Update `dbt-nightly.yml`** — add OIDC auth step + BigQuery target (conditional on `BIGQUERY_ENABLED`)
-7. **Test dbt BigQuery build** — trigger workflow manually, verify mart table is populated
+6. [x] **Update `dbt-nightly.yml`** — add OIDC auth step + BigQuery target (conditional on `BIGQUERY_ENABLED`). Merged in PR #46.
+7. [x] **Test dbt BigQuery build** — triggered workflow on staging, `mart_screener_conversion_funnel` and `referrer_codes` created in BigQuery.
 8. **Enable `bigquery_enabled = true` in Terraform** — set the GitHub Environment variable, run `terraform apply` to create BigQuery data source in Metabase
 9. **Add GA tab cards to tenant dashboards** — build conversion funnel charts for the "Google Analytics" tab
 
