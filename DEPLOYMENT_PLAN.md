@@ -600,21 +600,25 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 
 ### Rollout Order
 
-| Step                                                       | Phase | Type   | Depends On          |
-| ---------------------------------------------------------- | ----- | ------ | ------------------- |
-| ~~Create wrapper Dockerfile + entrypoint~~  ✅             | 1     | Prereq | —                   |
-| ~~Create heroku.yml~~  ✅                                  | 1     | Prereq | —                   |
-| Provision Heroku Pipeline with staging + production apps   | 1     | Step   | Prereq above        |
-| Configure Heroku env vars for both apps                    | 1     | Step   | Above               |
-| Deploy to staging, then promote to production              | 1     | Step   | Above               |
-| Complete setup wizard for both environments                | 1     | Step   | Above               |
-| Store dbt secrets in GitHub Environments                   | 2     | Prereq | —                   |
-| Create RLS users + default privileges in staging & prod PG | 2     | Prereq | DB access           |
-| Create dbt nightly workflow, first successful run          | 2     | Step   | Prereqs above       |
-| Set up Terraform Cloud workspace                           | 3     | Prereq | —                   |
-| Store Terraform secrets in GitHub Environments             | 3     | Prereq | Phase 1 admin creds |
-| First manual `terraform apply` (staging, then prod)        | 3     | Step   | Phases 1+2 complete |
-| Create Terraform plan/apply workflows                      | 3     | Step   | Manual apply worked |
+| Step                                                       | Phase | Type   | Depends On          | Status |
+| ---------------------------------------------------------- | ----- | ------ | ------------------- | ------ |
+| ~~Create wrapper Dockerfile + entrypoint~~                 | 1     | Prereq | —                   | ✅     |
+| ~~Create heroku.yml~~                                      | 1     | Prereq | —                   | ✅     |
+| ~~Provision Heroku Pipeline with staging + production~~    | 1     | Step   | Prereq above        | ✅     |
+| ~~Configure Heroku env vars for staging~~                  | 1     | Step   | Above               | ✅     |
+| ~~Deploy Metabase to staging~~                             | 1     | Step   | Above               | ✅     |
+| ~~Complete setup wizard (staging)~~                        | 1     | Step   | Above               | ✅     |
+| Deploy Metabase to production                              | 1     | Step   | Above               |        |
+| Complete setup wizard (production)                         | 1     | Step   | Above               |        |
+| ~~Store dbt secrets in GitHub Environments~~               | 2     | Prereq | —                   | ✅     |
+| Create RLS users + default privileges (production)         | 2     | Prereq | DB access           |        |
+| ~~Create dbt nightly workflow, first successful run~~      | 2     | Step   | Prereqs above       | ✅     |
+| ~~Set up Terraform Cloud workspace~~                       | 3     | Prereq | —                   | ✅     |
+| ~~Store Terraform secrets in GitHub Environments~~         | 3     | Prereq | Phase 1 admin creds | ✅     |
+| ~~Terraform apply (staging)~~                              | 3     | Step   | Phases 1+2 complete | ✅     |
+| ~~Create Terraform plan/apply workflows~~                  | 3     | Step   | Manual apply worked | ✅     |
+| Build out dashboard cards and charts                       | 3     | Step   | Above               |        |
+| Terraform apply (production)                               | 3     | Step   | Production deploy   |        |
 
 ---
 
@@ -678,7 +682,7 @@ See `dashboards/GITHUB_SECRETS.md` for detailed next steps.
 
 **Decision:** Switch from GCS to **Terraform Cloud** as the state backend. This avoids the GCP auth issue entirely — Terraform Cloud only needs an API token (stored as a GitHub Secret), provides free state storage, locking, and encryption at rest.
 
-**Next step:** See "Resume Point" section below.
+**Resolution:** Switched to Terraform Cloud. See "Current Status" section below.
 
 ---
 
@@ -716,81 +720,58 @@ Quick-reference for deploying to production, incorporating lessons from staging:
 
 ---
 
-## Resume Point (Start Here Monday)
+## Current Status
 
-### What's Done
+### What's Done — Staging End-to-End Pipeline Complete
 - ✅ **Phase 1 staging**: Metabase running on Heroku at `https://mfb-metabase-staging-0805953c70da.herokuapp.com`
   - Heroku Pipeline created (`mfb-metabase` with staging + production apps)
   - Standard-2X dyno (required — 512MB OOMs)
   - Setup wizard complete, admin account created
   - Production app provisioned but not yet deployed
-- ✅ **Terraform config**: BigQuery made conditional, GCS backend configured (but blocked — see below)
-- ✅ **GitHub Actions workflows**: `terraform-plan.yml` and `terraform-apply.yml` created
-- ✅ **GitHub Environments**: `staging` and `production` created
-- ✅ **Analytics schema**: Created in staging database
+- ✅ **Phase 2 staging**: dbt nightly workflow running successfully
+  - `.github/workflows/dbt-nightly.yml` — cron 6 AM UTC + manual dispatch
+  - Builds Postgres models, creates tables in `analytics` schema
+  - Triggers Metabase schema sync after build (so Terraform can find new tables)
+  - Reuses existing staging secrets (no new GitHub secrets needed)
+- ✅ **Phase 3 staging**: Terraform plan/apply workflows running successfully
+  - Terraform Cloud backend configured (`mfb-dashboards-staging` workspace)
+  - `terraform-plan.yml` runs on PRs, `terraform-apply.yml` auto-applies on merge
+  - Creates: Postgres data sources (global + per-tenant), collections, cards, dashboards
+- ✅ **GitHub Environments**: `staging` and `production` created with secrets configured
+- ✅ **Analytics schema**: Created in staging database, populated by dbt
 
 ### What's Next (In Order)
 
-#### 1. Switch Terraform backend from GCS to Terraform Cloud (~15 min)
+#### 1. Build out dashboard content in Terraform
 
-GCS backend can't authenticate because the same GCP org policy blocks service account keys. Switch to Terraform Cloud:
+The staging pipeline is working end-to-end, but the dashboards only contain a single "Completed Screens" scalar card per tenant. The tenant dashboards have 5 tabs (Google Analytics, All-Time Performance, Last 30 Days Performance, Households, Benefits & Immediate Needs) but only the "All-Time Performance" tab has a card.
 
-1. **Create a Terraform Cloud account** at https://app.terraform.io
-2. **Create an organization** (e.g., `mfb`)
-3. **Create a workspace** named `mfb-dashboards-staging`
-   - Set **Execution Mode** to **"Local"** (GitHub Actions runs plan/apply, TF Cloud only stores state)
-4. **Generate an API token**: User Settings → Tokens → Create an API token
-5. **Update `dashboards/main.tf`** — replace the `backend "gcs"` block:
-   ```hcl
-   terraform {
-     cloud {
-       organization = "mfb"
-       workspaces {
-         tags = ["dashboards"]
-       }
-     }
-   }
-   ```
-6. **Add GitHub Secret** `TF_API_TOKEN` (the API token from step 4) — this goes in the **repository-level** secrets (not environment-level, since both staging and production use the same TF Cloud org)
-7. **Update both workflow files** to pass the token:
-   ```yaml
-   - uses: hashicorp/setup-terraform@v3
-     with:
-       terraform_version: "1.9.x"
-       cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-   ```
-8. Run `terraform init` to initialize the new backend
+Next steps:
+- Design the charts/cards needed for each tab using the `analytics.mart_screener_data` table
+- Add Terraform resources for new cards in `dashboards/metabase.tf`
+- Use the dashboard generation helper scripts (`dashboards/scripts/`) to convert Metabase designs to Terraform HCL if helpful
 
-#### 2. Finish configuring GitHub Secrets for staging (~10 min)
+#### 2. Google Analytics / BigQuery integration
 
-Follow checklist in `dashboards/GITHUB_SECRETS.md`:
-```bash
-# Get staging database credentials
-heroku pg:credentials:url -a cobenefits-api-staging
-```
-Add all variables and secrets to the `staging` GitHub Environment.
+The dbt models for GA4 analytics already exist (`models/bigquery/`) but BigQuery is **blocked by GCP org policy** (`iam.disableServiceAccountKeyCreation`). The "Google Analytics" tab on each tenant dashboard is empty because of this.
 
-#### 3. Push branch and merge PR (~5 min)
+Resolution paths (see `dashboards/GITHUB_SECRETS.md` for details):
+- **For GitHub Actions (dbt + Terraform):** Use Workload Identity Federation (OIDC, no service account key needed)
+- **For Metabase on Heroku:** Requires either an org admin exception for one key, a BigQuery proxy, or moving Metabase to GCP (Cloud Run)
 
-```bash
-git push origin jmejia/mfb-681-data-deploy-to-heroku
-```
-Create PR, merge to `main`. The `terraform-apply` workflow will run automatically against staging.
+#### 3. Deploy to production
 
-#### 4. Verify staging Terraform apply
-
-Check the Actions tab — Terraform should create:
-- Postgres data source (global + per-tenant) in Metabase
-- Collections (Global, North Carolina, Colorado)
-- Cards and dashboards
-
-#### 5. Deploy to production
-
-Follow the "Production Deployment Checklist" section above.
+Follow the "Production Deployment Checklist" section above. Summary:
+- Set Heroku config vars for production Metabase app
+- Upgrade to Standard-2X dyno, promote staging image
+- Complete Metabase setup wizard
+- Add production secrets to `production` GitHub Environment
+- Trigger `dbt-nightly` and `terraform-apply` for production
+- If production DB is Standard-tier+, create RLS users via `heroku pg:credentials:create`
 
 ### Deferred Items
 - **BigQuery integration**: Blocked by GCP org policy. See `dashboards/GITHUB_SECRETS.md` for resolution paths.
-- **dbt nightly workflow** (Phase 2): `.github/workflows/dbt-nightly.yml` not yet created.
 - **Database-level RLS**: Only available on Heroku Postgres Standard-tier+. Staging uses single credential.
+- **Read replica**: Future optimization if analytics queries impact app performance.
 
 ---
