@@ -240,7 +240,7 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 
 ### Terraform Cloud
 - [x] Create workspace `mfb-dashboards-staging` (execution mode: Local)
-- [ ] Create workspace `mfb-dashboards-production` (execution mode: Local)
+- [x] Create workspace `mfb-dashboards-production` (execution mode: Local)
 
 ### BigQuery
 - [x] Set up Workload Identity Federation for GitHub Actions
@@ -259,9 +259,9 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 - [x] Create analytics schema on production DB
 - [x] Create RLS credentials (`wl_nc_5_ro` pre-existing, `wl_co_1_ro` created)
 - [x] Grant permissions and set default privileges
-- [ ] Set Metabase `MB_DB_*` config vars, upgrade dyno, promote staging image
-- [ ] Complete production Metabase setup wizard
-- [ ] Add all Variables and Secrets to production environment
-- [ ] Run `dbt-nightly` for production
-- [ ] Create `mfb-dashboards-production` Terraform Cloud workspace
-- [ ] Run `terraform-apply` for production (first run creates DBs, wait ~45 min for Metabase sync, then re-run)
+- [x] Set Metabase `MB_DB_*` config vars, upgrade dyno, deploy container
+- [x] Complete production Metabase setup wizard
+- [x] Add all Variables and Secrets to production environment
+- [x] Run `dbt-nightly` for production
+- [x] Create `mfb-dashboards-production` Terraform Cloud workspace
+- [x] Run `terraform-apply` for production (first run creates DBs, wait ~45 min for Metabase sync, then re-run)
