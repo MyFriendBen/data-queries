@@ -1,5 +1,19 @@
 # BigQuery / Google Analytics Integration
 
+## Project Reference
+
+| Key | Value |
+|-----|-------|
+| **New GCP Project ID** | `mfb-data` |
+| **New GCP Project Number** | `38721872277` |
+| **Old GCP Project ID** | `benefits-mfb` (owned by Brian, Gary team) |
+| **GA4 Dataset** | `analytics_335669714` |
+| **GitHub Repo** | `MyFriendBen/data-queries` |
+| **WIF Pool** | `github-actions` |
+| **WIF Provider** | `github` |
+| **SA (GitHub Actions/dbt)** | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` |
+| **SA (Metabase)** | `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
+
 ## Overview
 
 The MyFriendBen analytics pipeline needs Google Analytics (GA4) data from BigQuery to populate the "Google Analytics" tab on each tenant dashboard. The dbt models and Terraform resources already exist but are disabled due to a GCP authentication blocker.
@@ -78,18 +92,18 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
    ```bash
    gcloud iam service-accounts create github-actions-dbt \
      --display-name="GitHub Actions dbt" \
-     --project=YOUR_PROJECT_ID
+     --project=mfb-data
    ```
 
 2. **Grant BigQuery roles to the service account:**
    ```bash
    # For dbt (read raw data + write to analytics dataset)
-   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-     --member="serviceAccount:github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+   gcloud projects add-iam-policy-binding mfb-data \
+     --member="serviceAccount:github-actions-dbt@mfb-data.iam.gserviceaccount.com" \
      --role="roles/bigquery.dataEditor"
 
-   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-     --member="serviceAccount:github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+   gcloud projects add-iam-policy-binding mfb-data \
+     --member="serviceAccount:github-actions-dbt@mfb-data.iam.gserviceaccount.com" \
      --role="roles/bigquery.jobUser"
    ```
 
@@ -99,33 +113,34 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
    gcloud iam workload-identity-pools create "github-actions" \
      --location="global" \
      --display-name="GitHub Actions" \
-     --project=YOUR_PROJECT_ID
+     --project=mfb-data
 
-   # Create OIDC provider for GitHub
+   # Create OIDC provider for GitHub (--attribute-condition is required by GCP)
    gcloud iam workload-identity-pools providers create-oidc "github" \
      --location="global" \
      --workload-identity-pool="github-actions" \
      --display-name="GitHub" \
      --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+     --attribute-condition="assertion.repository == 'MyFriendBen/data-queries'" \
      --issuer-uri="https://token.actions.githubusercontent.com" \
-     --project=YOUR_PROJECT_ID
+     --project=mfb-data
    ```
 
 4. **Allow the GitHub repo to impersonate the service account:**
    ```bash
    gcloud iam service-accounts add-iam-policy-binding \
-     github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com \
+     github-actions-dbt@mfb-data.iam.gserviceaccount.com \
      --role="roles/iam.workloadIdentityUser" \
-     --member="principalSet://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/attribute.repository/MyFriendBen/data-queries" \
-     --project=YOUR_PROJECT_ID
+     --member="principalSet://iam.googleapis.com/projects/38721872277/locations/global/workloadIdentityPools/github-actions/attribute.repository/MyFriendBen/data-queries" \
+     --project=mfb-data
    ```
 
 5. **Update GitHub Actions workflows** to use `google-github-actions/auth@v2`:
    ```yaml
    - uses: google-github-actions/auth@v2
      with:
-       workload_identity_provider: "projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/providers/github"
-       service_account: "github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+       workload_identity_provider: "projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github"
+       service_account: "github-actions-dbt@mfb-data.iam.gserviceaccount.com"
 
    # This sets GOOGLE_APPLICATION_CREDENTIALS automatically
    ```
@@ -151,18 +166,19 @@ GitHub Actions supports OIDC tokens natively. GCP's Workload Identity Federation
 
 **Auth method:** Service account key
 
-Metabase's BigQuery driver expects a service account JSON key. The new GCP project (`mfb-data`) does not have the `iam.disableServiceAccountKeyCreation` org policy, so keys can be created directly — no org admin exception needed.
+Metabase's BigQuery driver expects a service account JSON key. The `mfb-data` project inherits the `iam.disableServiceAccountKeyCreation` org policy from the `myfriendben.org` organization. To create a key, a project-level exception must be set (requires `roles/orgpolicy.policyAdmin` at the org level). After key creation, the exception should be re-enabled.
 
 **Steps:**
 
-1. Create the service account and key:
+1. Create the service account:
    ```bash
-   # Create a dedicated service account for Metabase
    gcloud iam service-accounts create metabase-bigquery \
      --display-name="Metabase BigQuery Reader" \
      --project=mfb-data
+   ```
 
-   # Grant read-only BigQuery access
+2. Grant read-only BigQuery access:
+   ```bash
    gcloud projects add-iam-policy-binding mfb-data \
      --member="serviceAccount:metabase-bigquery@mfb-data.iam.gserviceaccount.com" \
      --role="roles/bigquery.dataViewer"
@@ -170,40 +186,79 @@ Metabase's BigQuery driver expects a service account JSON key. The new GCP proje
    gcloud projects add-iam-policy-binding mfb-data \
      --member="serviceAccount:metabase-bigquery@mfb-data.iam.gserviceaccount.com" \
      --role="roles/bigquery.jobUser"
+   ```
 
-   # Create the key
+3. Temporarily disable the org policy to allow key creation (requires `roles/orgpolicy.policyAdmin` on org `1001672396356`):
+   ```bash
+   # Create a policy override file
+   cat > /tmp/org-policy-override.yaml <<'EOF'
+   name: projects/mfb-data/policies/iam.disableServiceAccountKeyCreation
+   spec:
+     rules:
+     - enforce: false
+   EOF
+
+   # Apply the override
+   gcloud org-policies set-policy /tmp/org-policy-override.yaml --project=mfb-data
+
+   # Wait ~60 seconds for propagation, then create the key
    gcloud iam service-accounts keys create metabase-bigquery-key.json \
      --iam-account=metabase-bigquery@mfb-data.iam.gserviceaccount.com
    ```
-2. Store the key content as `BIGQUERY_SA_KEY` GitHub Environment secret (Terraform passes it to Metabase via API)
 
-**Key rotation:** Service account keys should be rotated periodically. Create a new key, update the GitHub secret, run `terraform apply`, then delete the old key. No Metabase downtime required — the new key takes effect on the next Metabase restart or database sync.
+4. Re-enable the org policy after key creation:
+   ```bash
+   gcloud org-policies delete iam.disableServiceAccountKeyCreation --project=mfb-data
+   ```
+   This removes the project-level override so the org-level enforcement is inherited again.
+
+5. Store the key content as `BIGQUERY_SA_KEY` GitHub Environment secret (Terraform passes it to Metabase via API)
+
+**Key rotation:** Service account keys should be rotated periodically. Repeat steps 3-5: temporarily disable the org policy, create a new key, update the GitHub secret, run `terraform apply`, delete the old key, re-enable the org policy.
 
 ## Environment Variables Summary
 
-When BigQuery is enabled, these are needed:
+When BigQuery is enabled, these are needed. All variables and secrets are set **per GitHub environment** (`staging` and `production`). Values are the same for both environments.
 
 ### GitHub Environment Variables (non-sensitive)
-| Variable | Value | Where |
-|----------|-------|-------|
-| `BIGQUERY_ENABLED` | `true` | GitHub Environment variable |
-| `GCP_PROJECT_ID` | Your GCP project ID | GitHub Environment variable |
-| `GCP_ANALYTICS_TABLE` | GA4 BigQuery dataset (e.g., `analytics_335669714`) | GitHub Environment variable |
-| `WIF_PROVIDER` | `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-actions/providers/github` | GitHub Environment variable |
-| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@YOUR_PROJECT_ID.iam.gserviceaccount.com` | GitHub Environment variable |
+| Variable | Value | Staging | Production |
+|----------|-------|---------|------------|
+| `BIGQUERY_ENABLED` | `true` | Set | Not set |
+| `GCP_PROJECT_ID` | `mfb-data` | Set | Not set |
+| `GCP_ANALYTICS_TABLE` | `analytics_335669714` | Set | Not set |
+| `WIF_PROVIDER` | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` | Set | Not set |
+| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` | Set | Not set |
 
 ### GitHub Environment Secrets
-| Secret | Value | Used By |
-|--------|-------|---------|
-| `BIGQUERY_SA_KEY` | Full JSON content of Metabase service account key | Terraform (passes to Metabase via API) |
+| Secret | Value | Staging | Production |
+|--------|-------|---------|------------|
+| `BIGQUERY_SA_KEY` | Full JSON content of `metabase-bigquery-key.json` | Set | Not set |
 
 ### Workload Identity Federation (GitHub Actions — no secrets needed)
 
 The `google-github-actions/auth@v2` action exchanges a GitHub OIDC token for short-lived GCP credentials. It reads `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` from GitHub Environment variables and automatically sets `GOOGLE_APPLICATION_CREDENTIALS` for subsequent steps (dbt, Terraform).
 
+### Setup commands for production
+
+Once staging is validated, run these to set up production (same values):
+
+```bash
+# Variables
+gh variable set BIGQUERY_ENABLED --env production --repo MyFriendBen/data-queries --body "true"
+gh variable set GCP_PROJECT_ID --env production --repo MyFriendBen/data-queries --body "mfb-data"
+gh variable set GCP_ANALYTICS_TABLE --env production --repo MyFriendBen/data-queries --body "analytics_335669714"
+gh variable set WIF_PROVIDER --env production --repo MyFriendBen/data-queries --body "projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github"
+gh variable set WIF_SERVICE_ACCOUNT --env production --repo MyFriendBen/data-queries --body "github-actions-dbt@mfb-data.iam.gserviceaccount.com"
+
+# Secret (same key file used for both environments)
+gh secret set BIGQUERY_SA_KEY --env production --repo MyFriendBen/data-queries < metabase-bigquery-key.json
+```
+
+**Note:** Production also needs the non-BigQuery variables (`DATABASE_NAME`, `METABASE_URL`, `METABASE_ADMIN_EMAIL`) and secrets (`DATABASE_HOST`, `GLOBAL_DB_USER`, `GLOBAL_DB_PASS`, `METABASE_ADMIN_PASSWORD`, tenant DB credentials) that staging already has. These should be set with production-specific values before running the production workflow.
+
 ## Prerequisite: Migrate GA4 Data to New GCP Project
 
-**Status:** Not started — must be completed before any other steps
+**Status:** Complete — 60 tables copied (2026-01-18 to 2026-03-18)
 
 The GA4 BigQuery export currently lives in a previous organization's GCP project. We have read access to the data, but need to move it into our own GCP project before we can set up Workload Identity, dbt, or Metabase integration.
 
@@ -226,7 +281,7 @@ The `benefits-mfb` project is on the **BigQuery free sandbox**, which enforces a
 
 **Action items:**
 - [ ] Flag to Brian (Gary team) that `benefits-mfb` is losing data due to sandbox expiration
-- [ ] Verify `mfb-data` has billing enabled so the same expiration does not apply after migration
+- [x] Verify `mfb-data` has billing enabled so the same expiration does not apply after migration
 - [ ] After cutover (Phase 3), decide as a team whether to backfill older data from the GA4 reporting API. This would provide aggregated metrics (sessions, conversions, page views by date) but not raw event-level data, and may not fit the existing dbt models without modification
 
 ### Decisions (resolved)
@@ -309,11 +364,11 @@ In the **new project** (`mfb-data`):
 
 Steps 1, 2, and 3 can be done in parallel. **Copy data ASAP** — the sandbox is deleting one table per day.
 
-1. **Verify `mfb-data` has billing enabled** — GCP Console > Billing. Required to avoid the same 60-day sandbox expiration.
-2. **Create dataset + copy historical data to `mfb-data`** — migration steps 1-3 above
-3. **Set up Workload Identity Federation** — run the `gcloud` commands in [System 1](#system-1-github-actions-dbt--terraform) above
-4. **Create Metabase service account + key** — see [System 2](#system-2-metabase-on-heroku-runtime-bigquery-access) above
-5. **Add GitHub Environment variables and secrets** — `BIGQUERY_ENABLED`, `GCP_PROJECT_ID`, `GCP_ANALYTICS_TABLE`, `WIF_PROVIDER`, `WIF_SERVICE_ACCOUNT`, `BIGQUERY_SA_KEY`
+1. [x] **Verify `mfb-data` has billing enabled** — GCP Console > Billing. Required to avoid the same 60-day sandbox expiration.
+2. [x] **Create dataset + copy historical data to `mfb-data`** — 60 tables copied (2026-01-18 to 2026-03-18). See `scripts/ga4-migration/ga4_copy_manifest.log`.
+3. [x] **Set up Workload Identity Federation** — Pool `github-actions`, provider `github` with attribute condition restricting to `MyFriendBen/data-queries`. SA `github-actions-dbt` bound with `workloadIdentityUser`.
+4. [x] **Create Metabase service account + key** — SA `metabase-bigquery` (pre-existing with correct roles). Key created after temporarily overriding org policy. **Remember to re-enable the org policy** (step 2 below).
+5. [ ] **Add GitHub Environment variables and secrets** — Set per environment (`staging` first, then `production`). See [Environment Variables Summary](#environment-variables-summary).
 
 ### Phase 2: Code Changes + Dashboard Build (against copied historical data)
 
