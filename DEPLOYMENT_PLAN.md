@@ -246,39 +246,63 @@ Use GitHub Environments (`staging`, `production`) with environment-specific secr
 
 ### Prerequisite: Set Up RLS Database Users (one-time manual step)
 
-Run against both staging and production databases:
+#### Local Development (superuser available)
+
+For local Postgres where you have superuser access, use GUC-based RLS:
 
 ```sql
--- Admin user for dbt and global Metabase access
-CREATE USER analytics_admin WITH PASSWORD '<strong-password>' BYPASSRLS;
-GRANT USAGE ON SCHEMA analytics TO analytics_admin;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analytics_admin;
-
--- dbt user (needs write access to analytics schema)
-CREATE USER dbt_runner WITH PASSWORD '<strong-password>';
-GRANT USAGE, CREATE ON SCHEMA analytics TO dbt_runner;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO dbt_runner;  -- read source data
-
--- Tenant users (RLS-filtered read-only access)
-CREATE USER nc WITH PASSWORD '<strong-password>';
+CREATE USER nc WITH PASSWORD '<password>';
 ALTER USER nc SET rls.white_label_id = '5';
 GRANT USAGE ON SCHEMA analytics TO nc;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO nc;
 
-CREATE USER co WITH PASSWORD '<strong-password>';
+CREATE USER co WITH PASSWORD '<password>';
 ALTER USER co SET rls.white_label_id = '1';
 GRANT USAGE ON SCHEMA analytics TO co;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO co;
 ```
+
+#### Heroku Production (no superuser)
+
+On Heroku, `ALTER USER ... SET` for custom GUC parameters requires superuser, which Heroku doesn't grant. Instead, use **view-based RLS** with Heroku credentials:
+
+1. **Credential naming convention:** `wl_<state>_<white_label_id>_ro` — the `data_tenant` view extracts the white_label_id from the username via `regexp_replace(current_user, '[^0-9]', '', 'g')::int`.
+
+2. **Create credentials:**
+   ```bash
+   heroku pg:credentials:create -a cobenefits-api --name wl_co_1_ro
+   heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro
+   ```
+
+3. **Grant permissions** (via `heroku pg:psql`):
+   ```sql
+   GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
+   GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
+   GRANT USAGE ON SCHEMA public TO wl_co_1_ro;
+   GRANT SELECT ON public.data_tenant TO wl_co_1_ro;
+   ```
+
+4. **The `data_tenant` view** (already exists on production) handles row filtering:
+   ```sql
+   CREATE VIEW public.data_tenant
+   WITH (security_barrier = TRUE)
+   AS
+   SELECT * FROM public.data
+   WHERE white_label_id = regexp_replace(current_user, '[^0-9]', '', 'g')::int;
+   ```
+
+#### Staging (Essential-tier)
+
+Essential-tier Heroku Postgres doesn't support custom credentials. Use the single default credential for all connections.
 
 ### Prerequisite: Configure Default Privileges for New Tables
 
 When dbt creates new tables, tenant users won't automatically have `SELECT` access. Run this once per database to auto-grant on future tables:
 
 ```sql
--- Auto-grant SELECT to tenant users on any new tables created by dbt_runner in analytics
-ALTER DEFAULT PRIVILEGES FOR USER dbt_runner IN SCHEMA analytics
-  GRANT SELECT ON TABLES TO nc, co, analytics_admin;
+-- Auto-grant SELECT on future analytics tables (Heroku production example)
+ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
+  GRANT SELECT ON TABLES TO wl_nc_5_ro, wl_co_1_ro, read_only;
 ```
 
 Without this, every new dbt model requires manually re-granting `SELECT` to each tenant user.
@@ -611,7 +635,7 @@ For a small team, keeping these as separate stores (Heroku config vars, GitHub s
 | Deploy Metabase to production                              | 1     | Step   | Above               |        |
 | Complete setup wizard (production)                         | 1     | Step   | Above               |        |
 | ~~Store dbt secrets in GitHub Environments~~               | 2     | Prereq | —                   | ✅     |
-| Create RLS users + default privileges (production)         | 2     | Prereq | DB access           |        |
+| ~~Create RLS users + default privileges (production)~~     | 2     | Prereq | DB access           | ✅     |
 | ~~Create dbt nightly workflow, first successful run~~      | 2     | Step   | Prereqs above       | ✅     |
 | ~~Set up Terraform Cloud workspace~~                       | 3     | Prereq | —                   | ✅     |
 | ~~Store Terraform secrets in GitHub Environments~~         | 3     | Prereq | Phase 1 admin creds | ✅     |
@@ -684,17 +708,69 @@ See `BIGQUERY_INTEGRATION.md` for full details.
 
 ---
 
+## Production Deployment Log
+
+Issues encountered during production deployment and their resolutions.
+
+### Heroku RLS — ALTER USER SET Requires Superuser
+
+**Issue:** `ALTER USER wl_nc_5_ro SET rls.white_label_id = '5'` fails with "permission denied" on Heroku. Custom GUC parameters require superuser, which Heroku doesn't grant.
+
+**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username: `regexp_replace(current_user, '[^0-9]', '', 'g')::int`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
+
+### Pipeline Promotion Blocked for Container Registry Apps
+
+**Issue:** `heroku pipelines:promote -a mfb-metabase-staging` fails with "Pipeline promotions are not supported on apps pushed via Heroku Container Registry."
+
+**Fix:** Build and push directly to each app's container registry:
+```bash
+docker build --platform linux/amd64 --provenance=false -f Dockerfile.heroku -t registry.heroku.com/mfb-metabase-production/web .
+docker push registry.heroku.com/mfb-metabase-production/web
+heroku container:release web -a mfb-metabase-production
+```
+
+### Docker Build Flags Required on Apple Silicon
+
+**Issue:** Two separate failures:
+1. `docker push` fails with "unsupported" — provenance/attestation manifests incompatible with Heroku registry
+2. `docker push` fails with "unsupported architecture arm64" — Heroku requires amd64
+
+**Fix:** Always use both flags: `docker build --platform linux/amd64 --provenance=false`
+
+### Cannot Set Dyno Type Before Deploying Code
+
+**Issue:** `heroku ps:type standard-2x` fails with "No process types on mfb-metabase-production" before any code is deployed.
+
+**Fix:** Deploy the container first (`container:release`), then scale the dyno type.
+
+### Terraform Apply Needed 3 Runs (Not 2)
+
+**Issue:** Documentation said "first run fails on BigQuery table lookup, second succeeds." In practice, the first run created all database connections successfully, but Metabase took ~45 minutes to fully sync all tenant database schemas. Some tenants (co, co_tax_calculator) synced within minutes; others (nc, il, ma, tx, cesn) took much longer.
+
+**Fix:** Wait at least 45 minutes after the first terraform apply before retrying. The third run (after ~45 min total) succeeded with all 17 resources created.
+
+---
+
 ## Production Deployment Checklist
 
 Quick-reference for deploying to production, incorporating lessons from staging:
 
+### Database Setup (production Django DB: `cobenefits-api`)
+- [ ] Create analytics schema: `CREATE SCHEMA IF NOT EXISTS analytics;`
+- [ ] Grant default credential access to analytics schema (USAGE, CREATE)
+- [ ] Grant default credential SELECT on public schema tables
+- [ ] Create CO credential: `heroku pg:credentials:create -a cobenefits-api --name wl_co_1_ro`
+- [ ] Grant analytics + public schema access to `wl_nc_5_ro` and `wl_co_1_ro`
+- [ ] Grant `data_tenant` view access to both tenant credentials
+- [ ] Set default privileges for future analytics tables
+
+**Important:** Do NOT use `ALTER USER ... SET rls.white_label_id` — this requires superuser. RLS is handled by the `data_tenant` view which extracts the ID from the credential username.
+
 ### Phase 1: Metabase on Heroku
-- [ ] Production app already provisioned in pipeline (`mfb-metabase-production`)
-- [ ] Set Heroku config vars (use `heroku pg:credentials:url` for the **production** Metabase Postgres addon):
+- [ ] Set Heroku config vars — Metabase does NOT parse `DATABASE_URL`, need individual `MB_DB_*` vars:
   ```bash
-  heroku config:set MB_DB_TYPE=postgres MB_DB_HOST=<host> MB_DB_PORT=5432 MB_DB_DBNAME=<dbname> MB_DB_USER=<user> MB_DB_PASS=<pass> MB_DB_SSL=true -a mfb-metabase-production
-  heroku config:set MB_SITE_URL="https://mfb-metabase-production-baf31df893fc.herokuapp.com" -a mfb-metabase-production
-  heroku config:set MB_ENCRYPTION_SECRET_KEY="<generate-new-key-with-openssl-rand-base64-32>" -a mfb-metabase-production
+  heroku config:set MB_DB_HOST=<host> MB_DB_PORT=5432 MB_DB_DBNAME=<dbname> \
+    MB_DB_USER=<user> MB_DB_PASS=<pass> MB_DB_SSL=true -a mfb-metabase-production
   ```
 - [ ] Upgrade to Standard-2X dyno (required, 512MB will OOM):
   ```bash
@@ -707,14 +783,15 @@ Quick-reference for deploying to production, incorporating lessons from staging:
 - [ ] Complete Metabase setup wizard at production URL
 - [ ] Verify `/api/health` returns `{"status":"ok"}`
 
-### Phase 2: dbt (GitHub Actions)
-- [ ] Add production secrets to `production` GitHub Environment
-- [ ] Trigger `dbt-nightly` workflow for production (or wait for cron)
+### Phase 2: GitHub Environment Secrets + dbt
+- [ ] Set all production variables (METABASE_URL, DATABASE_NAME, BIGQUERY_ENABLED=true, GCP vars, WIF vars)
+- [ ] Set all production secrets (DATABASE_HOST, GLOBAL/NC/CO DB credentials, METABASE_ADMIN_PASSWORD, BIGQUERY_SA_KEY)
+- [ ] Trigger `dbt-nightly` workflow for production
 
 ### Phase 3: Terraform
-- [ ] Add production secrets/variables to `production` GitHub Environment
-- [ ] If production DB is Standard-tier+, create RLS users via `heroku pg:credentials:create`
+- [ ] Create `mfb-dashboards-production` workspace in Terraform Cloud (CLI-driven, local execution)
 - [ ] Trigger `terraform-apply` workflow with `production` environment
+- [ ] Note: First run creates DB connections but fails on table lookups. Wait ~45 min for Metabase to sync all tenant schemas, then run again. May need 3+ attempts.
 
 ---
 
