@@ -72,7 +72,7 @@ SELECT
     benefit as "Benefit Name",
     SUM(count) as "# of Screeners",
     SUM(count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
-FROM analytics.mart_current_benefits
+FROM analytics.mart_previous_benefits
 CROSS JOIN totals t
 GROUP BY benefit
 HAVING SUM(count) > 0
