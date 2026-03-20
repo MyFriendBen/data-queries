@@ -664,17 +664,15 @@ Issues encountered during staging deployment and their resolutions, captured to 
 
 **Production note:** If production uses Standard-tier or higher, create separate RLS users via `heroku pg:credentials:create`.
 
-### GCP Service Account Key Creation Blocked
+### GCP Service Account Key Creation Blocked — ✅ Resolved
 
 **Issue:** GCP organization policy `iam.disableServiceAccountKeyCreation` prevents creating service account JSON keys needed for BigQuery access.
 
-**Workaround:** Made BigQuery conditional in Terraform (`bigquery_enabled` variable, defaults to `false`). Postgres dashboards work without it.
+**Resolution:**
+- **GitHub Actions (dbt + Terraform):** Uses Workload Identity Federation (OIDC, no key needed). Set up in PR #46.
+- **Metabase on Heroku:** Temporarily overrode the org policy at the project level to create a SA key for `metabase-bigquery@mfb-data.iam.gserviceaccount.com`, then re-enabled the policy. Key stored as `BIGQUERY_SA_KEY` GitHub secret.
 
-**To resolve later:**
-- For GitHub Actions: Use Workload Identity Federation (OIDC, no key needed)
-- For Metabase on Heroku: Requires either an org policy exception for one service account key, a BigQuery proxy, or moving Metabase to GCP (Cloud Run)
-
-See `dashboards/GITHUB_SECRETS.md` for detailed next steps.
+See `BIGQUERY_INTEGRATION.md` for full details.
 
 ### Terraform State Backend — GCS Requires Auth Too
 
@@ -751,13 +749,14 @@ Next steps:
 - Add Terraform resources for new cards in `dashboards/metabase.tf`
 - Use the dashboard generation helper scripts (`dashboards/scripts/`) to convert Metabase designs to Terraform HCL if helpful
 
-#### 2. Google Analytics / BigQuery integration
+#### 2. Google Analytics / BigQuery integration — ✅ Staging complete
 
-The dbt models for GA4 analytics already exist (`models/bigquery/`) but BigQuery is **blocked by GCP org policy** (`iam.disableServiceAccountKeyCreation`). The "Google Analytics" tab on each tenant dashboard is empty because of this.
+BigQuery integration is working end-to-end on staging:
+- **GCP setup**: Workload Identity Federation for GitHub Actions, SA key for Metabase (org policy exception applied and re-enabled)
+- **dbt**: `dbt-nightly.yml` builds BigQuery models (`mart_screener_conversion_funnel`, `referrer_codes`)
+- **Terraform**: BigQuery data source, conversion funnel card, and dashboard widget created in staging Metabase
 
-Resolution paths (see `dashboards/GITHUB_SECRETS.md` for details):
-- **For GitHub Actions (dbt + Terraform):** Use Workload Identity Federation (OIDC, no service account key needed)
-- **For Metabase on Heroku:** Requires either an org admin exception for one key, a BigQuery proxy, or moving Metabase to GCP (Cloud Run)
+Remaining: enable on production (set GitHub env vars/secrets, run workflows). See `BIGQUERY_INTEGRATION.md` for details.
 
 #### 3. Deploy to production
 
@@ -770,7 +769,6 @@ Follow the "Production Deployment Checklist" section above. Summary:
 - If production DB is Standard-tier+, create RLS users via `heroku pg:credentials:create`
 
 ### Deferred Items
-- **BigQuery integration**: Blocked by GCP org policy. See `dashboards/GITHUB_SECRETS.md` for resolution paths.
 - **Database-level RLS**: Only available on Heroku Postgres Standard-tier+. Staging uses single credential.
 - **Read replica**: Future optimization if analytics queries impact app performance.
 
