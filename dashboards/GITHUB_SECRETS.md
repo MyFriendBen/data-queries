@@ -104,8 +104,9 @@ Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets b
 
 BigQuery integration is **enabled** on both staging and production. The GCP org policy (`iam.disableServiceAccountKeyCreation`) was resolved with two approaches:
 
-- **GitHub Actions (dbt + Terraform):** Uses Workload Identity Federation (OIDC, no key needed). Configured via `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` variables.
-- **Metabase on Heroku:** Uses a service account key (`metabase-bigquery@mfb-data.iam.gserviceaccount.com`). The org policy was temporarily overridden at the project level to create the key, then re-enabled. Key stored as `BIGQUERY_SA_KEY` GitHub secret.
+- **dbt (GitHub Actions):** Uses Workload Identity Federation (OIDC, no key needed). Configured via `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` variables.
+- **Terraform (GitHub Actions):** Uses the service account key via `BIGQUERY_SA_KEY` secret (passed as `TF_VAR_bigquery_service_account_key_content`). WIF is not used here because the Metabase Terraform provider needs the raw key to configure Metabase's BigQuery data source.
+- **Metabase on Heroku:** Uses the same service account key (`metabase-bigquery@mfb-data.iam.gserviceaccount.com`) at runtime. The org policy was temporarily overridden at the project level to create the key, then re-enabled. Key stored as `BIGQUERY_SA_KEY` GitHub secret.
 
 See `BIGQUERY_INTEGRATION.md` for full details.
 

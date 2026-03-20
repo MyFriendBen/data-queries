@@ -111,7 +111,7 @@ These are **Metabase configuration** changes, not container changes. Terraform t
 
 Production applies are restricted to the `main` branch.
 
-**Note:** The Terraform workflow ignores changes to `Dockerfile.heroku`, `heroku-entrypoint.sh`, `docker-compose.yml`, and `README.md` — those don't affect Metabase configuration.
+**Note:** The Terraform workflow ignores changes to `dashboards/Dockerfile.heroku`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, and `dashboards/README.md` — those don't affect Metabase configuration.
 
 ### 3. Metabase Container Updates (version upgrades)
 
