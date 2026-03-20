@@ -708,6 +708,49 @@ See `BIGQUERY_INTEGRATION.md` for full details.
 
 ---
 
+## Production Deployment Log
+
+Issues encountered during production deployment and their resolutions.
+
+### Heroku RLS — ALTER USER SET Requires Superuser
+
+**Issue:** `ALTER USER wl_nc_5_ro SET rls.white_label_id = '5'` fails with "permission denied" on Heroku. Custom GUC parameters require superuser, which Heroku doesn't grant.
+
+**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username: `regexp_replace(current_user, '[^0-9]', '', 'g')::int`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
+
+### Pipeline Promotion Blocked for Container Registry Apps
+
+**Issue:** `heroku pipelines:promote -a mfb-metabase-staging` fails with "Pipeline promotions are not supported on apps pushed via Heroku Container Registry."
+
+**Fix:** Build and push directly to each app's container registry:
+```bash
+docker build --platform linux/amd64 --provenance=false -f Dockerfile.heroku -t registry.heroku.com/mfb-metabase-production/web .
+docker push registry.heroku.com/mfb-metabase-production/web
+heroku container:release web -a mfb-metabase-production
+```
+
+### Docker Build Flags Required on Apple Silicon
+
+**Issue:** Two separate failures:
+1. `docker push` fails with "unsupported" — provenance/attestation manifests incompatible with Heroku registry
+2. `docker push` fails with "unsupported architecture arm64" — Heroku requires amd64
+
+**Fix:** Always use both flags: `docker build --platform linux/amd64 --provenance=false`
+
+### Cannot Set Dyno Type Before Deploying Code
+
+**Issue:** `heroku ps:type standard-2x` fails with "No process types on mfb-metabase-production" before any code is deployed.
+
+**Fix:** Deploy the container first (`container:release`), then scale the dyno type.
+
+### Terraform Apply Needed 3 Runs (Not 2)
+
+**Issue:** Documentation said "first run fails on BigQuery table lookup, second succeeds." In practice, the first run created all database connections successfully, but Metabase took ~45 minutes to fully sync all tenant database schemas. Some tenants (co, co_tax_calculator) synced within minutes; others (nc, il, ma, tx, cesn) took much longer.
+
+**Fix:** Wait at least 45 minutes after the first terraform apply before retrying. The third run (after ~45 min total) succeeded with all 17 resources created.
+
+---
+
 ## Production Deployment Checklist
 
 Quick-reference for deploying to production, incorporating lessons from staging:
@@ -748,7 +791,7 @@ Quick-reference for deploying to production, incorporating lessons from staging:
 ### Phase 3: Terraform
 - [ ] Create `mfb-dashboards-production` workspace in Terraform Cloud (CLI-driven, local execution)
 - [ ] Trigger `terraform-apply` workflow with `production` environment
-- [ ] Note: First run may fail on BigQuery table lookup (Metabase needs time to sync). Run again.
+- [ ] Note: First run creates DB connections but fails on table lookups. Wait ~45 min for Metabase to sync all tenant schemas, then run again. May need 3+ attempts.
 
 ---
 

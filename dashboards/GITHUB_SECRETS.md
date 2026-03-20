@@ -264,4 +264,4 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 - [ ] Add all Variables and Secrets to production environment
 - [ ] Run `dbt-nightly` for production
 - [ ] Create `mfb-dashboards-production` Terraform Cloud workspace
-- [ ] Run `terraform-apply` for production
+- [ ] Run `terraform-apply` for production (first run creates DBs, wait ~45 min for Metabase sync, then re-run)
