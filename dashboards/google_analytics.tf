@@ -1,11 +1,153 @@
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Google Analytics tab cards — per-tenant, filtered by state_code
-# All 9 cards use native BigQuery SQL so metrics are computed accurately
+# All 11 cards use native BigQuery SQL so metrics are computed accurately
 # across the full date range rather than averaging pre-aggregated daily rates.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# KPI: Total Visitors — COUNT of distinct sessions
+# Dashboard card layout for the Google Analytics tab (tab ID 1).
+# Referenced by metabase_dashboard.tenant_analytics in metabase.tf via
+# local.ga_dashboard_cards[each.key]. Kept here so all GA concerns
+# (cards + layout) live in one file.
+locals {
+  ga_dashboard_cards = var.bigquery_enabled ? {
+    for key in keys(var.tenants) : key => [
+      # Row 0: 4 KPI scalar cards side-by-side (each 6 wide × 3 tall)
+      {
+        card_id                = tonumber(metabase_card.ga_total_visitors[key].id)
+        dashboard_tab_id       = 1
+        row                    = 0
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_started_screener_pct[key].id)
+        dashboard_tab_id       = 1
+        row                    = 0
+        col                    = 6
+        size_x                 = 6
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_completed_to_click_rate[key].id)
+        dashboard_tab_id       = 1
+        row                    = 0
+        col                    = 12
+        size_x                 = 6
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_median_completion_time[key].id)
+        dashboard_tab_id       = 1
+        row                    = 0
+        col                    = 18
+        size_x                 = 6
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+
+      # Row 3: Conversion funnel bar chart (left, 12 wide × 6 tall) + detail table (right)
+      {
+        card_id                = tonumber(metabase_card.ga_conversion_funnel[key].id)
+        dashboard_tab_id       = 1
+        row                    = 3
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_conversion_funnel_table[key].id)
+        dashboard_tab_id       = 1
+        row                    = 3
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+
+      # Row 9: Traffic Mediums — bar chart (left) + detail table (right)
+      {
+        card_id                = tonumber(metabase_card.ga_traffic_mediums_bar[key].id)
+        dashboard_tab_id       = 1
+        row                    = 9
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_traffic_mediums_table[key].id)
+        dashboard_tab_id       = 1
+        row                    = 9
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+
+      # Row 15: Clicked Links — bar chart (left) + detail table (right)
+      {
+        card_id                = tonumber(metabase_card.ga_clicked_links_bar[key].id)
+        dashboard_tab_id       = 1
+        row                    = 15
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.ga_clicked_links_table[key].id)
+        dashboard_tab_id       = 1
+        row                    = 15
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+
+      # Row 21: Last 7 Days Visitors — daily session bar chart (full width)
+      {
+        card_id                = tonumber(metabase_card.ga_users_in_week[key].id)
+        dashboard_tab_id       = 1
+        row                    = 21
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ]
+  } : {}
+}
+
+
+# KPI: Total Visitors — SUM of daily session counts from mart_ga_kpi_summary
 resource "metabase_card" "ga_total_visitors" {
   for_each = var.bigquery_enabled ? var.tenants : {}
 
@@ -112,9 +254,39 @@ resource "metabase_card" "ga_median_completion_time" {
   })
 }
 
-# Conversion Funnel — A→B→C→D step counts as a bar chart
-# NOTE: display = "bar" is used here. The team can change to "funnel" in the Metabase UI
-# since the data is pre-shaped as step rows; a funnel display may render better visually.
+# Last 7 days Visitors — daily session counts per day as a bar chart
+resource "metabase_card" "ga_users_in_week" {
+  for_each = var.bigquery_enabled ? var.tenants : {}
+
+  json = jsonencode({
+    name                = "Last 7 Days Visitors"
+    description         = "Daily session counts for the last 7 days"
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = "SELECT event_date_parsed, SUM(total_sessions) AS sessions FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}' AND event_date_parsed >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY) GROUP BY event_date_parsed ORDER BY event_date_parsed ASC"
+        template-tags = {}
+      }
+    }
+    display                = "bar"
+    visualization_settings = {
+      "graph.dimensions"   = ["event_date_parsed"]
+      "graph.metrics"      = ["sessions"]
+    }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+# Conversion Funnel — A→B→C→D step counts as a funnel chart
+# display = "funnel" works because the data is pre-shaped as ordered step rows
+# (funnel_step, session_count, step_order). The bar display is also compatible
+# if the team prefers it — just change display to "bar" and restore visualization_settings.
 resource "metabase_card" "ga_conversion_funnel" {
   for_each = var.bigquery_enabled ? var.tenants : {}
 
@@ -130,33 +302,35 @@ resource "metabase_card" "ga_conversion_funnel" {
       type     = "native"
       native = {
         query         = <<-SQL
-          SELECT 'Total Visitors' AS funnel_step, SUM(total_sessions) AS session_count, 1 AS step_order
-          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
-          UNION ALL
-          SELECT 'Started Screener', SUM(sessions_started_screener), 2
-          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
-          UNION ALL
-          SELECT 'Completed Screener', SUM(sessions_completed_screener), 3
-          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
-          UNION ALL
-          SELECT 'Clicked Link', SUM(sessions_clicked_after_completion), 4
-          FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          SELECT funnel_step, session_count
+          FROM (
+            SELECT 'Total Visitors' AS funnel_step, SUM(total_sessions) AS session_count, 1 AS step_order
+            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+            UNION ALL
+            SELECT 'Started Screener', SUM(sessions_started_screener), 2
+            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+            UNION ALL
+            SELECT 'Completed Screener', SUM(sessions_completed_screener), 3
+            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+            UNION ALL
+            SELECT 'Clicked Link', SUM(sessions_clicked_after_completion), 4
+            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code = '${local.tenant_ga_state_codes[each.key]}'
+          )
           ORDER BY step_order
         SQL
         template-tags = {}
       }
     }
-    display = "bar"
+    display = "funnel"
     visualization_settings = {
-      "graph.x_axis.title_text"  = "Funnel Step"
-      "graph.y_axis.title_text"  = "Sessions"
-      "graph.dimensions"         = ["funnel_step"]
-      "graph.metrics"            = ["session_count"]
+      "graph.dimensions" = ["funnel_step"]
+      "graph.metrics"    = ["session_count"]
     }
     parameter_mappings = []
     parameters         = []
   })
 }
+
 # Conversion Funnel — detail table: step-by-step breakdown with counts and percentages
 resource "metabase_card" "ga_conversion_funnel_table" {
   for_each = var.bigquery_enabled ? var.tenants : {}
@@ -208,7 +382,6 @@ resource "metabase_card" "ga_conversion_funnel_table" {
     parameters             = []
   })
 }
-
 
 # Traffic Mediums — bar chart: sessions by medium/channel
 resource "metabase_card" "ga_traffic_mediums_bar" {
