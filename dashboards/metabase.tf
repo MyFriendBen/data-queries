@@ -66,6 +66,12 @@ resource "metabase_database" "tenant_postgres" {
 }
 
 # Wait for Metabase to sync database schemas before creating cards/dashboards
+#
+# NOTE: This only sleeps on initial creation. When enabling a NEW data source
+# (e.g. BigQuery for the first time), the sleep already exists in state and
+# won't re-trigger, so Metabase won't have time to discover the new tables.
+# The first apply will fail on the table lookup; just re-run the workflow and
+# the second apply will succeed once Metabase has finished syncing.
 resource "time_sleep" "wait_for_database_sync" {
   depends_on = [
     metabase_database.bigquery,
@@ -330,6 +336,8 @@ resource "metabase_dashboard" "tenant_analytics" {
         series                 = []
         visualization_settings = {}
       }
-    ]
+    ],
+    # Tab 5: Benefits & Immediate Needs
+    local.tenant_dashboard_benefits_needs_layout[each.key]
   ))
 }
