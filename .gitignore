@@ -13,6 +13,9 @@ logs/
 venv/
 .user.yml
 
+# GCP service account keys
+*-key.json
+
 # terraform
 .terraform/
 *.tfstate
