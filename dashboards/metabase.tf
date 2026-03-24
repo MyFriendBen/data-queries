@@ -334,6 +334,32 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
   }))
 }
 
+# Tenant-specific top 10 partners table
+resource "metabase_card" "tenant_top_partners" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_table_card_config, {
+    name          = "Which Partners Did The Screeners Come From?"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query = templatefile("${path.module}/sql/top_partners.sql", {})
+      }
+    }
+    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "column_settings" = {
+        "[\"name\",\"#\"]" = local.show_minibar_true
+        "[\"name\",\"%\"]" = merge(
+          local.show_minibar_true,
+          local.number_format_percent_0
+        )
+      }
+    })
+  }))
+}
+
 # Dashboard that shows analytics data
 resource "metabase_dashboard" "analytics" {
   name          = "MFB Analytics Dashboard"
@@ -457,6 +483,17 @@ resource "metabase_dashboard" "tenant_analytics" {
         col                    = 0
         size_x                 = 24
         size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_top_partners[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 10
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}

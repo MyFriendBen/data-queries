@@ -66,18 +66,7 @@ resource "metabase_card" "tenant_current_benefits_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = <<EOF
-WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data)
-SELECT 
-    benefit as "Benefit Name",
-    SUM(count) as "# of Screeners",
-    SUM(count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
-FROM analytics.mart_previous_benefits
-CROSS JOIN totals t
-GROUP BY benefit
-HAVING SUM(count) > 0
-ORDER BY SUM(count) DESC
-EOF
+        query = templatefile("${path.module}/sql/current_benefits.sql", {})
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -98,19 +87,7 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = <<EOF
-WITH totals AS (
-    SELECT count(*) as total_count FROM analytics.mart_screener_data
-)
-SELECT 
-    qb.benefit as "Benefit Name",
-    SUM(qb.count) as "# of Screeners",
-    SUM(qb.count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
-FROM analytics.mart_qualified_benefits qb
-CROSS JOIN totals t
-GROUP BY qb.benefit
-ORDER BY SUM(qb.count) DESC
-EOF
+        query = templatefile("${path.module}/sql/qualified_benefits.sql", {})
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -130,17 +107,7 @@ resource "metabase_card" "tenant_immediate_needs_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = <<EOF
-WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data)
-SELECT 
-    benefit as "Need Category",
-    SUM(count) as "# of Screeners",
-    SUM(count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
-FROM analytics.mart_immediate_needs
-CROSS JOIN totals t
-GROUP BY benefit
-ORDER BY SUM(count) DESC
-EOF
+        query = templatefile("${path.module}/sql/immediate_needs.sql", {})
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
