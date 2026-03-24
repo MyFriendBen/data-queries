@@ -139,7 +139,7 @@ All models with white label data should use RLS. Add this post-hook to enable ro
 
 ⚠️ **For local development only.** Production credentials are provisioned via `heroku pg:credentials:create`.
 
-RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name via `regexp_replace(current_user, '[^0-9]', '', 'g')`. Credential names must follow the convention `wl_<state>_<white_label_id>_ro`.
+RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see data; non-conforming roles get zero rows.
 
 The dbt build user (table owner) bypasses RLS automatically in PostgreSQL — no special handling needed.
 

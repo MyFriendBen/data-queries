@@ -13,7 +13,7 @@ global_db_credentials = {
 
 # Tenant-Specific Database Credentials (RLS Users)
 # Convention: wl_<state>_<white_label_id>_ro — the RLS policy extracts the
-# white_label_id from the username via regexp_replace(current_user, '[^0-9]', '', 'g')
+# white_label_id from the username via regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')
 tenant_db_credentials = {
   nc = {
     username = "wl_nc_5_ro"              # white_label_id = 5

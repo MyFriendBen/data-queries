@@ -30,12 +30,13 @@
   -- Create RLS policy that extracts white_label_id from the username
   -- Convention: credential names follow wl_<state>_<id>_ro (e.g. wl_nc_5_ro → 5)
   -- Table owners (dbt build user) bypass RLS automatically in PostgreSQL
+  -- Non-conforming role names yield NULL → no rows (safe denial)
   CREATE POLICY {{ policy_name }}
     ON {{ full_table_name }}
     FOR ALL
     TO PUBLIC
     USING (
-      {{ white_label_column }} = NULLIF(regexp_replace(current_user, '[^0-9]', '', 'g'), '')::int
+      {{ white_label_column }} = (regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$'))[1]::int
     );
 
   -- Grant necessary permissions

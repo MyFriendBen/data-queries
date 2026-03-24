@@ -6,7 +6,7 @@ SELECT *
 FROM public.data                    -- your existing MV
 WHERE
     white_label_id
-    = regexp_replace(current_user, '[^0-9]', '', 'g')::int;
+    = (regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$'))[1]::int;
 
 -- Restore permissions (adjust role names as needed based on your environment)
 GRANT USAGE ON SCHEMA public TO wl_nc_5_ro;

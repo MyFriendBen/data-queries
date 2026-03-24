@@ -246,7 +246,7 @@ Use GitHub Environments (`staging`, `production`) with environment-specific secr
 
 ### Prerequisite: Set Up RLS Database Users (one-time manual step)
 
-RLS uses **username-based filtering** everywhere (local and production). The dbt RLS macro and the `data_tenant` view both use the same pattern: `regexp_replace(current_user, '[^0-9]', '', 'g')::int` to extract the `white_label_id` from the credential name. Credential names must follow the convention `wl_<state>_<white_label_id>_ro`.
+RLS uses **username-based filtering** everywhere (local and production). The dbt RLS macro and the `data_tenant` view both use `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')` to extract the `white_label_id` from the credential name. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see data; non-conforming roles get zero rows.
 
 Table owners (the dbt build user) bypass RLS automatically in PostgreSQL.
 
@@ -704,7 +704,7 @@ Issues encountered during production deployment and their resolutions.
 
 **Issue:** `ALTER USER wl_nc_5_ro SET rls.white_label_id = '5'` fails with "permission denied" on Heroku. Custom GUC parameters require superuser, which Heroku doesn't grant.
 
-**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username: `regexp_replace(current_user, '[^0-9]', '', 'g')::int`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
+**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
 
 ### Pipeline Promotion Blocked for Container Registry Apps
 
