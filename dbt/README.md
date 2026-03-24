@@ -137,48 +137,39 @@ All models with white label data should use RLS. Add this post-hook to enable ro
 
 #### Creating Test Users for Local Development
 
-⚠️ **For local development only.** Production user provisioning should be handled via infrastructure-as-code (Terraform, CI/CD pipelines, etc.) with proper secrets management.
+⚠️ **For local development only.** Production credentials are provisioned via `heroku pg:credentials:create`.
 
-Use `psql` to create test users with secure password handling:
+RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see data; non-conforming roles get zero rows.
 
-```bash
-# Option 1: Interactive password prompt (most secure - password not logged)
-psql -h localhost -U postgres << 'EOF'
-\prompt 'Enter password for user: ' user_password
-CREATE USER nc WITH PASSWORD :'user_password';
-ALTER USER nc SET rls.white_label_id = '1';
-GRANT CONNECT ON DATABASE your_database TO nc;
-GRANT USAGE ON SCHEMA your_schema TO nc;
-GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO nc;
-EOF
+The dbt build user (table owner) bypasses RLS automatically in PostgreSQL — no special handling needed.
 
-# Option 2: Using environment variable (keeps password out of shell history)
-export DB_PASSWORD="secure_password"
-psql -h localhost -U postgres << EOF
--- Create user for North Carolina (white_label_id = 1)
-CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
-ALTER USER nc SET rls.white_label_id = '1';
-GRANT CONNECT ON DATABASE your_database TO nc;
-GRANT USAGE ON SCHEMA your_schema TO nc;
-GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO nc;
+```sql
+-- Connect as your local superuser (e.g. postgres or your OS username)
+-- Create passwordless roles for local development
 
--- Create user for Colorado (white_label_id = 7)
-CREATE USER co WITH PASSWORD '$DB_PASSWORD';
-ALTER USER co SET rls.white_label_id = '7';
-GRANT CONNECT ON DATABASE your_database TO co;
-GRANT USAGE ON SCHEMA your_schema TO co;
-GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO co;
+CREATE ROLE wl_nc_5_ro LOGIN;          -- NC, white_label_id = 5
+CREATE ROLE wl_co_1_ro LOGIN;          -- CO, white_label_id = 1
+CREATE ROLE wl_tx_40_ro LOGIN;         -- TX, white_label_id = 40
+CREATE ROLE wl_il_39_ro LOGIN;         -- IL, white_label_id = 39
+CREATE ROLE wl_ma_38_ro LOGIN;         -- MA, white_label_id = 38
+CREATE ROLE wl_cesn_4_ro LOGIN;        -- CESN, white_label_id = 4
+CREATE ROLE wl_co_tax_calculator_3_ro LOGIN;  -- CO Tax Calculator, white_label_id = 3
 
--- Create admin user with BYPASSRLS (sees all data)
-CREATE USER admin_user WITH PASSWORD '$DB_PASSWORD' BYPASSRLS;
-GRANT CONNECT ON DATABASE your_database TO admin_user;
-GRANT USAGE ON SCHEMA your_schema TO admin_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA your_schema TO admin_user;
-EOF
-unset DB_PASSWORD
+-- Grant access to the analytics schema
+GRANT USAGE ON SCHEMA analytics TO wl_nc_5_ro, wl_co_1_ro, wl_tx_40_ro,
+  wl_il_39_ro, wl_ma_38_ro, wl_cesn_4_ro, wl_co_tax_calculator_3_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_nc_5_ro, wl_co_1_ro,
+  wl_tx_40_ro, wl_il_39_ro, wl_ma_38_ro, wl_cesn_4_ro, wl_co_tax_calculator_3_ro;
 ```
 
-**Note:** Replace `your_database` and `your_schema` with your actual database and schema names. The specific `white_label_id` values depend on your data.
+**Verifying RLS:**
+
+```sql
+SET ROLE wl_nc_5_ro;
+SELECT count(*), white_label_id FROM analytics.mart_screener_data GROUP BY white_label_id;
+-- Should show only white_label_id = 5
+RESET ROLE;
+```
 
 
 ## BigQuery Setup (Optional)

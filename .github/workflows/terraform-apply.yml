@@ -62,14 +62,22 @@ jobs:
             --arg pass "$GLOBAL_DB_PASS" \
             '{username: $user, password: $pass}')
           tenant_creds=$(jq -cn \
-            --arg nc_user "$NC_DB_USER" \
-            --arg nc_pass "$NC_DB_PASS" \
-            --arg co_user "$CO_DB_USER" \
-            --arg co_pass "$CO_DB_PASS" \
+            --arg nc_user "$NC_DB_USER" --arg nc_pass "$NC_DB_PASS" \
+            --arg co_user "$CO_DB_USER" --arg co_pass "$CO_DB_PASS" \
+            --arg tx_user "$TX_DB_USER" --arg tx_pass "$TX_DB_PASS" \
+            --arg il_user "$IL_DB_USER" --arg il_pass "$IL_DB_PASS" \
+            --arg ma_user "$MA_DB_USER" --arg ma_pass "$MA_DB_PASS" \
+            --arg cesn_user "$CESN_DB_USER" --arg cesn_pass "$CESN_DB_PASS" \
+            --arg cotc_user "$CO_TAX_CALCULATOR_DB_USER" --arg cotc_pass "$CO_TAX_CALCULATOR_DB_PASS" \
             '
               {}
               + (if $nc_user != "" and $nc_pass != "" then {nc: {username: $nc_user, password: $nc_pass}} else {} end)
               + (if $co_user != "" and $co_pass != "" then {co: {username: $co_user, password: $co_pass}} else {} end)
+              + (if $tx_user != "" and $tx_pass != "" then {tx: {username: $tx_user, password: $tx_pass}} else {} end)
+              + (if $il_user != "" and $il_pass != "" then {il: {username: $il_user, password: $il_pass}} else {} end)
+              + (if $ma_user != "" and $ma_pass != "" then {ma: {username: $ma_user, password: $ma_pass}} else {} end)
+              + (if $cesn_user != "" and $cesn_pass != "" then {cesn: {username: $cesn_user, password: $cesn_pass}} else {} end)
+              + (if $cotc_user != "" and $cotc_pass != "" then {co_tax_calculator: {username: $cotc_user, password: $cotc_pass}} else {} end)
             ')
           echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
           echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
@@ -80,6 +88,16 @@ jobs:
           NC_DB_PASS: ${{ secrets.NC_DB_PASS }}
           CO_DB_USER: ${{ secrets.CO_DB_USER }}
           CO_DB_PASS: ${{ secrets.CO_DB_PASS }}
+          TX_DB_USER: ${{ secrets.TX_DB_USER }}
+          TX_DB_PASS: ${{ secrets.TX_DB_PASS }}
+          IL_DB_USER: ${{ secrets.IL_DB_USER }}
+          IL_DB_PASS: ${{ secrets.IL_DB_PASS }}
+          MA_DB_USER: ${{ secrets.MA_DB_USER }}
+          MA_DB_PASS: ${{ secrets.MA_DB_PASS }}
+          CESN_DB_USER: ${{ secrets.CESN_DB_USER }}
+          CESN_DB_PASS: ${{ secrets.CESN_DB_PASS }}
+          CO_TAX_CALCULATOR_DB_USER: ${{ secrets.CO_TAX_CALCULATOR_DB_USER }}
+          CO_TAX_CALCULATOR_DB_PASS: ${{ secrets.CO_TAX_CALCULATOR_DB_PASS }}
 
       - name: Terraform Init
         run: terraform init

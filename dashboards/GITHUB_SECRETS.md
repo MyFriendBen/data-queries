@@ -123,19 +123,17 @@ Same secrets/variables as staging, but with **production values**:
 
 ### Production Database Users (RLS)
 
-Production uses Heroku Postgres Standard-tier, which supports multiple credentials. The RLS approach uses a **view-based filter** rather than GUC parameters (which require superuser that Heroku doesn't grant).
+Production uses Heroku Postgres Standard-tier, which supports multiple credentials. RLS is enforced by extracting the `white_label_id` from the credential username via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`.
 
-**How RLS works:** A `data_tenant` view extracts the `white_label_id` from the connecting username:
-```sql
-CREATE VIEW public.data_tenant
-WITH (security_barrier = TRUE)
-AS
-SELECT *
-FROM public.data
-WHERE white_label_id = regexp_replace(current_user, '[^0-9]', '', 'g')::int;
-```
+This same pattern is used in two places:
+- **dbt analytics tables** — the RLS policy in `dbt/macros/row_level_security.sql` filters rows by the extracted ID
+- **`data_tenant` view** — a `security_barrier` view in `public` schema that filters the legacy `data` table the same way
 
-This means credential names must embed the white_label_id: `wl_nc_5_ro` → extracts `5`, `wl_co_1_ro` → extracts `1`.
+Credential names must follow the convention `wl_<state>_<white_label_id>_ro`:
+- `wl_nc_5_ro` → extracts `5` (NC)
+- `wl_co_1_ro` → extracts `1` (CO)
+
+Table owners (the dbt build user) bypass RLS automatically in PostgreSQL.
 
 **Creating credentials:**
 
@@ -164,15 +162,18 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
   GRANT SELECT ON TABLES TO wl_co_1_ro;
 ```
 
-**Important:** `ALTER USER ... SET rls.white_label_id` does NOT work on Heroku — it requires superuser privileges. The view-based approach above is the production pattern. The GUC-based approach (`ALTER USER ... SET`) only works in local development where you have superuser access.
-
 ### Production Credentials Reference
 
 | GitHub Secret | Heroku Credential | Purpose |
 |---------------|-------------------|---------|
 | `GLOBAL_DB_USER/PASS` | `default` | dbt writes + global Metabase access |
-| `NC_DB_USER/PASS` | `wl_nc_5_ro` | NC tenant Metabase (RLS via view) |
-| `CO_DB_USER/PASS` | `wl_co_1_ro` | CO tenant Metabase (RLS via view) |
+| `NC_DB_USER/PASS` | `wl_nc_5_ro` | NC tenant Metabase (white_label_id=5) |
+| `CO_DB_USER/PASS` | `wl_co_1_ro` | CO tenant Metabase (white_label_id=1) |
+| `TX_DB_USER/PASS` | `wl_tx_40_ro` | TX tenant Metabase (white_label_id=40) |
+| `IL_DB_USER/PASS` | `wl_il_39_ro` | IL tenant Metabase (white_label_id=39) |
+| `MA_DB_USER/PASS` | `wl_ma_38_ro` | MA tenant Metabase (white_label_id=38) |
+| `CESN_DB_USER/PASS` | `wl_cesn_4_ro` | CESN tenant Metabase (white_label_id=4) |
+| `CO_TAX_CALCULATOR_DB_USER/PASS` | `wl_co_tax_calculator_3_ro` | CO Tax Calculator Metabase (white_label_id=3) |
 
 ### Variables (Settings → Environments → production → Variables)
 
@@ -199,6 +200,16 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 | `NC_DB_PASS` | NC tenant credential password | Same as above |
 | `CO_DB_USER` | CO tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro` |
 | `CO_DB_PASS` | CO tenant credential password | Same as above |
+| `TX_DB_USER` | TX tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_tx_40_ro` |
+| `TX_DB_PASS` | TX tenant credential password | Same as above |
+| `IL_DB_USER` | IL tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_il_39_ro` |
+| `IL_DB_PASS` | IL tenant credential password | Same as above |
+| `MA_DB_USER` | MA tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_ma_38_ro` |
+| `MA_DB_PASS` | MA tenant credential password | Same as above |
+| `CESN_DB_USER` | CESN tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_cesn_4_ro` |
+| `CESN_DB_PASS` | CESN tenant credential password | Same as above |
+| `CO_TAX_CALCULATOR_DB_USER` | CO Tax Calculator credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_tax_calculator_3_ro` |
+| `CO_TAX_CALCULATOR_DB_PASS` | CO Tax Calculator credential password | Same as above |
 | `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | Same key as staging |
 
 ---
