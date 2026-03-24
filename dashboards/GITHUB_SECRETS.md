@@ -123,19 +123,17 @@ Same secrets/variables as staging, but with **production values**:
 
 ### Production Database Users (RLS)
 
-Production uses Heroku Postgres Standard-tier, which supports multiple credentials. The RLS approach uses a **view-based filter** rather than GUC parameters (which require superuser that Heroku doesn't grant).
+Production uses Heroku Postgres Standard-tier, which supports multiple credentials. RLS is enforced by extracting the `white_label_id` from the credential username via `regexp_replace(current_user, '[^0-9]', '', 'g')::int`.
 
-**How RLS works:** A `data_tenant` view extracts the `white_label_id` from the connecting username:
-```sql
-CREATE VIEW public.data_tenant
-WITH (security_barrier = TRUE)
-AS
-SELECT *
-FROM public.data
-WHERE white_label_id = regexp_replace(current_user, '[^0-9]', '', 'g')::int;
-```
+This same pattern is used in two places:
+- **dbt analytics tables** — the RLS policy in `dbt/macros/row_level_security.sql` filters rows by the extracted ID
+- **`data_tenant` view** — a `security_barrier` view in `public` schema that filters the legacy `data` table the same way
 
-This means credential names must embed the white_label_id: `wl_nc_5_ro` → extracts `5`, `wl_co_1_ro` → extracts `1`.
+Credential names must follow the convention `wl_<state>_<white_label_id>_ro`:
+- `wl_nc_5_ro` → extracts `5` (NC)
+- `wl_co_1_ro` → extracts `1` (CO)
+
+Table owners (the dbt build user) bypass RLS automatically in PostgreSQL.
 
 **Creating credentials:**
 
@@ -163,8 +161,6 @@ GRANT SELECT ON public.data_tenant TO wl_co_1_ro;
 ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
   GRANT SELECT ON TABLES TO wl_co_1_ro;
 ```
-
-**Important:** `ALTER USER ... SET rls.white_label_id` does NOT work on Heroku — it requires superuser privileges. The view-based approach above is the production pattern. The GUC-based approach (`ALTER USER ... SET`) only works in local development where you have superuser access.
 
 ### Production Credentials Reference
 
