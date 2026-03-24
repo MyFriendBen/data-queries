@@ -252,6 +252,88 @@ resource "metabase_card" "tenant_screen_count" {
   }))
 }
 
+# Tenant-specific median annual benefits scorecard
+resource "metabase_card" "tenant_median_annual_benefits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Annual Benefits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0" }
+    }
+    visualization_settings = {
+      "scalar.field"    = "median"
+      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
+# Tenant-specific median monthly benefits scorecard
+resource "metabase_card" "tenant_median_monthly_benefits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Monthly Benefits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0" }
+    }
+    visualization_settings = {
+      "scalar.field"    = "median"
+      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
+# Tenant-specific median annual tax credits scorecard
+resource "metabase_card" "tenant_median_annual_tax_credits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Median Annual Tax Credits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0" }
+    }
+    visualization_settings = {
+      "scalar.field"    = "median"
+      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
+# Tenant-specific daily screeners bar chart (last 7 days)
+resource "metabase_card" "tenant_daily_screeners_7d" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_card_base_config, {
+    name          = "Daily Screeners (Last 7 Days)"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    display       = "bar"
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '7 days' GROUP BY submission_date ORDER BY submission_date"
+      }
+    }
+    visualization_settings = {
+      "graph.dimensions"        = ["SUBMISSION_DATE"]
+      "graph.metrics"           = ["SCREENERS"]
+      "graph.x_axis.title_text" = "Date"
+      "graph.y_axis.title_text" = "Screeners Completed"
+      "graph.show_values"       = true
+    }
+  }))
+}
+
 # Dashboard that shows analytics data
 resource "metabase_dashboard" "analytics" {
   name          = "MFB Analytics Dashboard"
@@ -259,25 +341,25 @@ resource "metabase_dashboard" "analytics" {
   cards_json = jsonencode(concat(
     var.bigquery_enabled ? [
       {
-        card_id = tonumber(metabase_card.conversion_funnel[0].id)
-        row = 0
-        col = 0
-        size_x = 12
-        size_y = 8
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.conversion_funnel[0].id)
+        row                    = 0
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ] : [],
     [
       {
-        card_id = tonumber(metabase_card.screen_count.id)
-        row = var.bigquery_enabled ? 8 : 0
-        col = 0
-        size_x = 6
-        size_y = 4
-        parameter_mappings = []
-        series = []
+        card_id                = tonumber(metabase_card.screen_count.id)
+        row                    = var.bigquery_enabled ? 8 : 0
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
         visualization_settings = {}
       }
     ]
@@ -300,8 +382,86 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode(concat(
-    # Tab 2: All-Time Performance
-    [
+    # Tab 2: All-Time Performance (CO gets full layout; others get just Completed Screeners)
+    each.key == "co" ? [
+      {
+        card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 0
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 4
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 8
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 12
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 16
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 0
+        col                    = 20
+        size_x                 = 4
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+        dashboard_tab_id       = 2
+        row                    = 4
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      ] : [
       {
         card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
         dashboard_tab_id       = 2
