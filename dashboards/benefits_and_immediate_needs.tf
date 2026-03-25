@@ -7,7 +7,10 @@ resource "metabase_card" "tenant_completed_screeners" {
     dataset_query = {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
-      native   = { query = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data" }
+      native = {
+        query           = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
+        "template-tags" = local.partner_template_tags[each.key]
+      }
     }
     visualization_settings = { "scalar.field" = "count" }
   }))
@@ -35,7 +38,10 @@ resource "metabase_card" "tenant_qualified_for_benefits_pct" {
     dataset_query = {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
-      native   = { query = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data" }
+      native = {
+        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
+        "template-tags" = local.partner_template_tags[each.key]
+      }
     }
     visualization_settings = local.benefits_pct_visualization_settings
   }))
@@ -49,7 +55,10 @@ resource "metabase_card" "tenant_qualified_for_tax_creds_pct" {
     dataset_query = {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
-      native   = { query = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data" }
+      native = {
+        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
+        "template-tags" = local.partner_template_tags[each.key]
+      }
     }
     visualization_settings = local.benefits_pct_visualization_settings
   }))
