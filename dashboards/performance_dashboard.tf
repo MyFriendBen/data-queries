@@ -10,7 +10,17 @@ resource "metabase_card" "performance_completed_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT count(*) AS \"Count\" FROM analytics.mart_screener_data;"
+        query = "SELECT count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
   }))
@@ -27,7 +37,17 @@ resource "metabase_card" "performance_percent_qualified_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT ROUND(COUNT(CASE WHEN non_tax_credit_benefits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data;"
+        query = "SELECT ROUND(COUNT(CASE WHEN non_tax_credit_benefits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_percentage_card_config.visualization_settings, {
@@ -47,7 +67,17 @@ resource "metabase_card" "performance_median_annual_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0;"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -67,7 +97,17 @@ resource "metabase_card" "performance_median_monthly_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_monthly) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_monthly > 0;"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_monthly) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_monthly > 0 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -87,7 +127,17 @@ resource "metabase_card" "performance_percent_qualified_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT ROUND(COUNT(CASE WHEN tax_credits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data;"
+        query = "SELECT ROUND(COUNT(CASE WHEN tax_credits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_percentage_card_config.visualization_settings, {
@@ -107,7 +157,17 @@ resource "metabase_card" "performance_median_annual_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE tax_credits_annual > 0;"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{partner_all_time}}]];"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -127,7 +187,17 @@ resource "metabase_card" "performance_daily_trend" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT submission_date::date AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '7 days' GROUP BY 1 ORDER BY 1 ASC;"
+        query = "SELECT submission_date::date AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]] AND submission_date >= CURRENT_DATE - INTERVAL '7 days' GROUP BY 1 ORDER BY 1 ASC;"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     display = "bar"
@@ -150,7 +220,17 @@ resource "metabase_card" "performance_mau_trend" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT DATE_TRUNC('month', submission_date)::date AS \"Month\", count(*) AS \"Count\" FROM analytics.mart_screener_data GROUP BY 1 ORDER BY 1 ASC;"
+        query = "SELECT DATE_TRUNC('month', submission_date)::date AS \"Month\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]] GROUP BY 1 ORDER BY 1 ASC;"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     display = "bar"
@@ -172,7 +252,17 @@ resource "metabase_card" "performance_partner_distribution" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT partner AS \"Top 10 Partners\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        query = "SELECT partner AS \"Top 10 Partners\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner_all_time}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -195,7 +285,17 @@ resource "metabase_card" "performance_county_distribution" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT county AS \"County\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        query = "SELECT county AS \"County\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL [[AND {{partner_all_time}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        template-tags = {
+          partner_all_time = {
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
+            name         = "partner_all_time"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -218,7 +318,7 @@ locals {
         col                = 0
         size_x             = 24
         size_y             = 2
-        parameter_mappings = []
+        parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series             = []
         visualization_settings = {
           virtual_card = {
@@ -233,42 +333,42 @@ locals {
       # Row 2: KPI Scalars (6 cards, each 4 wide x 3 tall)
       {
         card_id                = tonumber(metabase_card.performance_completed_screeners[k].id),
-        dashboard_tab_id       = 2, row = 2, col = 0, size_x = 4, size_y = 3, parameter_mappings = []
+        dashboard_tab_id       = 2, row = 2, col = 0, size_x = 4, size_y = 3, parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_percent_qualified_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 4, size_x = 4, size_y = 3
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_annual_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 8, size_x = 4, size_y = 3
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_monthly_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 12, size_x = 4, size_y = 3
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_percent_qualified_tax_credits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 16, size_x = 4, size_y = 3
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_annual_tax_credits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 20, size_x = 4, size_y = 3
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
@@ -276,14 +376,14 @@ locals {
       {
         card_id                = tonumber(metabase_card.performance_daily_trend[k].id),
         dashboard_tab_id       = 2, row = 5, col = 0, size_x = 12, size_y = 8
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_mau_trend[k].id),
         dashboard_tab_id       = 2, row = 5, col = 12, size_x = 12, size_y = 8
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
@@ -291,14 +391,14 @@ locals {
       {
         card_id                = tonumber(metabase_card.performance_partner_distribution[k].id),
         dashboard_tab_id       = 2, row = 13, col = 0, size_x = 12, size_y = 8
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_county_distribution[k].id),
         dashboard_tab_id       = 2, row = 13, col = 12, size_x = 12, size_y = 8
-        parameter_mappings     = []
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
         series                 = []
         visualization_settings = {}
       }

@@ -299,6 +299,31 @@ resource "metabase_dashboard" "tenant_analytics" {
     { id = 5, name = "Benefits & Immediate Needs" }
   ])
 
+  parameters_json = jsonencode([
+    {
+      id        = "ef76cf6c-196d-4952-9477-8c38318aee45"
+      name      = "Partner"
+      slug      = "partner_all_time"
+      type      = "category"
+      sectionId = "location"
+    },
+    {
+      id        = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+      name      = "Partner"
+      slug      = "partner_30d"
+      type      = "category"
+      sectionId = "location"
+    },
+    {
+      id        = "68a2e3a6-562a-4c28-86d3-c914389f4f46"
+      name      = "Date Range"
+      slug      = "date_range"
+      type      = "date/range"
+      sectionId = "time"
+      default   = "${formatdate("YYYY-MM-DD", timeadd(timestamp(), "-720h"))}~${formatdate("YYYY-MM-DD", timestamp())}"
+    }
+  ])
+
   cards_json = jsonencode(concat(
     local.performance_dashboard_cards[each.key],
     local.performance_30d_dashboard_cards[each.key]

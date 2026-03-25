@@ -9,7 +9,25 @@ resource "metabase_card" "performance_30d_completed_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
   }))
@@ -26,7 +44,25 @@ resource "metabase_card" "performance_30d_percent_qualified_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT ROUND(COUNT(CASE WHEN non_tax_credit_benefits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT ROUND(COUNT(CASE WHEN non_tax_credit_benefits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_percentage_card_config.visualization_settings, {
@@ -46,7 +82,25 @@ resource "metabase_card" "performance_30d_median_annual_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -66,7 +120,25 @@ resource "metabase_card" "performance_30d_median_monthly_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_monthly) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_monthly > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_monthly) AS \"Median\" FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_monthly > 0 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -86,7 +158,25 @@ resource "metabase_card" "performance_30d_percent_qualified_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT ROUND(COUNT(CASE WHEN tax_credits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT ROUND(COUNT(CASE WHEN tax_credits_annual > 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS \"Percentage\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_percentage_card_config.visualization_settings, {
@@ -106,7 +196,25 @@ resource "metabase_card" "performance_30d_median_annual_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days';"
+        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS \"Median\" FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner_30d}}]];"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = {
@@ -126,14 +234,39 @@ resource "metabase_card" "performance_30d_daily_trend" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT submission_date::date AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 1 ASC;"
+        query = "SELECT date_trunc('day', submission_date) AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 1 ASC;"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"  = ["Date"]
-      "graph.metrics"     = ["Count"]
-      "graph.show_values" = true
+      "graph.dimensions"            = ["Date"]
+      "graph.metrics"               = ["Count"]
+      "graph.show_values"           = true
+      "graph.x_axis.labels_enabled" = "all"
+      "bottom_axis_label_behavior"  = "rotate-45"
+      "column_settings" = {
+        "[\"name\",\"Date\"]" = {
+          "date_style" = "MMM D"
+        }
+      }
     }
   }))
 }
@@ -149,7 +282,25 @@ resource "metabase_card" "performance_30d_partner_distribution" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT partner AS \"Top 10 Partners\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        query = "SELECT partner AS \"Top 10 Partners\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -172,7 +323,25 @@ resource "metabase_card" "performance_30d_county_distribution" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT county AS \"County\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL AND submission_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        query = "SELECT county AS \"Top 10 Counties\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        template-tags = {
+          submission_date = {
+            id           = "submission_date"
+            name         = "submission_date"
+            display-name = "Submission Date"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["submission_date"]), null]
+            widget-type  = "date/all-options"
+          }
+          partner_30d = {
+            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            name         = "partner_30d"
+            display-name = "Partner"
+            type         = "dimension"
+            dimension    = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].fields["partner"]), null]
+            widget-type  = "category"
+          }
+        }
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -208,19 +377,136 @@ locals {
         }
       },
       # Row 2: KPI Scalars (6 cards)
-      { card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), dashboard_tab_id = 3, row = 2, col = 0, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), dashboard_tab_id = 3, row = 2, col = 4, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), dashboard_tab_id = 3, row = 2, col = 8, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), dashboard_tab_id = 3, row = 2, col = 12, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), dashboard_tab_id = 3, row = 2, col = 16, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), dashboard_tab_id = 3, row = 2, col = 20, size_x = 4, size_y = 3, parameter_mappings = [], series = [], visualization_settings = {} },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_completed_screeners[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 0
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 4
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 8
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 12
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 16
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id)
+        dashboard_tab_id = 3
+        row              = 2
+        col              = 20
+        size_x           = 4
+        size_y           = 3
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
 
       # Row 5: Trend
-      { card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), dashboard_tab_id = 3, row = 5, col = 0, size_x = 24, size_y = 8, parameter_mappings = [], series = [], visualization_settings = {} },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_daily_trend[k].id)
+        dashboard_tab_id = 3
+        row              = 5
+        col              = 0
+        size_x           = 24
+        size_y           = 8
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
 
       # Row 13: Breakdowns
-      { card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), dashboard_tab_id = 3, row = 13, col = 0, size_x = 12, size_y = 8, parameter_mappings = [], series = [], visualization_settings = {} },
-      { card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), dashboard_tab_id = 3, row = 13, col = 12, size_x = 12, size_y = 8, parameter_mappings = [], series = [], visualization_settings = {} }
+      {
+        card_id          = tonumber(metabase_card.performance_30d_partner_distribution[k].id)
+        dashboard_tab_id = 3
+        row              = 13
+        col              = 0
+        size_x           = 12
+        size_y           = 8
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id          = tonumber(metabase_card.performance_30d_county_distribution[k].id)
+        dashboard_tab_id = 3
+        row              = 13
+        col              = 12
+        size_x           = 12
+        size_y           = 8
+        parameter_mappings = [
+          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+        ]
+        series                 = []
+        visualization_settings = {}
+      }
     ]
   }
 }
