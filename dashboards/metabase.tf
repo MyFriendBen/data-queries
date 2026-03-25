@@ -647,6 +647,8 @@ resource "metabase_dashboard" "tenant_analytics" {
         visualization_settings = {}
       }
     ],
+    # Tab 3: Last 30 Days Performance (CO only)
+    each.key == "co" ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
     # Tab 5: Benefits & Immediate Needs
     local.tenant_dashboard_benefits_needs_layout[each.key]
   ))
