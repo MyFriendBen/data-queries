@@ -246,50 +246,38 @@ Use GitHub Environments (`staging`, `production`) with environment-specific secr
 
 ### Prerequisite: Set Up RLS Database Users (one-time manual step)
 
-#### Local Development (superuser available)
+RLS uses **username-based filtering** everywhere (local and production). The dbt RLS macro and the `data_tenant` view both use `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')` to extract the `white_label_id` from the credential name. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see data; non-conforming roles get zero rows.
 
-For local Postgres where you have superuser access, use GUC-based RLS:
+Table owners (the dbt build user) bypass RLS automatically in PostgreSQL.
+
+#### Local Development
 
 ```sql
-CREATE USER nc WITH PASSWORD '<password>';
-ALTER USER nc SET rls.white_label_id = '5';
-GRANT USAGE ON SCHEMA analytics TO nc;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO nc;
+-- Create passwordless roles matching the naming convention
+CREATE ROLE wl_nc_5_ro LOGIN;     -- NC, white_label_id = 5
+CREATE ROLE wl_co_1_ro LOGIN;     -- CO, white_label_id = 1
 
-CREATE USER co WITH PASSWORD '<password>';
-ALTER USER co SET rls.white_label_id = '1';
-GRANT USAGE ON SCHEMA analytics TO co;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO co;
+GRANT USAGE ON SCHEMA analytics TO wl_nc_5_ro, wl_co_1_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_nc_5_ro, wl_co_1_ro;
 ```
 
-#### Heroku Production (no superuser)
+#### Heroku Production
 
-On Heroku, `ALTER USER ... SET` for custom GUC parameters requires superuser, which Heroku doesn't grant. Instead, use **view-based RLS** with Heroku credentials:
+On Heroku, create credentials via the CLI (Standard-tier+ only):
 
-1. **Credential naming convention:** `wl_<state>_<white_label_id>_ro` — the `data_tenant` view extracts the white_label_id from the username via `regexp_replace(current_user, '[^0-9]', '', 'g')::int`.
+```bash
+heroku pg:credentials:create -a cobenefits-api --name wl_co_1_ro
+heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro
+```
 
-2. **Create credentials:**
-   ```bash
-   heroku pg:credentials:create -a cobenefits-api --name wl_co_1_ro
-   heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro
-   ```
+Grant permissions (via `heroku pg:psql`):
 
-3. **Grant permissions** (via `heroku pg:psql`):
-   ```sql
-   GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
-   GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
-   GRANT USAGE ON SCHEMA public TO wl_co_1_ro;
-   GRANT SELECT ON public.data_tenant TO wl_co_1_ro;
-   ```
-
-4. **The `data_tenant` view** (already exists on production) handles row filtering:
-   ```sql
-   CREATE VIEW public.data_tenant
-   WITH (security_barrier = TRUE)
-   AS
-   SELECT * FROM public.data
-   WHERE white_label_id = regexp_replace(current_user, '[^0-9]', '', 'g')::int;
-   ```
+```sql
+GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
+GRANT USAGE ON SCHEMA public TO wl_co_1_ro;
+GRANT SELECT ON public.data_tenant TO wl_co_1_ro;
+```
 
 #### Staging (Essential-tier)
 
@@ -716,7 +704,7 @@ Issues encountered during production deployment and their resolutions.
 
 **Issue:** `ALTER USER wl_nc_5_ro SET rls.white_label_id = '5'` fails with "permission denied" on Heroku. Custom GUC parameters require superuser, which Heroku doesn't grant.
 
-**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username: `regexp_replace(current_user, '[^0-9]', '', 'g')::int`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
+**Fix:** Use view-based RLS instead. A `data_tenant` view with `security_barrier` extracts the white_label_id from the credential username via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Credential naming convention `wl_<state>_<id>_ro` embeds the ID.
 
 ### Pipeline Promotion Blocked for Container Registry Apps
 
