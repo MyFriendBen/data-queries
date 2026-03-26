@@ -433,8 +433,10 @@ resource "metabase_card" "tenant_partner_values" {
 
 # Dashboard that shows analytics data (global aggregate across all tenants)
 resource "metabase_dashboard" "analytics" {
-  name          = "MFB Analytics Dashboard"
-  collection_id = tonumber(metabase_collection.global.id)
+  name                = "MFB Analytics Dashboard"
+  description         = "Aggregate analytics across all white labels"
+  collection_id       = tonumber(metabase_collection.global.id)
+  collection_position = 1
 
   tabs_json = jsonencode([
     { id = 1, name = "All-Time Performance" },
@@ -971,8 +973,10 @@ resource "metabase_dashboard" "analytics" {
 resource "metabase_dashboard" "tenant_analytics" {
   for_each = var.tenants
 
-  name          = "${each.value.display_name} Dashboard"
-  collection_id = tonumber(local.tenant_collection_map[each.key].id)
+  name                = "${each.value.display_name} Dashboard"
+  description         = "Main ${each.value.display_name} white label dashboard"
+  collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+  collection_position = 1
 
   parameters_json = jsonencode(
     local.tenant_has_tab[each.key]["households"] ? [
