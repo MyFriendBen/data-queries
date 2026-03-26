@@ -377,7 +377,10 @@ resource "metabase_card" "ga_conversion_funnel_table" {
       }
     }
     display                = "table"
-    visualization_settings = {}
+    visualization_settings = {
+      "table.row_index" = true
+      "table.paginate"  = true
+    }
     parameter_mappings     = []
     parameters             = []
   })
@@ -432,7 +435,10 @@ resource "metabase_card" "ga_traffic_mediums_table" {
       }
     }
     display                = "table"
-    visualization_settings = {}
+    visualization_settings = {
+      "table.row_index" = true
+      "table.paginate"  = true
+    }
     parameter_mappings     = []
     parameters             = []
   })
@@ -487,7 +493,10 @@ resource "metabase_card" "ga_clicked_links_table" {
       }
     }
     display                = "table"
-    visualization_settings = {}
+    visualization_settings = {
+      "table.row_index" = true
+      "table.paginate"  = true
+    }
     parameter_mappings     = []
     parameters             = []
   })
