@@ -497,6 +497,8 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode(concat(
+    # Tab 1: Google Analytics (all tenants, BigQuery)
+    local.tenant_dashboard_ga_layout[each.key],
     # Tab 2: All-Time Performance (CO gets full layout; others get just Completed Screeners)
     each.key == "co" ? [
       {
@@ -649,6 +651,9 @@ resource "metabase_dashboard" "tenant_analytics" {
     ],
     # Tab 3: Last 30 Days Performance (CO only)
     each.key == "co" ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
+    # Tab 4: Households (CO only)
+    each.key == "co" ? local.tenant_dashboard_households_data_layout[each.key] : [],
+    each.key == "co" ? local.tenant_dashboard_households_text_layout : [],
     # Tab 5: Benefits & Immediate Needs
     local.tenant_dashboard_benefits_needs_layout[each.key]
   ))

@@ -194,27 +194,23 @@ Metabase's BigQuery driver expects a service account JSON key. The `mfb-data` pr
 
 3. Temporarily disable the org policy to allow key creation (requires `roles/orgpolicy.policyAdmin` on org `1001672396356`):
    ```bash
-   # Create a policy override file
-   cat > /tmp/org-policy-override.yaml <<'EOF'
-   name: projects/mfb-data/policies/iam.disableServiceAccountKeyCreation
-   spec:
-     rules:
-     - enforce: false
-   EOF
+   # Remove the policy at both org and project levels
+   gcloud org-policies delete iam.disableServiceAccountKeyCreation --organization=1001672396356
+   gcloud resource-manager org-policies delete iam.disableServiceAccountKeyCreation --project=mfb-data
 
-   # Apply the override
-   gcloud org-policies set-policy /tmp/org-policy-override.yaml --project=mfb-data
-
-   # Wait ~60 seconds for propagation, then create the key
+   # Create the key
    gcloud iam service-accounts keys create metabase-bigquery-key.json \
-     --iam-account=metabase-bigquery@mfb-data.iam.gserviceaccount.com
+     --iam-account=metabase-bigquery@mfb-data.iam.gserviceaccount.com \
+     --project=mfb-data
    ```
 
-4. Re-enable the org policy after key creation:
+4. **Immediately** re-enable the org policy at both levels:
    ```bash
-   gcloud org-policies delete iam.disableServiceAccountKeyCreation --project=mfb-data
+   gcloud resource-manager org-policies enable-enforce iam.disableServiceAccountKeyCreation --project=mfb-data
+   gcloud resource-manager org-policies enable-enforce iam.disableServiceAccountKeyCreation --organization=1001672396356
    ```
-   This removes the project-level override so the org-level enforcement is inherited again.
+
+   > **Important:** Do not skip this step. The policy must be re-enabled at both the project and organization levels to prevent unauthorized key creation.
 
 5. Store the key content as `BIGQUERY_SA_KEY` GitHub Environment secret (Terraform passes it to Metabase via API)
 
