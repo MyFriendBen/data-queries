@@ -489,16 +489,12 @@ resource "metabase_dashboard" "tenant_analytics" {
   )
 
   tabs_json = jsonencode([
-    { id = 1, name = "Google Analytics" },
-    { id = 2, name = "All-Time Performance" },
-    { id = 3, name = "Last 30 Days Performance" },
-    { id = 4, name = "Households" },
-    { id = 5, name = "Benefits & Immediate Needs" }
+    for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
   ])
 
   cards_json = jsonencode(concat(
-    # Tab 1: Google Analytics (all tenants, BigQuery)
-    local.tenant_dashboard_ga_layout[each.key],
+    # Tab 1: Google Analytics
+    local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
     # Tab 2: All-Time Performance (CO gets full layout; others get just Completed Screeners)
     each.key == "co" ? [
       {
@@ -649,12 +645,12 @@ resource "metabase_dashboard" "tenant_analytics" {
         visualization_settings = {}
       }
     ],
-    # Tab 3: Last 30 Days Performance (CO only)
-    each.key == "co" ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
-    # Tab 4: Households (CO only)
-    each.key == "co" ? local.tenant_dashboard_households_data_layout[each.key] : [],
-    each.key == "co" ? local.tenant_dashboard_households_text_layout : [],
+    # Tab 3: Last 30 Days Performance
+    local.tenant_has_tab[each.key]["last_30_days"] ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
+    # Tab 4: Households
+    local.tenant_has_tab[each.key]["households"] ? local.tenant_dashboard_households_data_layout[each.key] : [],
+    local.tenant_has_tab[each.key]["households"] ? local.tenant_dashboard_households_text_layout : [],
     # Tab 5: Benefits & Immediate Needs
-    local.tenant_dashboard_benefits_needs_layout[each.key]
+    local.tenant_has_tab[each.key]["benefits_needs"] ? local.tenant_dashboard_benefits_needs_layout[each.key] : [],
   ))
 }
