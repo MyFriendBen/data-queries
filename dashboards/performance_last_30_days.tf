@@ -20,7 +20,7 @@ resource "metabase_card" "performance_30d_completed_screeners" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -55,7 +55,7 @@ resource "metabase_card" "performance_30d_percent_qualified_benefits" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -93,7 +93,7 @@ resource "metabase_card" "performance_30d_median_annual_benefits" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -131,7 +131,7 @@ resource "metabase_card" "performance_30d_median_monthly_benefits" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -169,7 +169,7 @@ resource "metabase_card" "performance_30d_percent_qualified_tax_credits" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -207,7 +207,7 @@ resource "metabase_card" "performance_30d_median_annual_tax_credits" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -245,7 +245,7 @@ resource "metabase_card" "performance_30d_daily_trend" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -293,7 +293,7 @@ resource "metabase_card" "performance_30d_partner_distribution" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -334,7 +334,7 @@ resource "metabase_card" "performance_30d_county_distribution" {
             widget-type  = "date/all-options"
           }
           partner_30d = {
-            id           = "698c48a9-4621-4d1a-8c88-e2148286a11e"
+            id           = "ef76cf6c-196d-4952-9477-8c38318aee45"
             name         = "partner_30d"
             display-name = "Partner"
             type         = "dimension"
@@ -385,8 +385,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -399,8 +399,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -413,8 +413,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -427,8 +427,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -441,8 +441,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -455,8 +455,8 @@ locals {
         size_x           = 4
         size_y           = 3
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -471,8 +471,8 @@ locals {
         size_x           = 24
         size_y           = 8
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -487,8 +487,8 @@ locals {
         size_x           = 12
         size_y           = 8
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}
@@ -501,8 +501,8 @@ locals {
         size_x           = 12
         size_y           = 8
         parameter_mappings = [
-          { parameter_id = "698c48a9-4621-4d1a-8c88-e2148286a11e", target = ["dimension", ["template-tag", "partner_30d"]] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", target = ["dimension", ["template-tag", "submission_date"]] }
+          { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
         ]
         series                 = []
         visualization_settings = {}

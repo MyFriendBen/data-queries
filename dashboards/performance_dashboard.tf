@@ -318,7 +318,7 @@ locals {
         col                = 0
         size_x             = 24
         size_y             = 2
-        parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = null, target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series             = []
         visualization_settings = {
           virtual_card = {
@@ -333,42 +333,42 @@ locals {
       # Row 2: KPI Scalars (6 cards, each 4 wide x 3 tall)
       {
         card_id                = tonumber(metabase_card.performance_completed_screeners[k].id),
-        dashboard_tab_id       = 2, row = 2, col = 0, size_x = 4, size_y = 3, parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        dashboard_tab_id       = 2, row = 2, col = 0, size_x = 4, size_y = 3, parameter_mappings = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_completed_screeners[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_percent_qualified_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 4, size_x = 4, size_y = 3
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_annual_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 8, size_x = 4, size_y = 3
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_monthly_benefits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 12, size_x = 4, size_y = 3
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_percent_qualified_tax_credits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 16, size_x = 4, size_y = 3
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_median_annual_tax_credits[k].id),
         dashboard_tab_id       = 2, row = 2, col = 20, size_x = 4, size_y = 3
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
@@ -376,14 +376,14 @@ locals {
       {
         card_id                = tonumber(metabase_card.performance_daily_trend[k].id),
         dashboard_tab_id       = 2, row = 5, col = 0, size_x = 12, size_y = 8
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_daily_trend[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_mau_trend[k].id),
         dashboard_tab_id       = 2, row = 5, col = 12, size_x = 12, size_y = 8
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_mau_trend[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
@@ -391,14 +391,14 @@ locals {
       {
         card_id                = tonumber(metabase_card.performance_partner_distribution[k].id),
         dashboard_tab_id       = 2, row = 13, col = 0, size_x = 12, size_y = 8
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_partner_distribution[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       },
       {
         card_id                = tonumber(metabase_card.performance_county_distribution[k].id),
         dashboard_tab_id       = 2, row = 13, col = 12, size_x = 12, size_y = 8
-        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", target = ["dimension", ["template-tag", "partner_all_time"]] }]
+        parameter_mappings     = [{ parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_county_distribution[k].id), target = ["dimension", ["template-tag", "partner_all_time"], { "stage-number" = 0 }] }]
         series                 = []
         visualization_settings = {}
       }
