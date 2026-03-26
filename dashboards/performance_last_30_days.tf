@@ -234,7 +234,7 @@ resource "metabase_card" "performance_30d_daily_trend" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT date_trunc('day', submission_date) AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 1 ASC;"
+        query = "SELECT to_char(date_trunc('day', submission_date), 'Mon DD') AS \"Date\", count(*) AS \"Count\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY date_trunc('day', submission_date), to_char(date_trunc('day', submission_date), 'Mon DD') ORDER BY date_trunc('day', submission_date) ASC;"
         template-tags = {
           submission_date = {
             id           = "submission_date"
@@ -323,7 +323,7 @@ resource "metabase_card" "performance_30d_county_distribution" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = "SELECT county AS \"Top 10 Counties\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
+        query = "SELECT county AS \"County\", count(*) AS \"# of Screeners\", ROUND(count(*) * 100.0 / SUM(count(*)) OVER (), 2) AS \"% of Screeners\" FROM analytics.mart_screener_data WHERE county IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner_30d}}]] GROUP BY 1 ORDER BY 2 DESC LIMIT 10;"
         template-tags = {
           submission_date = {
             id           = "submission_date"
@@ -386,7 +386,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_completed_screeners[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -400,7 +400,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -414,7 +414,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -428,7 +428,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_monthly_benefits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -442,7 +442,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_percent_qualified_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -456,7 +456,7 @@ locals {
         size_y           = 3
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_median_annual_tax_credits[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -472,7 +472,7 @@ locals {
         size_y           = 8
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_daily_trend[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -488,7 +488,7 @@ locals {
         size_y           = 8
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_partner_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}
@@ -502,7 +502,7 @@ locals {
         size_y           = 8
         parameter_mappings = [
           { parameter_id = "ef76cf6c-196d-4952-9477-8c38318aee45", card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), target = ["dimension", ["template-tag", "partner_30d"], { "stage-number" = 0 }] },
-          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] }
+          { parameter_id = "68a2e3a6-562a-4c28-86d3-c914389f4f46", card_id = tonumber(metabase_card.performance_30d_county_distribution[k].id), target = ["dimension", ["template-tag", "submission_date"], { "stage-number" = 0 }] },
         ]
         series                 = []
         visualization_settings = {}

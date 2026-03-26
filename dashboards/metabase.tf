@@ -312,8 +312,8 @@ resource "metabase_dashboard" "tenant_analytics" {
       id        = "68a2e3a6-562a-4c28-86d3-c914389f4f46"
       name      = "Date Range"
       slug      = "date_range"
-      type      = "date/range"
-      sectionId = "time"
+      type      = "date/all-options"
+      sectionId = "date"
       default   = "past30days"
     }
   ])
