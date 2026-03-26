@@ -85,12 +85,12 @@ locals {
   # Per-tenant tab selection — order determines tab display order
   tenant_tabs = {
     nc                = ["google_analytics", "all_time", "benefits_needs"]
-    co                = ["google_analytics", "all_time", "last_30_days", "households", "benefits_needs"]
-    tx                = ["google_analytics", "all_time", "benefits_needs"]
-    il                = ["google_analytics", "all_time", "benefits_needs"]
-    ma                = ["google_analytics", "all_time", "benefits_needs"]
-    cesn              = ["google_analytics", "all_time", "benefits_needs"]
-    co_tax_calculator = ["all_time", "benefits_needs"]
+    co                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    tx                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    ma                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    cesn              = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    co_tax_calculator = ["all_time", "last_30_days", "households", "benefits_needs"]
   }
 
   # Helper: quick lookup — local.tenant_has_tab["co"]["households"] → true

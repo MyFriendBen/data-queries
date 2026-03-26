@@ -22,13 +22,13 @@ resource "metabase_card" "tenant_monthly_active_users" {
   for_each = var.bigquery_enabled ? local.ga_tenants : {}
 
   json = jsonencode({
-    name                   = "What is the monthly active users (MAU) trend?"
-    description            = "Distinct GA4 users per month from BigQuery page view events"
-    collection_id          = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position    = null
-    cache_ttl              = null
-    query_type             = "native"
-    display                = "bar"
+    name                = "What is the monthly active users (MAU) trend?"
+    description         = "Distinct GA4 users per month from BigQuery page view events"
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    display             = "bar"
     dataset_query = {
       type     = "native"
       database = tonumber(metabase_database.bigquery[0].id)
