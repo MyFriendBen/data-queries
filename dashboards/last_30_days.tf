@@ -11,7 +11,7 @@ resource "metabase_card" "tenant_completed_screeners_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT count(*) FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -28,7 +28,7 @@ resource "metabase_card" "tenant_qualified_for_benefits_pct_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -45,7 +45,7 @@ resource "metabase_card" "tenant_median_annual_benefits_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -65,7 +65,7 @@ resource "metabase_card" "tenant_median_monthly_benefits_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -85,7 +85,7 @@ resource "metabase_card" "tenant_qualified_for_tax_creds_pct_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -102,7 +102,7 @@ resource "metabase_card" "tenant_median_annual_tax_credits_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]]"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
@@ -125,7 +125,7 @@ resource "metabase_card" "tenant_daily_screeners_30d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days' [[AND {{partner}}]] GROUP BY submission_date ORDER BY submission_date"
+        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days' [[AND {{partner}}]] GROUP BY submission_date ORDER BY submission_date"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }

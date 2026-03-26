@@ -1,6 +1,6 @@
 WITH filtered AS (
     SELECT * FROM analytics.mart_screener_data
-    WHERE submission_date >= CURRENT_DATE - INTERVAL '30 days'
+    WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days'
     [[AND {{partner}}]]
 ),
 ranked AS (
@@ -18,8 +18,8 @@ SELECT "Top 10 Partners", "#", "%" FROM (
            screeners::float / NULLIF(t.total, 0) AS "%"
     FROM ranked, total_screeners t
     UNION ALL
-    SELECT 1, 'Total', sum(screeners),
-           sum(screeners)::float / NULLIF(max(t.total), 0)
-    FROM ranked, total_screeners t
+    SELECT 1 AS sort_order, 'Total' AS "Top 10 Partners", t.total AS "#",
+           CASE WHEN t.total = 0 THEN NULL ELSE 1::float END AS "%"
+    FROM total_screeners t
 ) combined
 ORDER BY sort_order, "#" DESC

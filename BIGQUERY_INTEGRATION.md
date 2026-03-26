@@ -192,11 +192,10 @@ Metabase's BigQuery driver expects a service account JSON key. The `mfb-data` pr
      --role="roles/bigquery.jobUser"
    ```
 
-3. Temporarily disable the org policy to allow key creation (requires `roles/orgpolicy.policyAdmin` on org `1001672396356`):
+3. Temporarily disable the org policy **at the project level only** to allow key creation (requires `roles/orgpolicy.policyAdmin`):
    ```bash
-   # Remove the policy at both org and project levels
-   gcloud org-policies delete iam.disableServiceAccountKeyCreation --organization=1001672396356
-   gcloud resource-manager org-policies delete iam.disableServiceAccountKeyCreation --project=mfb-data
+   # Override the org policy at the project level (does NOT affect the organization)
+   gcloud resource-manager org-policies disable-enforce iam.disableServiceAccountKeyCreation --project=mfb-data
 
    # Create the key
    gcloud iam service-accounts keys create metabase-bigquery-key.json \
@@ -204,17 +203,16 @@ Metabase's BigQuery driver expects a service account JSON key. The `mfb-data` pr
      --project=mfb-data
    ```
 
-4. **Immediately** re-enable the org policy at both levels:
+4. **Immediately** re-enable the policy at the project level:
    ```bash
    gcloud resource-manager org-policies enable-enforce iam.disableServiceAccountKeyCreation --project=mfb-data
-   gcloud resource-manager org-policies enable-enforce iam.disableServiceAccountKeyCreation --organization=1001672396356
    ```
 
-   > **Important:** Do not skip this step. The policy must be re-enabled at both the project and organization levels to prevent unauthorized key creation.
+   > **Important:** Do not skip this step. The project-level override must be re-enabled to prevent unauthorized key creation.
 
 5. Store the key content as `BIGQUERY_SA_KEY` GitHub Environment secret (Terraform passes it to Metabase via API)
 
-**Key rotation:** Service account keys should be rotated periodically. Repeat steps 3-5: temporarily disable the org policy, create a new key, update the GitHub secret, run `terraform apply`, delete the old key, re-enable the org policy.
+**Key rotation:** Service account keys should be rotated periodically. Repeat steps 3-5: temporarily disable the project-level policy, create a new key, update the GitHub secret, run `terraform apply`, delete the old key, re-enable the project-level policy.
 
 ## Environment Variables Summary
 

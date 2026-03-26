@@ -209,8 +209,9 @@ Find the **"Data Dashboards BigQuery Key (Localhost)"** entry in the MyFriendBen
 
 ```bash
 mkdir -p secrets
-# Paste the JSON content into this file:
-pbpaste > secrets/bigquerykey.json
+# Create secrets/bigquerykey.json and paste the JSON content into it.
+# macOS example:
+# pbpaste > secrets/bigquerykey.json
 ```
 
 **2. Enable BigQuery in Terraform**

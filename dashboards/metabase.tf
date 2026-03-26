@@ -347,7 +347,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '7 days' [[AND {{partner}}]] GROUP BY submission_date ORDER BY submission_date"
+        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '6 days' [[AND {{partner}}]] GROUP BY submission_date ORDER BY submission_date"
         "template-tags" = local.partner_template_tags[each.key]
       }
     }

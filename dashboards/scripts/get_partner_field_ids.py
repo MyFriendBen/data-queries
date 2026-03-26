@@ -52,6 +52,7 @@ def main():
     session_id = get_session(metabase_url, query["username"], query["password"])
 
     result = {}
+    missing = []
     for tenant_key, db_id in database_ids.items():
         field_id = get_field_id(
             metabase_url, session_id, db_id,
@@ -61,6 +62,14 @@ def main():
         )
         if field_id:
             result[tenant_key] = field_id
+        else:
+            missing.append(f"{tenant_key} (db {db_id})")
+
+    if missing:
+        raise SystemExit(
+            "Could not resolve Metabase field IDs for analytics.mart_screener_data.partner: "
+            + ", ".join(missing)
+        )
 
     print(json.dumps(result))
 
