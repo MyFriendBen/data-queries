@@ -292,8 +292,10 @@ locals {
   }
 
   # Dashboard layout for Tab 4: Households (CO only)
-  # Split into data cards and text cards to avoid Terraform tuple type mismatch
-  # in conditional expressions (text cards have different visualization_settings shape)
+  # Text blocks are interleaved at their correct visual positions (sorted by row/col)
+  # so the order matches what Metabase returns after saving. The mixed
+  # visualization_settings types (empty {} vs {virtual_card, text}) create a tuple,
+  # so metabase.tf wraps this in jsondecode(jsonencode()) for conditional compatibility.
 
   tenant_dashboard_households_data_layout = {
     for k, v in var.tenants : k => [
@@ -388,7 +390,26 @@ locals {
         series                 = []
         visualization_settings = {}
       },
-      # Row 4: 2 age distribution charts
+      # Row 4: Text block + 2 age distribution charts
+      {
+        card_id            = null
+        dashboard_tab_id   = 4
+        row                = 4
+        col                = 0
+        size_x             = 6
+        size_y             = 8
+        parameter_mappings = []
+        series             = []
+        visualization_settings = {
+          virtual_card = {
+            name                   = null
+            dataset_query          = {}
+            display                = "text"
+            visualization_settings = {}
+          }
+          text = "### Heads of Household\nThe head of household is the person who filled out the screener. If there is more than one adult in the household, the head of household is the oldest adult.\n\n### Age Groups\nAge bins follow U.S. Census Bureau conventions.\n\n**Head of Household:** 0-18, 19-24, 25-44, 45-64, 65+\n**All Members:** <5, 5-18, 19-24, 25-44, 45-64, 65+"
+        }
+      },
       {
         card_id          = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
         dashboard_tab_id = 4
@@ -450,7 +471,26 @@ locals {
         series                 = []
         visualization_settings = {}
       },
-      # Row 20: Income/assets distributions
+      # Row 20: Text block + income/assets distributions
+      {
+        card_id            = null
+        dashboard_tab_id   = 4
+        row                = 20
+        col                = 0
+        size_x             = 6
+        size_y             = 8
+        parameter_mappings = []
+        series             = []
+        visualization_settings = {
+          virtual_card = {
+            name                   = null
+            dataset_query          = {}
+            display                = "text"
+            visualization_settings = {}
+          }
+          text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
+        }
+      },
       {
         card_id          = tonumber(metabase_card.tenant_household_income_distribution[k].id)
         dashboard_tab_id = 4
@@ -515,45 +555,4 @@ locals {
     ]
   }
 
-  # Text blocks for Tab 4 (separate from data cards to avoid tuple type mismatch)
-  tenant_dashboard_households_text_layout = [
-    {
-      card_id            = null
-      dashboard_tab_id   = 4
-      row                = 4
-      col                = 0
-      size_x             = 6
-      size_y             = 8
-      parameter_mappings = []
-      series             = []
-      visualization_settings = {
-        virtual_card = {
-          name                   = null
-          dataset_query          = {}
-          display                = "text"
-          visualization_settings = {}
-        }
-        text = "### Heads of Household\nThe head of household is the person who filled out the screener. If there is more than one adult in the household, the head of household is the oldest adult.\n\n### Age Groups\nAge bins follow U.S. Census Bureau conventions.\n\n**Head of Household:** 0-18, 19-24, 25-44, 45-64, 65+\n**All Members:** <5, 5-18, 19-24, 25-44, 45-64, 65+"
-      }
-    },
-    {
-      card_id            = null
-      dashboard_tab_id   = 4
-      row                = 20
-      col                = 0
-      size_x             = 6
-      size_y             = 8
-      parameter_mappings = []
-      series             = []
-      visualization_settings = {
-        virtual_card = {
-          name                   = null
-          dataset_query          = {}
-          display                = "text"
-          visualization_settings = {}
-        }
-        text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
-      }
-    },
-  ]
 }
