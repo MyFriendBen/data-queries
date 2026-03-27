@@ -13,6 +13,10 @@ terraform {
       source  = "flovouin/metabase"
       version = "~> 0.14"
     }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
     time = {
       source  = "hashicorp/time"
       version = "~> 0.13"

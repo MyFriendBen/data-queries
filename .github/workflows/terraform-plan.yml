@@ -107,7 +107,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const plan = fs.readFileSync('dashboards/plan_output.txt', 'utf8');
+            let plan = fs.readFileSync('dashboards/plan_output.txt', 'utf8');
+            const maxLen = 60000;
+            if (plan.length > maxLen) {
+              plan = plan.substring(0, maxLen) + '\n\n... (truncated — full plan is ' + fs.statSync('dashboards/plan_output.txt').size + ' bytes)';
+            }
             const output = `#### Terraform Plan 📖
 
             <details><summary>Show Plan</summary>

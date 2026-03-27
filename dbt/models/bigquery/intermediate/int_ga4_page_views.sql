@@ -28,7 +28,7 @@ SELECT
     -- Derived page fields (business logic)
     regexp_extract(page_location, r'[^/]+://[^/]+(/[^?]*)') AS page_path,
     regexp_extract(page_location, r'[^/]+://([^/]+)') AS page_hostname,
-    regexp_extract(page_location, r'^[^/]+://[^/]+/([a-z]{2})/', 1) AS state_code
+    regexp_extract(page_location, r'^[^/]+://[^/]+/([a-z][a-z0-9_]+)/', 1) AS state_code
 
 FROM {{ ref('stg_ga_page_views') }}
 WHERE page_location IS NOT NULL
