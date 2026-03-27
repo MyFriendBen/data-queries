@@ -82,10 +82,7 @@ resource "metabase_card" "tenant_current_benefits_table" {
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -104,10 +101,7 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -126,10 +120,12 @@ resource "metabase_card" "tenant_immediate_needs_table" {
       }
     }
     visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
 locals {
+  # 1. Specialized column settings (the "style" for the tables)
   # 1. Specialized column settings (the "style" for the tables)
   benefits_column_settings = {
     "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
@@ -139,6 +135,15 @@ locals {
     )
   }
 
+  # 2. Reusable template for the tables themselves
+  tenant_benefits_table_card_config = merge(local.tenant_table_card_config, {
+    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
+      "column_settings" = local.benefits_column_settings
+    })
+  })
+
+  # 3. Reusable template for the percentage scorecards
   # 2. Reusable template for the tables themselves
   tenant_benefits_table_card_config = merge(local.tenant_table_card_config, {
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
