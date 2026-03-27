@@ -78,7 +78,8 @@ resource "metabase_card" "tenant_current_benefits_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = templatefile("${path.module}/sql/current_benefits.sql", {})
+        query           = templatefile("${path.module}/sql/current_benefits.sql", {})
+        "template-tags" = local.partner_template_tags[each.key]
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -99,7 +100,8 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = templatefile("${path.module}/sql/qualified_benefits.sql", {})
+        query           = templatefile("${path.module}/sql/qualified_benefits.sql", {})
+        "template-tags" = local.partner_template_tags[each.key]
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -119,7 +121,8 @@ resource "metabase_card" "tenant_immediate_needs_table" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = templatefile("${path.module}/sql/immediate_needs.sql", {})
+        query           = templatefile("${path.module}/sql/immediate_needs.sql", {})
+        "template-tags" = local.partner_template_tags[each.key]
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -229,35 +232,47 @@ locals {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.tenant_current_benefits_table[k].id)
-        dashboard_tab_id       = 5
-        row                    = 6
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
+        card_id          = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+        dashboard_tab_id = 5
+        row              = 6
+        col              = 0
+        size_x           = 12
+        size_y           = 8
+        parameter_mappings = [{
+          parameter_id = "partner_filter"
+          card_id      = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+          target       = ["dimension", ["template-tag", "partner"]]
+        }]
         series                 = []
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-        dashboard_tab_id       = 5
-        row                    = 6
-        col                    = 12
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
+        card_id          = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+        dashboard_tab_id = 5
+        row              = 6
+        col              = 12
+        size_x           = 12
+        size_y           = 8
+        parameter_mappings = [{
+          parameter_id = "partner_filter"
+          card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+          target       = ["dimension", ["template-tag", "partner"]]
+        }]
         series                 = []
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
-        dashboard_tab_id       = 5
-        row                    = 14
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
+        card_id          = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
+        dashboard_tab_id = 5
+        row              = 14
+        col              = 0
+        size_x           = 12
+        size_y           = 8
+        parameter_mappings = [{
+          parameter_id = "partner_filter"
+          card_id      = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
+          target       = ["dimension", ["template-tag", "partner"]]
+        }]
         series                 = []
         visualization_settings = {}
       }

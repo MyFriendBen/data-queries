@@ -716,7 +716,10 @@ resource "metabase_card" "global_current_benefits_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = templatefile("${path.module}/sql/current_benefits.sql", {})
+        query = replace(
+          templatefile("${path.module}/sql/current_benefits.sql", {}),
+          local._partner_clause, ""
+        )
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
@@ -735,7 +738,10 @@ resource "metabase_card" "global_qualified_benefits_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = templatefile("${path.module}/sql/qualified_benefits.sql", {})
+        query = replace(
+          templatefile("${path.module}/sql/qualified_benefits.sql", {}),
+          local._partner_clause, ""
+        )
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
@@ -753,7 +759,10 @@ resource "metabase_card" "global_immediate_needs_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = templatefile("${path.module}/sql/immediate_needs.sql", {})
+        query = replace(
+          templatefile("${path.module}/sql/immediate_needs.sql", {}),
+          local._partner_clause, ""
+        )
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
