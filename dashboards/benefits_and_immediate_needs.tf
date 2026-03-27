@@ -120,7 +120,6 @@ resource "metabase_card" "tenant_immediate_needs_table" {
       }
     }
     visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
-    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
