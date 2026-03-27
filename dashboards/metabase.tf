@@ -731,7 +731,26 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Row 4: Age distribution charts
+      # Row 4: Text block + age distribution charts
+      {
+        card_id            = null
+        dashboard_tab_id   = 3
+        row                = 4
+        col                = 0
+        size_x             = 6
+        size_y             = 8
+        parameter_mappings = []
+        series             = []
+        visualization_settings = {
+          virtual_card = {
+            name                   = null
+            dataset_query          = {}
+            display                = "text"
+            visualization_settings = {}
+          }
+          text = "### Heads of Household\nThe head of household is the person who filled out the screener. If there is more than one adult in the household, the head of household is the oldest adult.\n\n### Age Groups\nAge bins follow U.S. Census Bureau conventions.\n\n**Head of Household:** 0-18, 19-24, 25-44, 45-64, 65+\n**All Members:** <5, 5-18, 19-24, 25-44, 45-64, 65+"
+        }
+      },
       {
         card_id                = tonumber(metabase_card.global_head_of_household_ages.id)
         dashboard_tab_id       = 3
@@ -777,7 +796,26 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Row 20: Income/assets distributions
+      # Row 20: Text block + income/assets distributions
+      {
+        card_id            = null
+        dashboard_tab_id   = 3
+        row                = 20
+        col                = 0
+        size_x             = 6
+        size_y             = 8
+        parameter_mappings = []
+        series             = []
+        visualization_settings = {
+          virtual_card = {
+            name                   = null
+            dataset_query          = {}
+            display                = "text"
+            visualization_settings = {}
+          }
+          text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
+        }
+      },
       {
         card_id                = tonumber(metabase_card.global_household_income_distribution.id)
         dashboard_tab_id       = 3
@@ -822,47 +860,6 @@ resource "metabase_dashboard" "analytics" {
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
-      },
-    ],
-    # Tab 3 text blocks (separate list for type consistency)
-    [
-      {
-        card_id            = null
-        dashboard_tab_id   = 3
-        row                = 4
-        col                = 0
-        size_x             = 6
-        size_y             = 8
-        parameter_mappings = []
-        series             = []
-        visualization_settings = {
-          virtual_card = {
-            name                   = null
-            dataset_query          = {}
-            display                = "text"
-            visualization_settings = {}
-          }
-          text = "### Heads of Household\nThe head of household is the person who filled out the screener. If there is more than one adult in the household, the head of household is the oldest adult.\n\n### Age Groups\nAge bins follow U.S. Census Bureau conventions.\n\n**Head of Household:** 0-18, 19-24, 25-44, 45-64, 65+\n**All Members:** <5, 5-18, 19-24, 25-44, 45-64, 65+"
-        }
-      },
-      {
-        card_id            = null
-        dashboard_tab_id   = 3
-        row                = 20
-        col                = 0
-        size_x             = 6
-        size_y             = 8
-        parameter_mappings = []
-        series             = []
-        visualization_settings = {
-          virtual_card = {
-            name                   = null
-            dataset_query          = {}
-            display                = "text"
-            visualization_settings = {}
-          }
-          text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
-        }
       },
     ],
     # -------------------------------------------------------------------------
@@ -1159,9 +1156,9 @@ resource "metabase_dashboard" "tenant_analytics" {
     ],
     # Tab 3: Last 30 Days Performance
     local.tenant_has_tab[each.key]["last_30_days"] ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
-    # Tab 4: Households
-    local.tenant_has_tab[each.key]["households"] ? local.tenant_dashboard_households_data_layout[each.key] : [],
-    local.tenant_has_tab[each.key]["households"] ? local.tenant_dashboard_households_text_layout : [],
+    # Tab 4: Households (jsondecode/jsonencode normalizes the mixed tuple type
+    # so the conditional can match against an empty list)
+    local.tenant_has_tab[each.key]["households"] ? jsondecode(jsonencode(local.tenant_dashboard_households_data_layout[each.key])) : [],
     # Tab 5: Benefits & Immediate Needs (all tenants)
     local.tenant_dashboard_benefits_needs_layout[each.key],
   ))
