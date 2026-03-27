@@ -203,4 +203,4 @@ Copies GA4 events tables from the `benefits-mfb` BigQuery project to `mfb-data`.
 ./scripts/ga4-migration/copy_ga4_tables.sh
 ```
 
-The script tracks copied tables in `ga4_copy_manifest.log`, so it's safe to re-run after interruption — it will skip tables already copied and pick up where it left off.
+The script tracks copied tables in `scripts/ga4-migration/ga4_copy_manifest.log`, so it's safe to re-run after interruption — it will skip tables already copied and pick up where it left off.
