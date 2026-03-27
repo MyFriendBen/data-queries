@@ -1156,9 +1156,9 @@ resource "metabase_dashboard" "tenant_analytics" {
     ],
     # Tab 3: Last 30 Days Performance
     local.tenant_has_tab[each.key]["last_30_days"] ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
-    # Tab 4: Households (jsondecode/jsonencode normalizes the mixed tuple type
-    # so the conditional can match against an empty list)
-    local.tenant_has_tab[each.key]["households"] ? jsondecode(jsonencode(local.tenant_dashboard_households_data_layout[each.key])) : [],
+    # Tab 4: Households (flatten+for avoids the conditional type mismatch
+    # between the mixed text/data tuple and an empty list)
+    flatten([for k in [each.key] : local.tenant_dashboard_households_data_layout[k] if local.tenant_has_tab[k]["households"]]),
     # Tab 5: Benefits & Immediate Needs (all tenants)
     local.tenant_dashboard_benefits_needs_layout[each.key],
   ))
