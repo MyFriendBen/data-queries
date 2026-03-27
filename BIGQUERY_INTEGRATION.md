@@ -221,16 +221,16 @@ When BigQuery is enabled, these are needed. All variables and secrets are set **
 ### GitHub Environment Variables (non-sensitive)
 | Variable | Value | Staging | Production |
 |----------|-------|---------|------------|
-| `BIGQUERY_ENABLED` | `true` | **Set** | Not set |
-| `GCP_PROJECT_ID` | `mfb-data` | **Set** | Not set |
-| `GCP_ANALYTICS_TABLE` | `analytics_335669714` | **Set** | Not set |
-| `WIF_PROVIDER` | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` | **Set** | Not set |
-| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` | **Set** | Not set |
+| `BIGQUERY_ENABLED` | `true` | **Set** | **Set** |
+| `GCP_PROJECT_ID` | `mfb-data` | **Set** | **Set** |
+| `GCP_ANALYTICS_TABLE` | `analytics_335669714` | **Set** | **Set** |
+| `WIF_PROVIDER` | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` | **Set** | **Set** |
+| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` | **Set** | **Set** |
 
 ### GitHub Environment Secrets
 | Secret | Value | Staging | Production |
 |--------|-------|---------|------------|
-| `BIGQUERY_SA_KEY` | Full JSON content of `metabase-bigquery-key.json` | **Set** | Not set |
+| `BIGQUERY_SA_KEY` | Full JSON content of `metabase-bigquery-key.json` | **Set** | **Set** |
 
 ### Workload Identity Federation (GitHub Actions — no secrets needed)
 
