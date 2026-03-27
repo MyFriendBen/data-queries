@@ -76,7 +76,7 @@ These credentials are needed for ongoing operations. Ensure the new owner has ac
 | **Metabase** (dashboards) | Running on Heroku (`mfb-metabase-staging`) | Running on Heroku (`mfb-metabase-production`) |
 | **dbt** (analytics tables) | Nightly cron at 6 AM UTC | Nightly cron at 6 AM UTC |
 | **Terraform** (Metabase config) | Auto-applies on merge to `main` | Manual dispatch only |
-| **BigQuery / GA4** | Enabled (dbt builds BQ models) | **Not yet enabled** — GitHub env vars not set |
+| **BigQuery / GA4** | Enabled (dbt builds BQ models) | Enabled (dbt builds BQ models) |
 
 ### Nightly dbt Cron
 
@@ -141,36 +141,24 @@ The full migration plan is in [BIGQUERY_INTEGRATION.md](BIGQUERY_INTEGRATION.md)
 - Copied historical GA4 data from `benefits-mfb` to `mfb-data`
 - Set up Workload Identity Federation for keyless GitHub Actions auth
 - Created Metabase service account + key for BigQuery access
-- Added GitHub Environment variables/secrets for **staging**
-- dbt builds BigQuery models on staging (`mart_screener_conversion_funnel`, `referrer_codes`)
+- Added GitHub Environment variables/secrets for **both staging and production**
+- dbt builds BigQuery models on both environments (`mart_screener_conversion_funnel`, `referrer_codes`)
 - Terraform creates BigQuery data source + conversion funnel card on staging Metabase
 
 ### What's Left (Phase 3 — Cutover)
 
 These steps are in order. See `BIGQUERY_INTEGRATION.md` for full details on each.
 
-1. **Enable BigQuery on production** — Set GitHub Environment variables for the `production` environment:
-   ```bash
-   gh variable set BIGQUERY_ENABLED --env production --repo MyFriendBen/data-queries --body "true"
-   gh variable set GCP_PROJECT_ID --env production --repo MyFriendBen/data-queries --body "mfb-data"
-   gh variable set GCP_ANALYTICS_TABLE --env production --repo MyFriendBen/data-queries --body "analytics_335669714"
-   gh variable set WIF_PROVIDER --env production --repo MyFriendBen/data-queries --body "projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github"
-   gh variable set WIF_SERVICE_ACCOUNT --env production --repo MyFriendBen/data-queries --body "github-actions-dbt@mfb-data.iam.gserviceaccount.com"
-   gh secret set BIGQUERY_SA_KEY --env production --repo MyFriendBen/data-queries < metabase-bigquery-key.json
-   ```
-
-2. **Validate production BigQuery dashboards** — Trigger the dbt nightly workflow for production and verify the BigQuery models and Metabase cards work correctly.
-
-3. **Switch the GA4 BigQuery link** — In GA4 Admin > Product Links > BigQuery Links:
+1. **Switch the GA4 BigQuery link** — In GA4 Admin > Product Links > BigQuery Links:
    - Remove the link to `benefits-mfb`
    - Add a new link to `mfb-data` (same export settings: daily events)
    - Note: GA4 only allows one BigQuery link at a time
 
-4. **Run a final catch-up copy** — After switching the link, run the copy script one last time to capture any gap-period tables.
+2. **Run a final catch-up copy** — After switching the link, run the copy script one last time to capture any gap-period tables.
 
-5. **Notify Brian at Gary Community Ventures** — Let him know the old export has stopped and old dashboards will no longer receive new data.
+3. **Notify Brian at Gary Community Ventures** — Let him know the old export has stopped and old dashboards will no longer receive new data.
 
-6. **Team decision: backfill historical data?** — Data older than 60 days is permanently gone from BigQuery. The GA4 reporting API retains up to 14 months of aggregated metrics. Decide if backfilling aggregated data is worth the effort.
+4. **Team decision: backfill historical data?** — Data older than 60 days is permanently gone from BigQuery. The GA4 reporting API retains up to 14 months of aggregated metrics. Decide if backfilling aggregated data is worth the effort.
 
 ### After Cutover
 
