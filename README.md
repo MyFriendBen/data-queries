@@ -76,13 +76,9 @@ The first two change regularly. The third changes only when upgrading Metabase v
 
 **When:** You've added or modified SQL models in `dbt/models/`.
 
-**Staging** runs automatically every night at 6 AM UTC. To trigger manually:
+**Both staging and production** run automatically every night at 6 AM UTC. To trigger manually:
 ```bash
 gh workflow run dbt-nightly.yml -f environment=staging --repo MyFriendBen/data-queries
-```
-
-**Production** requires manual dispatch (never runs on the cron):
-```bash
 gh workflow run dbt-nightly.yml -f environment=production --repo MyFriendBen/data-queries
 ```
 
@@ -170,3 +166,41 @@ Production applies are restricted to the `main` branch.
 
 For secrets/variables setup, see `dashboards/GITHUB_SECRETS.md`.
 For local development, see `dashboards/README.md`.
+
+---
+
+## Scripts
+
+### GA4 Migration (`scripts/ga4-migration/`)
+
+Copies GA4 events tables from the `benefits-mfb` BigQuery project to `mfb-data`.
+
+**Prerequisites:**
+
+1. Install the Google Cloud SDK:
+   ```bash
+   brew install google-cloud-sdk
+   ```
+
+2. Authenticate with a Google account that has BigQuery access to both `benefits-mfb` and `mfb-data` projects:
+   ```bash
+   gcloud auth login
+   ```
+
+3. Verify access:
+   ```bash
+   bq ls benefits-mfb:analytics_335669714 | head -5
+   bq ls mfb-data:analytics_335669714 | head -5
+   ```
+
+**Usage:**
+
+```bash
+# Dry run — see what would be copied without making changes
+./scripts/ga4-migration/copy_ga4_tables.sh --dry-run
+
+# Copy all tables not yet copied
+./scripts/ga4-migration/copy_ga4_tables.sh
+```
+
+The script tracks copied tables in `ga4_copy_manifest.log`, so it's safe to re-run after interruption — it will skip tables already copied and pick up where it left off.

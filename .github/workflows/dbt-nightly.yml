@@ -20,17 +20,35 @@ on:
         default: false
 
 jobs:
+  set-environments:
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - id: envs
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo 'environments=["staging","production"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'environments=["${{ github.event.inputs.environment }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
   dbt-build:
+    needs: set-environments
     # Production runs only allowed from main branch
     if: >-
       github.event_name != 'workflow_dispatch'
       || github.event.inputs.environment != 'production'
       || github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(needs.set-environments.outputs.environments) }}
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: ${{ matrix.environment }}
     defaults:
       run:
         working-directory: dbt
@@ -145,7 +163,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dbt-artifacts
+          name: dbt-artifacts-${{ matrix.environment }}
           path: |
             dbt/target/manifest.json
             dbt/target/run_results.json
