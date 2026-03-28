@@ -27,16 +27,16 @@
   -- Drop existing policy if it exists
   DROP POLICY IF EXISTS {{ policy_name }} ON {{ full_table_name }};
 
-  -- Create RLS policy that filters by user's white label setting
+  -- Create RLS policy that extracts white_label_id from the username
+  -- Convention: credential names follow wl_<state>_<id>_ro (e.g. wl_nc_5_ro → 5)
+  -- Table owners (dbt build user) bypass RLS automatically in PostgreSQL
+  -- Non-conforming role names yield NULL → no rows (safe denial)
   CREATE POLICY {{ policy_name }}
     ON {{ full_table_name }}
     FOR ALL
     TO PUBLIC
     USING (
-      {{ white_label_column }} = COALESCE(
-        NULLIF(current_setting('rls.white_label_id', true), '')::integer,
-        -999999  -- Deny access if no white_label_id is set
-      )
+      {{ white_label_column }} = (regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$'))[1]::int
     );
 
   -- Grant necessary permissions

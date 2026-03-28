@@ -20,14 +20,35 @@ on:
         default: false
 
 jobs:
+  set-environments:
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - id: envs
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo 'environments=["staging","production"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'environments=["${{ github.event.inputs.environment }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
   dbt-build:
+    needs: set-environments
     # Production runs only allowed from main branch
     if: >-
       github.event_name != 'workflow_dispatch'
       || github.event.inputs.environment != 'production'
       || github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(needs.set-environments.outputs.environments) }}
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: ${{ matrix.environment }}
     defaults:
       run:
         working-directory: dbt
@@ -41,6 +62,13 @@ jobs:
       DB_SCHEMA: analytics
     steps:
       - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        if: vars.BIGQUERY_ENABLED == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
       - uses: actions/setup-python@v5
         with:
@@ -77,6 +105,18 @@ jobs:
             FLAGS="$FLAGS --full-refresh"
           fi
           dbt build $FLAGS
+
+      - name: Run dbt build (BigQuery)
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: |
+          FLAGS="--target bigquery"
+          if [ "${{ github.event.inputs.full_refresh }}" = "true" ]; then
+            FLAGS="$FLAGS --full-refresh"
+          fi
+          dbt build $FLAGS
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_ANALYTICS_TABLE: ${{ vars.GCP_ANALYTICS_TABLE }}
 
       - name: Trigger Metabase schema sync
         run: |
@@ -123,7 +163,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dbt-artifacts
+          name: dbt-artifacts-${{ matrix.environment }}
           path: |
             dbt/target/manifest.json
             dbt/target/run_results.json

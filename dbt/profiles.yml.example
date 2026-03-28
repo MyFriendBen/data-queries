@@ -15,10 +15,9 @@ benefits:
 
     bigquery:
       type: bigquery
-      method: service-account
+      method: oauth
       project: "{{ env_var('GCP_PROJECT_ID') }}"
       dataset: analytics
       threads: 4
       timeout_seconds: 300
       location: US
-      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"

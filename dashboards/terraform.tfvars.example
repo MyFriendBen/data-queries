@@ -12,34 +12,36 @@ global_db_credentials = {
 }
 
 # Tenant-Specific Database Credentials (RLS Users)
+# Convention: wl_<state>_<white_label_id>_ro — the RLS policy extracts the
+# white_label_id from the username via regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')
 tenant_db_credentials = {
   nc = {
-    username = "nc"
-    password = "your_password"  # NC user password
+    username = "wl_nc_5_ro"              # white_label_id = 5
+    password = "your_password"
   }
   co = {
-    username = "co"
-    password = "your_password"  # CO user password
+    username = "wl_co_1_ro"              # white_label_id = 1
+    password = "your_password"
   }
   tx = {
-    username = "tx"
-    password = "your_password"  # TX user password
+    username = "wl_tx_40_ro"             # white_label_id = 40
+    password = "your_password"
   }
   il = {
-    username = "il"
-    password = "your_password"  # IL user password
+    username = "wl_il_39_ro"             # white_label_id = 39
+    password = "your_password"
   }
   ma = {
-    username = "ma"
-    password = "your_password"  # MA user password
+    username = "wl_ma_38_ro"             # white_label_id = 38
+    password = "your_password"
   }
   cesn = {
-    username = "cesn"
-    password = "your_password"  # CESN user password
+    username = "wl_cesn_4_ro"            # white_label_id = 4
+    password = "your_password"
   }
   co_tax_calculator = {
-    username = "co_tax_calculator"
-    password = "your_password"  # CO Tax Calculator user password
+    username = "wl_co_tax_calculator_3_ro"  # white_label_id = 3
+    password = "your_password"
   }
 }
 
