@@ -117,6 +117,12 @@ resource "metabase_collection_graph" "graph" {
 #
 # =============================================================================
 
+# Read the current permissions graph so we can discover which database IDs
+# Metabase already knows about (including built-in / sample databases that are
+# not managed by Terraform). This prevents hardcoding IDs that may differ
+# between Metabase versions or environments.
+data "metabase_permissions_graph" "current" {}
+
 locals {
   # All managed database IDs in one place for easy reuse across permission rules.
   all_db_ids = concat(
@@ -126,12 +132,16 @@ locals {
   )
 
   # Databases that exist in Metabase but are NOT managed by Terraform
-  # (e.g. Metabase's built-in H2 sample database). Must be included in the
-  # complete graph to avoid a 400 from the API.
-  unmanaged_db_ids = [1, 2]
+  # (e.g. Metabase's built-in H2 sample database). Derived dynamically from
+  # the current permissions graph so the list stays correct across environments
+  # and Metabase upgrades — no hardcoded IDs needed.
+  unmanaged_db_ids = setsubtract(
+    toset([for p in data.metabase_permissions_graph.current.permissions : p.database]),
+    toset(local.all_db_ids)
+  )
 
   # Every database ID that must appear in the graph (managed + unmanaged).
-  all_known_db_ids = concat(local.all_db_ids, local.unmanaged_db_ids)
+  all_known_db_ids = concat(local.all_db_ids, tolist(local.unmanaged_db_ids))
 }
 
 resource "metabase_permissions_graph" "graph" {

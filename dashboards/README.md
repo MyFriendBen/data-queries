@@ -77,17 +77,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 Metabase exposes collection permissions and data permissions each as a single global object. Both must be imported into Terraform state before they can be managed. Initialize Terraform first (to install providers), then run both imports once:
 
-> **Running locally?** This project is configured to use HCP Terraform (Terraform Cloud) by default. To run locally instead, comment out the `cloud` block in `main.tf` before running `terraform init`:
-> ```hcl
-> # cloud {
-> #   organization = "MyFriendBen"
-> #   workspaces {
-> #     tags = ["dashboards"]
-> #   }
-> # }
-> ```
-> Then run `terraform init -reconfigure` to initialize with a local backend.
-> ⚠️ Remember to **uncomment the `cloud` block before committing** — otherwise CI will break.
+> **Running locally?** This project is configured to use HCP Terraform (Terraform Cloud) by default. To run locally instead, use the gitignored `local_override.tf` file (see [Local Terraform State for Development](#local-terraform-state-for-development) below) — this overrides the backend without touching `main.tf`, so there's no risk of accidentally committing a broken cloud config.
 
 ```bash
 terraform init
@@ -153,7 +143,7 @@ Both collection and data permissions are managed by Terraform:
 
 Data isolation is enforced at two layers:
 1. **Metabase data permissions** (managed here) — tenant group users cannot access other tenants' databases via the query builder.
-2. **PostgreSQL RLS** — even if a user somehow accessed another DB connection, they would only see rows matching their own `white_label_id`.
+2. **PostgreSQL RLS** — within a given database connection, users can only see rows matching their own `white_label_id`.
 
 ## Adding New Tenants
 
@@ -248,7 +238,7 @@ Terraform will automatically:
 - Create the new `<Display Name>` permissions group
 - Grant it `read` access to the new tenant collection
 - Grant it `query-builder` access to the new tenant database only
-- Grant the Global group `write` access to the new collection and full DB access
+- Grant the Global group `write` access to the new collection and `query-builder-and-native` access to the new tenant database
 
 After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
 
