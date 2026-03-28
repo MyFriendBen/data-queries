@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: mart_qualified_benefits
+    description: "Materialized mart that unpivots benefit eligibility data into rows for easier dashboarding. Contains counts of people who qualified for each benefit category by white_label_id and partner."
+    columns:
+      - name: white_label_id
+        description: "White label organization ID used for row-level security"
+        tests:
+          - not_null
+
+      - name: partner
+        description: "Referral partner associated with the screener"
+        tests:
+          - not_null
+
+      - name: benefit
+        description: "Benefit category name"
+        tests:
+          - not_null
+
+      - name: count
+        description: "Value indicating if a user qualified for the corresponding benefit (1 for true, 0 for false in the source mart, here summed up)"
+        tests:
+          - not_null

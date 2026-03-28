@@ -13,6 +13,9 @@ logs/
 venv/
 .user.yml
 
+# GCP service account keys
+*-key.json
+
 # terraform
 .terraform/
 *.tfstate
@@ -21,6 +24,7 @@ venv/
 terraform.tfvars
 local_override.tf
 *.tfplan
+tfplan
 
 # dashboards scripts
 dashboards/scripts/generated/

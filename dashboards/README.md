@@ -7,7 +7,7 @@ Metabase infrastructure deployed through terraform with multi-tenant analytics.
 ### Prerequisites
 
 - Docker and Docker Compose installed
-- BigQuery service account key saved to `./secrets/bigquerykey.json` (or customize path via `bigquery_service_account_key_path` in terraform.tfvars)
+- BigQuery service account key (see [BigQuery Setup](#bigquery-setup) below)
 
 ### Setup Steps
 
@@ -36,7 +36,7 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 Each tenant needs a dedicated database user that only has access to their white-label data.
 
 **Important:** Before running these commands:
-- Replace `white_label_id` values with the correct IDs from your My Friend Ben database
+- Replace `white_label_id` values with the correct IDs from your MyFriendBen database
 - Update the database name (`mfb`) and credentials to match your local setup
 
 ```bash
@@ -151,7 +151,7 @@ locals {
 
 Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
 
-**Note:** Check your My Friend Ben database to find the correct `white_label_id` for the new tenant.
+**Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new tenant.
 
 ```bash
 export DB_PASSWORD="secure_password"
@@ -198,6 +198,42 @@ instance — see the Quick Start section above for that setup.
 
 `local_override.tf` is gitignored — CI/CD never sees it, so GitHub Actions
 continues using Terraform Cloud for staging and production.
+
+## BigQuery Setup
+
+The Google Analytics tab requires a BigQuery connection. To enable it locally:
+
+**1. Get the service account key from 1Password**
+
+Find the **"Data Dashboards BigQuery Key (Localhost)"** entry in the MyFriendBen 1Password vault. Copy the JSON content and save it:
+
+```bash
+mkdir -p secrets
+# Create secrets/bigquerykey.json and paste the JSON content into it.
+# macOS example:
+# pbpaste > secrets/bigquerykey.json
+```
+
+**2. Enable BigQuery in Terraform**
+
+In `terraform.tfvars`, set:
+
+```hcl
+bigquery_enabled = true
+```
+
+**3. Restart Metabase and apply**
+
+```bash
+docker restart metabase
+terraform apply
+```
+
+The first apply after enabling BigQuery may need a second run — Metabase takes a moment to sync the BigQuery schema before Terraform can reference its tables.
+
+> **Important:** The BigQuery service account key grants direct access to MyFriendBen analytics data. Do not share it with anyone outside of MyFriendBen.
+>
+> The `secrets/` directory is gitignored. Never commit service account keys to the repository.
 
 ## Troubleshooting
 

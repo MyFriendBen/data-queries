@@ -281,7 +281,7 @@ WITH base_table_1 AS (
                         WHEN trim(ss.referral_source) <> trim(ss.referrer_code)
                             THEN
                                 CASE
-                                    WHEN drc2.referrer_code IS NOT NULL THEN concat(drc1.partner, ', ', drc2.partner)
+                                    WHEN drc2.referrer_code IS NOT NULL THEN concat_ws(', ', drc1.partner, drc2.partner)
                                     WHEN drc1.referrer_code IS NOT NULL THEN drc1.partner
                                     ELSE 'Other'
                                 END
