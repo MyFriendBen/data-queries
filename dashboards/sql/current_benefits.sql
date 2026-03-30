@@ -8,4 +8,4 @@ CROSS JOIN totals t
 WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]
 GROUP BY benefit
 HAVING SUM(count) > 0
-ORDER BY SUM(count) DESC
+ORDER BY SUM(count) DESC, benefit ASC
