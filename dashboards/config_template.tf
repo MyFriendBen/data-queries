@@ -100,7 +100,7 @@ locals {
     }
   }
 
-  # Per-tenant template-tags for partner field filter (dimension type enables multi-select)
+  # Per-tenant template-tags for partner and date filter (dimension type enables multi-select)
   partner_template_tags = {
     for k, v in var.tenants : k => {
       partner = {
@@ -110,6 +110,14 @@ locals {
         type           = "dimension"
         dimension      = ["field", tonumber(data.external.partner_field_ids.result[k]), null]
         "widget-type"  = "string/="
+      }
+      submission_date = {
+        id             = "date_range_filter"
+        name           = "submission_date"
+        "display-name" = "Submission Date"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[k].fields["submission_date"]), null]
+        "widget-type"  = "date/all-options"
       }
     }
   }
