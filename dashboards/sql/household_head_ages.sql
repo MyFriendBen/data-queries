@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT age FROM analytics.mart_householdmembers
     WHERE relationship = 'headOfHousehold'
-    [[AND {{partner}}]]
+    [[AND {{partner}}]] [[AND {{county}}]]
 ),
 total AS (
     SELECT count(*) AS n FROM filtered WHERE age IS NOT NULL
