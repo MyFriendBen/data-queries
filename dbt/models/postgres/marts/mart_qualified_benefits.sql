@@ -10,6 +10,7 @@ WITH base AS (
     SELECT
         white_label_id,
         partner,
+        county,
         sum(CASE WHEN lifeline_annual > 0 THEN 1 ELSE 0 END) AS lifeline,
         sum(CASE WHEN snap_annual > 0 THEN 1 ELSE 0 END) AS snap,
         sum(CASE WHEN co_snap_annual > 0 THEN 1 ELSE 0 END) AS co_snap,
@@ -123,14 +124,15 @@ WITH base AS (
         sum(CASE WHEN co_energy_calculator_xceleap_annual > 0 THEN 1 ELSE 0 END) AS co_xceleap,
         sum(CASE WHEN co_energy_calculator_xcelgap_annual > 0 THEN 1 ELSE 0 END) AS co_xcelgap
     FROM {{ ref('mart_screener_data') }}
-    GROUP BY 1, 2
+    GROUP BY 1, 2, 3
 )
 
 SELECT
     t.benefit,
     t.count,
     b.white_label_id,
-    b.partner
+    b.partner,
+    b.county
 FROM base AS b
 CROSS JOIN LATERAL unnest(
     ARRAY['Lifeline', 'SNAP', 'CO SNAP', 'NC SNAP', 'IL SNAP', 'MA SNAP', 'WIC', 'CO WIC', 'NC WIC', 'IL WIC', 'MA WIC', 'TANF', 'CO TANF', 'NC TANF', 'IL TANF', 'MA TAFDC', 'Medicaid', 'CO Medicaid', 'NC Medicaid', 'IL Medicaid', 'MA Mass Health', 'MA Mass Health Limited', 'NC Emergency Medicaid', 'Emergency Medicaid', 'AWD Medicaid', 'CWD Medicaid', 'Medicare Savings', 'NC SCCA', 'NC LIEAP', 'NCCIP', 'NC ACA', 'NC WAP', 'SSI', 'SSDI', 'NSLP', 'IL NSLP', 'EITC', 'CO EITC', 'IL EITC', 'MA EITC', 'CTC', 'CO CTC', 'IL CTC', 'FATC', 'SHITC', 'TABOR', 'OAP', 'Sunbucks', 'LEAP', 'ACP', 'CCAP', 'Pell Grant', 'ERAP', 'ANDCS', 'BCA', 'CDHCS', 'CFHC', 'CHP', 'CHS', 'CO CB', 'CO WAP', 'CPCR', 'DPP', 'DPTR', 'DSR', 'DTR', 'EDE', 'ERC', 'FPS', 'LWCR', 'MA ACA', 'MA CCDF', 'MA CFC', 'MA EAEDC', 'MA MBTA', 'MA SSP', 'My Denver', 'My Spark', 'NF', 'NFP', 'Omnisalud', 'RAG', 'RHC', 'RTD Live', 'TRUA', 'UBP', 'UPK', 'IL AABD', 'IL ACA', 'IL ACA Adults', 'IL All Kids', 'IL BAP', 'IL Family Care', 'IL LIHEAP', 'IL Moms and Babies', 'IL Transit Reduced Fare', 'CO BHEAP', 'CO BHGAP', 'CO CARE', 'CO CNGBA', 'CO WAP (Energy)', 'CO CPCR (Energy)', 'CO EA', 'CO Energy EBT', 'CO EOC', 'CO EOCCIP', 'CO EOCS', 'CO LEAP (Energy)', 'CO POIPP', 'CO UBP (Energy)', 'CO XCELEAP', 'CO XCELGAP'],
