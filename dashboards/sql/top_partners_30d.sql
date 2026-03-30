@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT * FROM analytics.mart_screener_data
     WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days'
-    [[AND {{partner}}]]
+    [[AND {{partner}}]] [[AND {{county}}]]
 ),
 ranked AS (
     SELECT partner, count(*) AS screeners

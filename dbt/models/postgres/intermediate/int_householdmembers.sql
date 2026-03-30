@@ -7,6 +7,7 @@ SELECT
     d.id AS screener_id,
     d.white_label_id,
     d.partner,
+    d.county,
     d.submission_date,
     sh.id,
     sh.age,
