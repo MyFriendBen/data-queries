@@ -9,4 +9,4 @@ FROM analytics.mart_qualified_benefits qb
 CROSS JOIN totals t
 WHERE 1=1 [[AND {{partner}}]]
 GROUP BY qb.benefit
-ORDER BY SUM(qb.count) DESC
+ORDER BY SUM(qb.count) DESC, qb.benefit ASC

@@ -82,10 +82,7 @@ resource "metabase_card" "tenant_current_benefits_table" {
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -104,10 +101,7 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -125,15 +119,12 @@ resource "metabase_card" "tenant_immediate_needs_table" {
         "template-tags" = local.partner_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Need Category", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
 locals {
-  # Shared column settings for benefits/needs table cards
+  # 1. Specialized column settings (the "style" for the tables)
   benefits_column_settings = {
     "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
     "[\"name\",\"% of Screeners\"]" = merge(
@@ -142,7 +133,15 @@ locals {
     )
   }
 
-  # Shared visualization settings for percentage scorecard cards
+  # 2. Reusable template for the tables themselves
+  tenant_benefits_table_card_config = merge(local.tenant_table_card_config, {
+    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
+      "column_settings" = local.benefits_column_settings
+    })
+  })
+
+  # 3. Reusable template for the percentage scorecards
   benefits_pct_visualization_settings = {
     "scalar.field" = "pct"
     "column_settings" = {
@@ -237,7 +236,7 @@ locals {
         row              = 6
         col              = 0
         size_x           = 12
-        size_y           = 8
+        size_y           = 10
         parameter_mappings = [{
           parameter_id = "partner_filter"
           card_id      = tonumber(metabase_card.tenant_current_benefits_table[k].id)
@@ -252,7 +251,7 @@ locals {
         row              = 6
         col              = 12
         size_x           = 12
-        size_y           = 8
+        size_y           = 10
         parameter_mappings = [{
           parameter_id = "partner_filter"
           card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
@@ -267,7 +266,7 @@ locals {
         row              = 14
         col              = 0
         size_x           = 12
-        size_y           = 8
+        size_y           = 10
         parameter_mappings = [{
           parameter_id = "partner_filter"
           card_id      = tonumber(metabase_card.tenant_immediate_needs_table[k].id)

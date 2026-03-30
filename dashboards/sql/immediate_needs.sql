@@ -7,4 +7,4 @@ FROM analytics.mart_immediate_needs
 CROSS JOIN totals t
 WHERE 1=1 [[AND {{partner}}]]
 GROUP BY benefit
-ORDER BY SUM(count) DESC
+ORDER BY SUM(count) DESC, benefit ASC
