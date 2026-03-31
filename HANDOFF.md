@@ -169,14 +169,6 @@ Once the GA4 link points to `mfb-data`:
 
 ---
 
-## Other Incomplete Work
-
-### CO Partner Export Columns
-
-PR #16 context: The Colorado partner data export is missing some program-specific columns. The `total_benefits_annual` column doesn't reconcile with the sum of individual program columns because not all programs are exported. See `data.sql` lines 620-727 for the full list of programs included in the totals.
-
----
-
 ## Key Contacts and Accounts
 
 | What | Who / Where |
