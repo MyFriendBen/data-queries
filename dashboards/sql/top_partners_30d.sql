@@ -1,6 +1,6 @@
 WITH filtered AS (
     SELECT * FROM analytics.mart_screener_data
-    WHERE 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]]
+    WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]]
 ),
 
 ranked AS (
@@ -35,5 +35,5 @@ FROM (
         t.total AS "#",
         CASE WHEN t.total = 0 THEN NULL ELSE 1::FLOAT END AS "%"
     FROM total_screeners AS t
-) AS combined
-ORDER BY sort_order ASC, "#" DESC
+) combined
+ORDER BY sort_order, "#" DESC
