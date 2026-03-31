@@ -14,7 +14,7 @@ SELECT
     sum(CASE WHEN cdhcs_annual > 0 THEN 1 ELSE 0 END) AS cdhcs,
     sum(CASE WHEN cfhc_annual > 0 THEN 1 ELSE 0 END) AS cfhc,
     sum(CASE WHEN chp_annual > 0 THEN 1 ELSE 0 END) AS chp,
-    sum(CASE WHEN chs_annual > 0 THEN 1 ELSE 0 END) AS chs,
+    sum(CASE WHEN co_head_start_annual > 0 THEN 1 ELSE 0 END) AS co_head_start,
     sum(CASE WHEN cocb_annual > 0 THEN 1 ELSE 0 END) AS cocb,
     sum(CASE WHEN coctc_annual > 0 THEN 1 ELSE 0 END) AS coctc,
     sum(CASE WHEN coeitc_annual > 0 THEN 1 ELSE 0 END) AS coeitc,
