@@ -1,6 +1,6 @@
 WITH filtered AS (
     SELECT * FROM analytics.mart_screener_data
-    WHERE 1 = 1[[AND {{ submission_date }}]][[AND {{ partner }}]]
+    WHERE 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]]
 ),
 
 county_counts AS (

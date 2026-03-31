@@ -9,6 +9,8 @@ locals {
   # For SQL files: remove the partner filter clause
   _partner_clause     = " [[AND {{partner}}]]"
   _partner_clause_alt = "\n    [[AND {{partner}}]]"
+  # submission_date clause — only in 30d files
+  _submission_date_clause = " [[AND {{submission_date}}]]"
 
   # Base config for global cards (no template-tags, no partner filter)
   global_card_base_config = {
@@ -365,7 +367,7 @@ resource "metabase_card" "global_top_partners_30d" {
         query = replace(
           replace(
             templatefile("${path.module}/sql/top_partners_30d.sql", {}),
-            local._partner_clause_alt, ""
+            local._submission_date_clause, ""
           ),
           local._partner_clause, ""
         )
@@ -394,7 +396,7 @@ resource "metabase_card" "global_top_counties_30d" {
         query = replace(
           replace(
             templatefile("${path.module}/sql/top_counties_30d.sql", {}),
-            local._partner_clause_alt, ""
+            local._submission_date_clause, ""
           ),
           local._partner_clause, ""
         )
