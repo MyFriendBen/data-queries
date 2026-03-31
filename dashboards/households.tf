@@ -11,8 +11,8 @@ resource "metabase_card" "tenant_median_household_size" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_size) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_size) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = { "scalar.field" = "median" }
@@ -28,8 +28,8 @@ resource "metabase_card" "tenant_median_household_assets" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_assets) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_assets) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = {
@@ -48,8 +48,8 @@ resource "metabase_card" "tenant_median_annual_income" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income * 12) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income * 12) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = {
@@ -68,8 +68,8 @@ resource "metabase_card" "tenant_median_monthly_income" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = {
@@ -88,8 +88,8 @@ resource "metabase_card" "tenant_median_monthly_expenses" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = {
@@ -112,7 +112,7 @@ resource "metabase_card" "tenant_head_of_household_ages" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_head_ages.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.households_pct_bar_chart_settings["Age Group"]
@@ -130,7 +130,7 @@ resource "metabase_card" "tenant_household_member_ages" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_member_ages.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.households_pct_bar_chart_settings["Age Group"]
@@ -150,7 +150,7 @@ resource "metabase_card" "tenant_household_sizes" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_sizes.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.households_pct_bar_chart_settings["Household Size"]
@@ -168,7 +168,7 @@ resource "metabase_card" "tenant_household_languages" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_languages.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = {
@@ -194,7 +194,7 @@ resource "metabase_card" "tenant_household_income_distribution" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_income_distribution.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.households_pct_bar_chart_settings["Income Range"]
@@ -212,7 +212,7 @@ resource "metabase_card" "tenant_household_assets_distribution" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/household_assets_distribution.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.households_pct_bar_chart_settings["Asset Range"]
@@ -231,7 +231,7 @@ resource "metabase_card" "tenant_income_streams" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/income_streams.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -250,7 +250,7 @@ resource "metabase_card" "tenant_common_expenses" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/common_expenses.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
@@ -307,11 +307,18 @@ locals {
         col              = 0
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -322,11 +329,18 @@ locals {
         col              = 4
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -337,11 +351,18 @@ locals {
         col              = 8
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -352,11 +373,18 @@ locals {
         col              = 12
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -367,11 +395,18 @@ locals {
         col              = 16
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -382,11 +417,18 @@ locals {
         col              = 20
         size_x           = 4
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -417,11 +459,18 @@ locals {
         col              = 6
         size_x           = 9
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -432,11 +481,18 @@ locals {
         col              = 15
         size_x           = 9
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -448,11 +504,18 @@ locals {
         col              = 0
         size_x           = 12
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -463,11 +526,18 @@ locals {
         col              = 12
         size_x           = 12
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -498,11 +568,18 @@ locals {
         col              = 6
         size_x           = 9
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -513,11 +590,18 @@ locals {
         col              = 15
         size_x           = 9
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -529,11 +613,18 @@ locals {
         col              = 0
         size_x           = 12
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -544,11 +635,18 @@ locals {
         col              = 12
         size_x           = 12
         size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },

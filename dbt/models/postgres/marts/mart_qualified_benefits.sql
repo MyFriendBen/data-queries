@@ -10,6 +10,7 @@ WITH base AS (
     SELECT
         white_label_id,
         partner,
+        county,
         sum(CASE WHEN lifeline_annual > 0 THEN 1 ELSE 0 END) AS lifeline,
         sum(CASE WHEN snap_annual > 0 THEN 1 ELSE 0 END) AS snap,
         sum(CASE WHEN co_snap_annual > 0 THEN 1 ELSE 0 END) AS co_snap,
@@ -68,7 +69,7 @@ WITH base AS (
         sum(CASE WHEN cdhcs_annual > 0 THEN 1 ELSE 0 END) AS cdhcs,
         sum(CASE WHEN cfhc_annual > 0 THEN 1 ELSE 0 END) AS cfhc,
         sum(CASE WHEN chp_annual > 0 THEN 1 ELSE 0 END) AS chp,
-        sum(CASE WHEN chs_annual > 0 THEN 1 ELSE 0 END) AS chs,
+        sum(CASE WHEN co_head_start_annual > 0 THEN 1 ELSE 0 END) AS co_head_start,
         sum(CASE WHEN cocb_annual > 0 THEN 1 ELSE 0 END) AS co_cb,
         sum(CASE WHEN cowap_annual > 0 THEN 1 ELSE 0 END) AS co_wap,
         sum(CASE WHEN cpcr_annual > 0 THEN 1 ELSE 0 END) AS cpcr,
@@ -123,16 +124,17 @@ WITH base AS (
         sum(CASE WHEN co_energy_calculator_xceleap_annual > 0 THEN 1 ELSE 0 END) AS co_xceleap,
         sum(CASE WHEN co_energy_calculator_xcelgap_annual > 0 THEN 1 ELSE 0 END) AS co_xcelgap
     FROM {{ ref('mart_screener_data') }}
-    GROUP BY 1, 2
+    GROUP BY 1, 2, 3
 )
 
 SELECT
     t.benefit,
     t.count,
     b.white_label_id,
-    b.partner
+    b.partner,
+    b.county
 FROM base AS b
 CROSS JOIN LATERAL unnest(
-    ARRAY['Lifeline', 'SNAP', 'CO SNAP', 'NC SNAP', 'IL SNAP', 'MA SNAP', 'WIC', 'CO WIC', 'NC WIC', 'IL WIC', 'MA WIC', 'TANF', 'CO TANF', 'NC TANF', 'IL TANF', 'MA TAFDC', 'Medicaid', 'CO Medicaid', 'NC Medicaid', 'IL Medicaid', 'MA Mass Health', 'MA Mass Health Limited', 'NC Emergency Medicaid', 'Emergency Medicaid', 'AWD Medicaid', 'CWD Medicaid', 'Medicare Savings', 'NC SCCA', 'NC LIEAP', 'NCCIP', 'NC ACA', 'NC WAP', 'SSI', 'SSDI', 'NSLP', 'IL NSLP', 'EITC', 'CO EITC', 'IL EITC', 'MA EITC', 'CTC', 'CO CTC', 'IL CTC', 'FATC', 'SHITC', 'TABOR', 'OAP', 'Sunbucks', 'LEAP', 'ACP', 'CCAP', 'Pell Grant', 'ERAP', 'ANDCS', 'BCA', 'CDHCS', 'CFHC', 'CHP', 'CHS', 'CO CB', 'CO WAP', 'CPCR', 'DPP', 'DPTR', 'DSR', 'DTR', 'EDE', 'ERC', 'FPS', 'LWCR', 'MA ACA', 'MA CCDF', 'MA CFC', 'MA EAEDC', 'MA MBTA', 'MA SSP', 'My Denver', 'My Spark', 'NF', 'NFP', 'Omnisalud', 'RAG', 'RHC', 'RTD Live', 'TRUA', 'UBP', 'UPK', 'IL AABD', 'IL ACA', 'IL ACA Adults', 'IL All Kids', 'IL BAP', 'IL Family Care', 'IL LIHEAP', 'IL Moms and Babies', 'IL Transit Reduced Fare', 'CO BHEAP', 'CO BHGAP', 'CO CARE', 'CO CNGBA', 'CO WAP (Energy)', 'CO CPCR (Energy)', 'CO EA', 'CO Energy EBT', 'CO EOC', 'CO EOCCIP', 'CO EOCS', 'CO LEAP (Energy)', 'CO POIPP', 'CO UBP (Energy)', 'CO XCELEAP', 'CO XCELGAP'],
-    ARRAY[b.lifeline, b.snap, b.co_snap, b.nc_snap, b.il_snap, b.ma_snap, b.wic, b.co_wic, b.nc_wic, b.il_wic, b.ma_wic, b.tanf, b.co_tanf, b.nc_tanf, b.il_tanf, b.ma_tafdc, b.medicaid, b.co_medicaid, b.nc_medicaid, b.il_medicaid, b.ma_mass_health, b.ma_mass_health_limited, b.nc_emergency_medicaid, b.emergency_medicaid, b.awd_medicaid, b.cwd_medicaid, b.medicare_savings, b.nc_scca, b.nc_lieap, b.nccip, b.nc_aca, b.nc_wap, b.ssi, b.ssdi, b.nslp, b.il_nslp, b.eitc, b.co_eitc, b.il_eitc, b.ma_eitc, b.ctc, b.co_ctc, b.il_ctc, b.fatc, b.shitc, b.tabor, b.oap, b.sunbucks, b.leap, b.acp, b.ccap, b.pell_grant, b.erap, b.andcs, b.bca, b.cdhcs, b.cfhc, b.chp, b.chs, b.co_cb, b.co_wap, b.cpcr, b.dpp, b.dptr, b.dsr, b.dtr, b.ede, b.erc, b.fps, b.lwcr, b.ma_aca, b.ma_ccdf, b.ma_cfc, b.ma_eaedc, b.ma_mbta, b.ma_ssp, b.mydenver, b.myspark, b.nf, b.nfp, b.omnisalud, b.rag, b.rhc, b.rtdlive, b.trua, b.ubp, b.upk, b.il_aabd, b.il_aca, b.il_aca_adults, b.il_all_kids, b.il_bap, b.il_family_care, b.il_liheap, b.il_moms_and_babies, b.il_transit_reduced_fare, b.co_bheap, b.co_bhgap, b.co_care, b.co_cngba, b.co_wap_energy, b.co_cpcr_energy, b.co_ea, b.co_energy_ebt, b.co_eoc, b.co_eoccip, b.co_eocs, b.co_leap_energy, b.co_poipp, b.co_ubp_energy, b.co_xceleap, b.co_xcelgap]
+    ARRAY['Lifeline', 'SNAP', 'CO SNAP', 'NC SNAP', 'IL SNAP', 'MA SNAP', 'WIC', 'CO WIC', 'NC WIC', 'IL WIC', 'MA WIC', 'TANF', 'CO TANF', 'NC TANF', 'IL TANF', 'MA TAFDC', 'Medicaid', 'CO Medicaid', 'NC Medicaid', 'IL Medicaid', 'MA Mass Health', 'MA Mass Health Limited', 'NC Emergency Medicaid', 'Emergency Medicaid', 'AWD Medicaid', 'CWD Medicaid', 'Medicare Savings', 'NC SCCA', 'NC LIEAP', 'NCCIP', 'NC ACA', 'NC WAP', 'SSI', 'SSDI', 'NSLP', 'IL NSLP', 'EITC', 'CO EITC', 'IL EITC', 'MA EITC', 'CTC', 'CO CTC', 'IL CTC', 'FATC', 'SHITC', 'TABOR', 'OAP', 'Sunbucks', 'LEAP', 'ACP', 'CCAP', 'Pell Grant', 'ERAP', 'ANDCS', 'BCA', 'CDHCS', 'CFHC', 'CHP', 'CO Head Start', 'CO CB', 'CO WAP', 'CPCR', 'DPP', 'DPTR', 'DSR', 'DTR', 'EDE', 'ERC', 'FPS', 'LWCR', 'MA ACA', 'MA CCDF', 'MA CFC', 'MA EAEDC', 'MA MBTA', 'MA SSP', 'My Denver', 'My Spark', 'NF', 'NFP', 'Omnisalud', 'RAG', 'RHC', 'RTD Live', 'TRUA', 'UBP', 'UPK', 'IL AABD', 'IL ACA', 'IL ACA Adults', 'IL All Kids', 'IL BAP', 'IL Family Care', 'IL LIHEAP', 'IL Moms and Babies', 'IL Transit Reduced Fare', 'CO BHEAP', 'CO BHGAP', 'CO CARE', 'CO CNGBA', 'CO WAP (Energy)', 'CO CPCR (Energy)', 'CO EA', 'CO Energy EBT', 'CO EOC', 'CO EOCCIP', 'CO EOCS', 'CO LEAP (Energy)', 'CO POIPP', 'CO UBP (Energy)', 'CO XCELEAP', 'CO XCELGAP'],
+    ARRAY[b.lifeline, b.snap, b.co_snap, b.nc_snap, b.il_snap, b.ma_snap, b.wic, b.co_wic, b.nc_wic, b.il_wic, b.ma_wic, b.tanf, b.co_tanf, b.nc_tanf, b.il_tanf, b.ma_tafdc, b.medicaid, b.co_medicaid, b.nc_medicaid, b.il_medicaid, b.ma_mass_health, b.ma_mass_health_limited, b.nc_emergency_medicaid, b.emergency_medicaid, b.awd_medicaid, b.cwd_medicaid, b.medicare_savings, b.nc_scca, b.nc_lieap, b.nccip, b.nc_aca, b.nc_wap, b.ssi, b.ssdi, b.nslp, b.il_nslp, b.eitc, b.co_eitc, b.il_eitc, b.ma_eitc, b.ctc, b.co_ctc, b.il_ctc, b.fatc, b.shitc, b.tabor, b.oap, b.sunbucks, b.leap, b.acp, b.ccap, b.pell_grant, b.erap, b.andcs, b.bca, b.cdhcs, b.cfhc, b.chp, b.co_head_start, b.co_cb, b.co_wap, b.cpcr, b.dpp, b.dptr, b.dsr, b.dtr, b.ede, b.erc, b.fps, b.lwcr, b.ma_aca, b.ma_ccdf, b.ma_cfc, b.ma_eaedc, b.ma_mbta, b.ma_ssp, b.mydenver, b.myspark, b.nf, b.nfp, b.omnisalud, b.rag, b.rhc, b.rtdlive, b.trua, b.ubp, b.upk, b.il_aabd, b.il_aca, b.il_aca_adults, b.il_all_kids, b.il_bap, b.il_family_care, b.il_liheap, b.il_moms_and_babies, b.il_transit_reduced_fare, b.co_bheap, b.co_bhgap, b.co_care, b.co_cngba, b.co_wap_energy, b.co_cpcr_energy, b.co_ea, b.co_energy_ebt, b.co_eoc, b.co_eoccip, b.co_eocs, b.co_leap_energy, b.co_poipp, b.co_ubp_energy, b.co_xceleap, b.co_xcelgap]
 ) AS t (benefit, count)

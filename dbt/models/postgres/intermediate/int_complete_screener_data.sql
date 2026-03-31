@@ -81,7 +81,7 @@ WITH base_table_1 AS (
         -- Benefits
         ss.has_cdhcs,
         ss.has_chp,
-        ss.has_chs,
+        ss.has_head_start,
         ss.has_co_andso,
         ss.has_coctc,
         ss.has_coeitc,
@@ -146,7 +146,7 @@ WITH base_table_1 AS (
         -- Program eligibility annual values
         pe.cfhc_annual,
         pe.chp_annual,
-        pe.chs_annual,
+        pe.co_head_start_annual,
         pe.cocb_annual,
         pe.coctc_annual,
         pe.coeitc_annual,
@@ -420,7 +420,7 @@ base_table_2 AS (
         + coalesce(cdhcs_annual, 0)
         + coalesce(cfhc_annual, 0)
         + coalesce(chp_annual, 0)
-        + coalesce(chs_annual, 0)
+        + coalesce(co_head_start_annual, 0)
         + coalesce(cocb_annual, 0)
         -- + coalesce(coctc_annual, 0) -- tax credit
         -- + coalesce(coeitc_annual, 0) -- tax credit

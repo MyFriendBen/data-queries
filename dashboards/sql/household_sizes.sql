@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT household_size
     FROM analytics.mart_screener_data
-    WHERE 1=1 [[AND {{partner}}]]
+    WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]
 ),
 total AS (
     SELECT count(*) AS n FROM filtered

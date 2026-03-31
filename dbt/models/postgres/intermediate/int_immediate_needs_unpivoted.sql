@@ -7,7 +7,8 @@ SELECT
     t.benefit,
     t.count,
     inb.white_label_id,
-    inb.partner
+    inb.partner,
+    inb.county
 FROM {{ ref('int_immediate_needs') }} AS inb
 CROSS JOIN LATERAL unnest(
     ARRAY[
