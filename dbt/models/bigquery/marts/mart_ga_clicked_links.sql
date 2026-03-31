@@ -44,13 +44,13 @@ select
     state_code,
     -- Derive domain from link_url if link_domain is not populated
     coalesce(
-        link_domain,
+        nullif(link_domain, ''),
         regexp_extract(link_url, r'[^/]+://([^/]+)')
     ) as link_domain,
     is_outbound,
 
     count(*) as total_clicks,
-    count(distinct concat(user_pseudo_id, '_', ga_session_id)) as sessions_with_clicks,
+    count(distinct TO_JSON_STRING(struct(user_pseudo_id, ga_session_id))) as sessions_with_clicks,
     count(distinct user_pseudo_id) as users_with_clicks,
 
     current_timestamp() as updated_at

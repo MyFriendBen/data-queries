@@ -38,16 +38,42 @@ page_activity as (
     group by user_pseudo_id, ga_session_id
 ),
 
-link_clicks as (
-    -- Capture first outbound click timestamp per session; ordering is checked downstream
+link_click_events as (
+    -- Raw outbound click events, not pre-aggregated so we can compare each click
+    -- timestamp against first_screener_results_ts after joining with page_activity
     select
         user_pseudo_id,
         ga_session_id,
-        min(case when is_outbound = 'true' then event_timestamp end) as first_outbound_click_ts,
-        count(*) as total_link_clicks
+        event_timestamp as click_ts
     from {{ ref('stg_ga_link_clicks') }}
     where ga_session_id is not null
+      and is_outbound = 'true'
+),
+
+link_clicks as (
+    -- Session-level aggregation: first click timestamp and total count
+    select
+        user_pseudo_id,
+        ga_session_id,
+        min(click_ts) as first_outbound_click_ts,
+        count(*)      as total_link_clicks
+    from link_click_events
     group by user_pseudo_id, ga_session_id
+),
+
+post_completion_clicks as (
+    -- Sessions where at least one outbound click occurred AFTER /results.
+    -- Computed separately because min(click_ts) in link_clicks would return 0
+    -- for sessions that have clicks both before and after screener completion.
+    select distinct
+        lce.user_pseudo_id,
+        lce.ga_session_id
+    from link_click_events lce
+    inner join page_activity pa
+        on  lce.user_pseudo_id = pa.user_pseudo_id
+        and lce.ga_session_id  = pa.ga_session_id
+    where pa.first_screener_results_ts is not null
+      and lce.click_ts > pa.first_screener_results_ts
 )
 
 select
@@ -81,14 +107,10 @@ select
     end as completion_time_seconds,
 
     -- Link click activity
-    -- has_outbound_click = 1 only when the first outbound click occurred after screener completion
-    case
-        when lc.first_outbound_click_ts is not null
-            and pa.first_screener_results_ts is not null
-            and lc.first_outbound_click_ts > pa.first_screener_results_ts
-        then 1
-        else 0
-    end as has_outbound_click,
+    -- has_outbound_click = 1 when ANY outbound click occurred after screener completion;
+    -- uses post_completion_clicks CTE to avoid the min(click_ts) bug where an early
+    -- pre-completion click would wrongly suppress a later post-completion click
+    case when pcc.user_pseudo_id is not null then 1 else 0 end as has_outbound_click,
     lc.first_outbound_click_ts,
     coalesce(lc.total_link_clicks, 0) as total_link_clicks
 
@@ -97,5 +119,8 @@ left join page_activity pa
     on s.user_pseudo_id = pa.user_pseudo_id
     and s.ga_session_id = pa.ga_session_id
 left join link_clicks lc
-    on s.user_pseudo_id = lc.user_pseudo_id
-    and s.ga_session_id = lc.ga_session_id
+    on  s.user_pseudo_id = lc.user_pseudo_id
+    and s.ga_session_id  = lc.ga_session_id
+left join post_completion_clicks pcc
+    on  s.user_pseudo_id = pcc.user_pseudo_id
+    and s.ga_session_id  = pcc.ga_session_id
