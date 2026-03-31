@@ -13,6 +13,7 @@ resource "metabase_database" "bigquery" {
     service_account_key  = local.bigquery_key
     project_id           = var.gcp_project_id
     dataset_filters_type = "all"
+    dataset_id           = var.bigquery_analytics_dataset
   }
 }
 
@@ -128,6 +129,7 @@ data "external" "partner_field_ids" {
     })
   }
 }
+
 
 # Global collection for admin-level analytics
 resource "metabase_collection" "global" {
@@ -975,12 +977,13 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_id       = tonumber(local.tenant_collection_map[each.key].id)
   collection_position = 1
 
-  parameters_json = jsonencode(
+  parameters_json = jsonencode(concat(
+    # Partner filter — shown for tenants with household/performance tabs
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
       local.tenant_has_tab[each.key]["benefits_needs"]
-      ) ? [
+    ) ? [
       {
         id                 = "partner_filter"
         name               = "Partner"
@@ -994,8 +997,28 @@ resource "metabase_dashboard" "tenant_analytics" {
           value_field = ["field", "partner", { "base-type" = "type/Text" }]
         }
       }
+    ] : [],
+
+    # Start/End date filters — shown for tenants with a Google Analytics tab.
+    # Using plain date variables instead of field filters to avoid the Metabase BigQuery
+    # driver bug that generates `schema.table`.column references BigQuery can't parse.
+    local.tenant_has_tab[each.key]["google_analytics"] && var.bigquery_enabled ? [
+      {
+        id        = "ga_start_date_filter"
+        name      = "Start Date"
+        slug      = "start_date"
+        type      = "date/single"
+        sectionId = "date"
+      },
+      {
+        id        = "ga_end_date_filter"
+        name      = "End Date"
+        slug      = "end_date"
+        type      = "date/single"
+        sectionId = "date"
+      }
     ] : []
-  )
+  ))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
