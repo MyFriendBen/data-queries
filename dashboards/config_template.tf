@@ -84,7 +84,7 @@ locals {
 
   # Per-tenant tab selection — order determines tab display order
   tenant_tabs = {
-    nc                = ["google_analytics", "all_time", "benefits_needs"]
+    nc                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     co                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     tx                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
