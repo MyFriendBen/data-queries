@@ -189,19 +189,18 @@ resource "metabase_card" "ga_conversion_funnel" {
       type     = "native"
       native = {
         query         = <<-SQL
+          WITH filtered AS (
+            SELECT * FROM `${local.bq_dataset}.mart_ga_kpi_summary`
+            WHERE state_code IN (${local.tenant_ga_state_filter[each.key]})
+            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+          )
           SELECT funnel_step, session_count
           FROM (
-            SELECT 'Total Visitors' AS funnel_step, SUM(total_sessions) AS session_count, 1 AS step_order
-            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code IN (${local.tenant_ga_state_filter[each.key]}) [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]] [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            UNION ALL
-            SELECT 'Started Screener', SUM(sessions_started_screener), 2
-            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code IN (${local.tenant_ga_state_filter[each.key]}) [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]] [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            UNION ALL
-            SELECT 'Completed Screener', SUM(sessions_completed_screener), 3
-            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code IN (${local.tenant_ga_state_filter[each.key]}) [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]] [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            UNION ALL
-            SELECT 'Clicked Link', SUM(sessions_clicked_after_completion), 4
-            FROM `${local.bq_dataset}.mart_ga_kpi_summary` WHERE state_code IN (${local.tenant_ga_state_filter[each.key]}) [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]] [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+            SELECT 'Total Visitors'     AS funnel_step, SUM(total_sessions)                    AS session_count, 1 AS step_order FROM filtered
+            UNION ALL SELECT 'Started Screener',                              SUM(sessions_started_screener),         2 FROM filtered
+            UNION ALL SELECT 'Completed Screener',                            SUM(sessions_completed_screener),       3 FROM filtered
+            UNION ALL SELECT 'Clicked Link',                                  SUM(sessions_clicked_after_completion), 4 FROM filtered
           )
           ORDER BY step_order
         SQL
