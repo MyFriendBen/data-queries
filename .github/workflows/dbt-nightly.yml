@@ -119,8 +119,10 @@ jobs:
           GCP_ANALYTICS_TABLE: ${{ vars.GCP_ANALYTICS_TABLE }}
       
       - name: Refresh materialized views
+        id: refresh_materialized_views
         run: |
           PGPASSWORD="$DB_PASS" psql \
+            -v ON_ERROR_STOP=1 \
             -h "$DB_HOST" \
             -U "$DB_USER" \
             -d "$DB_NAME" \
@@ -181,12 +183,12 @@ jobs:
       - name: Notify Slack
         if: always()
         run: |
-          STATUS="${{ job.status }}"
+          STATUS="${{ steps.refresh_materialized_views.outcome }}"
           ENV="${{ matrix.environment }}"
           if [ "$STATUS" = "success" ]; then
             MESSAGE="✅ *dbt + materialized view refresh succeeded* (${ENV}) — dashboards are up to date."
           else
-          MESSAGE="❌ *dbt + materialized view refresh failed* (${ENV}) — dashboards may be stale. See run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            MESSAGE="❌ *dbt + materialized view refresh failed* (${ENV}) — dashboards may be stale. See run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           fi
           curl -sf -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
