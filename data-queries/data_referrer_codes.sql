@@ -124,6 +124,7 @@ FROM (
     ('govdelivery', 'Other'),
     ('hello', 'Other'),
     ('hs_automation', 'Other'),
-    ('neighbor', 'Other')
+    ('neighbor', 'Other'),
+    ('yab', 'Youth Advisory Board')
 
 ) AS data_referrer_codes (referrer_code, partner);
