@@ -117,7 +117,16 @@ jobs:
         env:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           GCP_ANALYTICS_TABLE: ${{ vars.GCP_ANALYTICS_TABLE }}
+      
+      - name: Refresh materialized views
+        run: |
+          PGPASSWORD="$DB_PASS" psql \
+            -h "$DB_HOST" \
+            -U "$DB_USER" \
+            -d "$DB_NAME" \
+            -f ../data-queries/refresh_v1_dashboards.sql
 
+      
       - name: Trigger Metabase schema sync
         run: |
           METABASE_API="${METABASE_URL}/api"
@@ -168,3 +177,20 @@ jobs:
             dbt/target/manifest.json
             dbt/target/run_results.json
           retention-days: 7
+
+      - name: Notify Slack
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          ENV="${{ matrix.environment }}"
+          if [ "$STATUS" = "success" ]; then
+            MESSAGE="✅ *dbt + materialized view refresh succeeded* (${ENV}) — dashboards are up to date."
+          else
+          MESSAGE="❌ *dbt + materialized view refresh failed* (${ENV}) — dashboards may be stale. See run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"${MESSAGE}\"}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
