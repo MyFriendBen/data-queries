@@ -118,12 +118,13 @@ FROM (
     ('waterstonechurch', 'Waterstone Church'),
     ('weAreDownHome', 'We Are Down Home'),
     ('wrcgso', 'Women''s Resource Center of Greensboro'),
+    ('yab', 'Youth Advisory Board'),
     -- Could not match the following referrer codes to a partner:
     ('Sailthru', 'Other'),
     ('cgeneralprint', 'Other'),
     ('govdelivery', 'Other'),
     ('hello', 'Other'),
     ('hs_automation', 'Other'),
-    ('neighbor', 'Other')
+    ('neighbor', 'Other'),
 
 ) AS data_referrer_codes (referrer_code, partner);
