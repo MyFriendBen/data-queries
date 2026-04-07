@@ -5,5 +5,8 @@
   )
 }}
 
-SELECT *
+SELECT
+  referrer_code,
+  partner,
+  white_label_code
 FROM {{ ref('referrer_codes') }}
