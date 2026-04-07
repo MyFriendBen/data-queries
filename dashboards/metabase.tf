@@ -427,7 +427,7 @@ resource "metabase_card" "tenant_partner_values" {
     dataset_query = {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
-      native   = { query = "SELECT DISTINCT partner FROM analytics.mart_screener_data WHERE partner IS NOT NULL UNION SELECT DISTINCT partner FROM analytics.stg_referrer_codes WHERE white_label_code = '${each.key}' AND partner IS NOT NULL ORDER BY partner" }
+      native   = { query = "SELECT DISTINCT partner FROM analytics.mart_screener_data WHERE partner IS NOT NULL UNION SELECT DISTINCT partner FROM analytics_internal.stg_referrer_codes WHERE (white_label_code = '${each.key}' OR white_label_code IS NULL OR white_label_code = '') AND partner IS NOT NULL AND partner <> 'No Partner' ORDER BY partner" }
     }
   }))
 }
