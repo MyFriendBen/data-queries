@@ -266,28 +266,11 @@ WITH base_table_1 AS (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN ss.referrer_code IS NULL OR trim(ss.referrer_code) = ''
-                THEN
-                    CASE
-                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN 'No Partner'
-                        WHEN drc2.referrer_code IS NOT NULL THEN drc2.partner
-                        ELSE 'Other'
-                    END
             WHEN ss.referrer_code IS NOT NULL AND trim(ss.referrer_code) <> ''
-                THEN
-                    CASE
-                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN drc1.partner
-                        WHEN trim(ss.referral_source) = trim(ss.referrer_code) THEN coalesce(drc1.partner, 'Other')
-                        WHEN trim(ss.referral_source) <> trim(ss.referrer_code)
-                            THEN
-                                CASE
-                                    WHEN drc2.referrer_code IS NOT NULL THEN concat_ws(', ', drc1.partner, drc2.partner)
-                                    WHEN drc1.referrer_code IS NOT NULL THEN drc1.partner
-                                    ELSE 'Other'
-                                END
-                        ELSE 'Other'
-                    END
-            ELSE 'Other'
+                THEN coalesce(drc1.partner, 'Other')
+            WHEN ss.referral_source IS NOT NULL AND trim(ss.referral_source) <> ''
+                THEN coalesce(drc2.partner, 'Other')
+            ELSE 'No Partner'
         END AS partner,
         to_char(ss.start_date, 'ID') AS start_day,
         to_char(ss.start_date, 'HH24') AS start_hour,
