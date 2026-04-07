@@ -49,6 +49,7 @@ FROM (
     ('coloradoparentcoalition', 'Colorado Statewide Parent Coalition'),
     ('community_investment_alliance', 'Community Investment Alliance'),
     ('ctl', 'Center for Transforming Lives'),
+    ('cwe', 'Center for Work Education and Employment'),
     ('denverhealth', 'Denver Health'),
     ('denverlibrary', 'Denver Public Library'),
     ('denverpubliclibrary', 'Denver Public Library'),
