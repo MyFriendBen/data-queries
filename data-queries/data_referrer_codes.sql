@@ -5,5 +5,6 @@ data_referrer_codes AS
 
 SELECT
   referrer_code,
-  name AS partner
+  name AS partner,
+  white_label_id
 FROM programs_referrer;
