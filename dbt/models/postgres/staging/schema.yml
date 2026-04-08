@@ -2,11 +2,11 @@ version: 2
 
 models:
   - name: stg_referrer_codes
-    description: "Maps referrer codes to partner names. Sources from the Django Referrer model."
+    description: "Referrer codes with partner display names, sourced directly from the Django Referrer model. Partner names are stored inline — no separate mapping needed."
     columns:
       - name: referrer_code
         description: "The referrer code used to identify partners. Unique per white label, not globally."
       - name: partner
-        description: "The display name of the partner associated with the referrer code."
-      - name: white_label_code
-        description: "The white label code this referrer belongs to."
+        description: "The display name of the partner, stored directly on the Referrer model."
+      - name: white_label_id
+        description: "FK to screener_whitelabel. Every referrer belongs to exactly one white label."

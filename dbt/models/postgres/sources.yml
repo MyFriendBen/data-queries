@@ -175,7 +175,7 @@ sources:
           - name: has_disability
             description: "Whether member has a disability"
       - name: programs_referrer
-        description: "Referrer records from Django Referrer model — maps referrer codes to partner names per white label"
+        description: "Referrer records from Django Referrer model. Each row stores a referrer_code and its display name inline, scoped to one white label."
         columns:
           - name: id
             description: "Primary key"

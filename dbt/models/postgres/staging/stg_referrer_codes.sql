@@ -1,7 +1,7 @@
 {{
   config(
     materialized='view',
-    description='This model maps referrer codes to partner names. Sources from the Django Referrer model instead of a manually maintained seed file.'
+    description='Referrer codes with partner display names, sourced directly from the Django Referrer model. Partner names are stored inline on each Referrer row.'
   )
 }}
 
