@@ -8,5 +8,17 @@ models:
         description: "The referrer code used to identify partners. Unique per white label, not globally."
       - name: partner
         description: "The display name of the partner, stored directly on the Referrer model."
+        tests:
+          - not_null
       - name: white_label_id
         description: "FK to screener_whitelabel. Every referrer belongs to exactly one white label."
+        tests:
+          - not_null
+          - relationships:
+              to: source('django_apps', 'screener_whitelabel')
+              field: id
+    tests:
+      - unique_combination_of_columns:
+          combination_of_columns:
+            - referrer_code
+            - white_label_id
