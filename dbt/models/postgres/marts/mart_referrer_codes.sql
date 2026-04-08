@@ -10,6 +10,7 @@ SELECT
   rc.referrer_code,
   rc.partner,
   rc.white_label_id,
+  rc.is_partner,
   wl.white_label_code
 FROM {{ ref('stg_referrer_codes') }} rc
 INNER JOIN {{ ref('stg_white_label') }} wl

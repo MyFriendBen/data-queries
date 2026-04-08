@@ -8,5 +8,6 @@
 SELECT
   r.referrer_code,
   r.name AS partner,
-  r.white_label_id
+  r.white_label_id,
+  r.is_partner
 FROM {{ source('django_apps', 'programs_referrer') }} r
