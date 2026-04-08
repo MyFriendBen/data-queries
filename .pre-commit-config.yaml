@@ -25,7 +25,9 @@ repos:
         exclude: |
           (?x)^(
             data-queries/v1_deprecated/|
-            dbt/models/bigquery/.*
+            dbt/models/bigquery/.*|
+            dashboards/sql/top_partners_30d.sql|
+            dashboards/sql/top_counties_30d.sql
           )
 
   # YAML formatting

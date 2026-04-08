@@ -992,7 +992,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_id       = tonumber(local.tenant_collection_map[each.key].id)
   collection_position = 1
 
-  parameters_json = jsonencode(
+  parameters_json = jsonencode(flatten([
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
@@ -1024,8 +1024,18 @@ resource "metabase_dashboard" "tenant_analytics" {
           value_field = ["field", "county", { "base-type" = "type/Text" }]
         }
       }
+    ] : [],
+    (local.tenant_has_tab[each.key]["last_30_days"]) ? [
+      {
+        id        = "date_range_filter"
+        name      = "Date Range"
+        slug      = "date_range"
+        type      = "date/all-options"
+        sectionId = "date"
+        default   = "past30days"
+      }
     ] : []
-  )
+  ]))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
