@@ -223,7 +223,7 @@ unset DB_PASSWORD
 
 ```bash
 terraform plan   # Review changes
-terraform apply
+terraform apply  # Deploy new configuration
 ```
 
 Terraform will automatically:
