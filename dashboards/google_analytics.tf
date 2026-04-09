@@ -11,9 +11,9 @@ locals {
     for key, tenant in var.tenants : key => tenant
     if local.tenant_has_tab[key]["google_analytics"]
   }
-  # Rollout control: GA cards (KPIs, charts) are enabled per-state as data is validated.
-  # Add states here when ready; MAU chart always uses ga_tenants (all states) instead.
-  ga_tenants_nc_only = var.bigquery_enabled && contains(keys(local.ga_tenants), "nc") ? { nc = local.ga_tenants["nc"] } : {}
+  # GA cards (KPIs, charts) are enabled for all tenants with a Google Analytics tab.
+  # MAU chart uses ga_tenants directly (same set when bigquery_enabled is true).
+  ga_tenants_enabled = var.bigquery_enabled ? local.ga_tenants : {}
 
 
   # Map each tenant to the GA state_code(s) used in URL paths.
@@ -25,6 +25,7 @@ locals {
     il   = ["il"]
     ma   = ["ma"]
     cesn = ["cesn", "co_energy_calculator"]
+    co_tax_calculator = ["co_tax_calculator", "co_tax_calculator"]
   }
 
   # Pre-computed SQL IN clause per tenant for use in native queries.
@@ -63,7 +64,7 @@ locals {
 
 # KPI: Total Visitors — SUM of daily session counts from mart_ga_kpi_summary
 resource "metabase_card" "ga_total_visitors" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
 
   json = jsonencode({
@@ -90,7 +91,7 @@ resource "metabase_card" "ga_total_visitors" {
 
 # KPI: Started Screener % — sessions that hit /step-1 as % of total sessions
 resource "metabase_card" "ga_started_screener_pct" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Started Screener"
@@ -116,7 +117,7 @@ resource "metabase_card" "ga_started_screener_pct" {
 
 # KPI: Completed to Click Rate (D/C ratio) — sessions that completed AND clicked / sessions completed
 resource "metabase_card" "ga_completed_to_click_rate" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Completed to Click Rate"
@@ -145,7 +146,7 @@ resource "metabase_card" "ga_completed_to_click_rate" {
 # AVG across days is an approximation of the true overall median but avoids querying the
 # intermediate schema (dbt +schema: internal → different BigQuery dataset).
 resource "metabase_card" "ga_median_completion_time" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Completion Time (approx. median)"
@@ -175,7 +176,7 @@ resource "metabase_card" "ga_median_completion_time" {
 # display = "funnel" works because the data is pre-shaped as ordered step rows.
 # The subquery hides step_order so only (funnel_step, session_count) are returned.
 resource "metabase_card" "ga_conversion_funnel" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Conversion Funnel"
@@ -219,7 +220,7 @@ resource "metabase_card" "ga_conversion_funnel" {
 
 # Conversion Funnel — detail table: step-by-step breakdown with counts and percentages
 resource "metabase_card" "ga_conversion_funnel_table" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Conversion Funnel (Detail)"
@@ -274,7 +275,7 @@ resource "metabase_card" "ga_conversion_funnel_table" {
 
 # Traffic Mediums — bar chart: sessions by medium/channel
 resource "metabase_card" "ga_traffic_mediums_bar" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Traffic Mediums"
@@ -303,7 +304,7 @@ resource "metabase_card" "ga_traffic_mediums_bar" {
 
 # Traffic Mediums — table: full breakdown with source detail
 resource "metabase_card" "ga_traffic_mediums_table" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Traffic Mediums (Detail)"
@@ -332,7 +333,7 @@ resource "metabase_card" "ga_traffic_mediums_table" {
 
 # Clicked Links — bar chart: top outbound domains
 resource "metabase_card" "ga_clicked_links_bar" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Clicked Links"
@@ -361,7 +362,7 @@ resource "metabase_card" "ga_clicked_links_bar" {
 
 # Clicked Links — table: full domain breakdown with click counts
 resource "metabase_card" "ga_clicked_links_table" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Clicked Links (Detail)"
@@ -391,7 +392,7 @@ resource "metabase_card" "ga_clicked_links_table" {
 # Last 7 Days Visitors — daily session counts per day as a bar chart
 # No date_range filter here — this card is always scoped to the last 7 days.
 resource "metabase_card" "ga_users_in_week" {
-  for_each = local.ga_tenants_nc_only
+  for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Last 7 Days Visitors"
@@ -467,7 +468,7 @@ locals {
 
   tenant_dashboard_ga_layout = {
     for key, tenant in var.tenants : key => (
-      var.bigquery_enabled && contains(keys(local.ga_tenants_nc_only), key) ? [
+      var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
 
         # Row 0: 4 KPI scalar cards side-by-side (each 6 wide × 3 tall)
         # (MAU chart moved to end of tab, below Last 7 Days Visitors)
@@ -723,23 +724,7 @@ locals {
           series                 = []
           visualization_settings = {}
         },
-
-      ] : (
-        # Non-nc GA tenants: show only the MAU chart (other cards not yet enabled)
-        var.bigquery_enabled && contains(keys(local.ga_tenants), key) ? [
-          {
-            card_id                = tonumber(metabase_card.tenant_monthly_active_users[key].id)
-            dashboard_tab_id       = 1
-            row                    = 0
-            col                    = 0
-            size_x                 = 24
-            size_y                 = 8
-            parameter_mappings     = []
-            series                 = []
-            visualization_settings = {}
-          },
-        ] : []
-      )
+      ] : []
     )
   }
 }
