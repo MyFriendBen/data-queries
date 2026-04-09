@@ -966,7 +966,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_id       = tonumber(local.tenant_collection_map[each.key].id)
   collection_position = 1
 
-  parameters_json = jsonencode(concat(
+  parameters_json = jsonencode(concat([
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
@@ -1006,7 +1006,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         sectionId = "date"
       }
     ] : []
-))
+]))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
