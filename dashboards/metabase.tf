@@ -416,7 +416,11 @@ resource "metabase_card" "tenant_top_counties" {
   }))
 }
 
-# Helper card for partner filter dropdown values
+# Helper card for partner filter dropdown values.
+# The inner subquery (WHERE is_partner = false) excludes generic options (Friend, Google, etc.)
+# from the partner filter. Although it looks unscoped, each Metabase instance connects to a
+# tenant-specific DB with RLS applied, so mart_referrer_codes only contains that WL's rows at
+# query time. No cross-WL contamination is possible.
 resource "metabase_card" "tenant_partner_values" {
   for_each = var.tenants
 

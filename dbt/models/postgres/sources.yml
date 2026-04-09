@@ -187,6 +187,8 @@ sources:
             description: "Display name of the partner"
           - name: show_in_dropdown
             description: "Whether this referrer appears in the frontend dropdown"
+          - name: is_partner
+            description: "Whether this referrer is a named partner org (True) or a generic option like Friend/Google (False). Used to group options in the screener dropdown and filter the Metabase partner dashboard."
       - name: screener_energycalculatorscreen
         description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
         columns:
