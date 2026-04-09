@@ -967,7 +967,6 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_position = 1
 
   parameters_json = jsonencode(concat(
-    # Partner filter — shown for tenants with household/performance tabs
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
@@ -1007,7 +1006,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         sectionId = "date"
       }
     ] : []
-  ))
+))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
