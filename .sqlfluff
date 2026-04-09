@@ -7,11 +7,17 @@ large_file_skip_byte_limit = 0
 processes = -1
 
 # Only format layout/style — disable semantic rules that require DB context
-exclude_rules = AM04, AL01, AL05, RF01, RF02, RF03, RF04, RF05, CP02, ST06
+# PRS excluded: Metabase [[ ]] optional filter syntax is not valid Jinja/SQL
+exclude_rules = AM04, AL01, AL05, RF01, RF02, RF03, RF04, RF05, CP02, ST06, PRS, JJ01
 
 [sqlfluff:templater:jinja]
 # Provides ref(), source(), config(), var() etc. automatically
 apply_dbt_builtins = True
+
+[sqlfluff:templater:jinja:context]
+# Metabase optional filter variables — defined here so SQLFluff does not raise TMP errors
+submission_date = 1
+partner = 1
 
 [sqlfluff:rules:layout.indent]
 indent_unit = space

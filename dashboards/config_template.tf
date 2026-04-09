@@ -84,7 +84,7 @@ locals {
 
   # Per-tenant tab selection — order determines tab display order
   tenant_tabs = {
-    nc                = ["google_analytics", "all_time", "benefits_needs"]
+    nc                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     co                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     tx                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
@@ -100,7 +100,7 @@ locals {
     }
   }
 
-  # Per-tenant template-tags for partner field filter (dimension type enables multi-select)
+  # Per-tenant template-tags for partner and date filter (dimension type enables multi-select)
   partner_template_tags = {
     for k, v in var.tenants : k => {
       partner = {
@@ -108,9 +108,39 @@ locals {
         name           = "partner"
         "display-name" = "Partner"
         type           = "dimension"
-        dimension      = ["field", tonumber(data.external.partner_field_ids.result[k]), null]
+        dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__partner"]), null]
+        "widget-type"  = "string/="
+      }
+      submission_date = {
+        id             = "date_range_filter"
+        name           = "submission_date"
+        "display-name" = "Submission Date"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.metabase_table.tenant_screen_summary_tables[k].fields["submission_date"]), null]
+        "widget-type"  = "date/all-options"
+      }
+    }
+  }
+
+  # Per-tenant template-tags for county field filter
+  county_template_tags = {
+    for k, v in var.tenants : k => {
+      county = {
+        id             = "county_filter"
+        name           = "county"
+        "display-name" = "County"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__county"]), null]
         "widget-type"  = "string/="
       }
     }
+  }
+
+  # Merged template-tags: partner + county (used by all cards that support both filters)
+  filter_template_tags = {
+    for k, v in var.tenants : k => merge(
+      local.partner_template_tags[k],
+      local.county_template_tags[k],
+    )
   }
 }

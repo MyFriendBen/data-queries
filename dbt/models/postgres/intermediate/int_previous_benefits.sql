@@ -7,6 +7,7 @@
 SELECT
     white_label_id,
     partner,
+    county,
     sum(CASE WHEN has_acp = TRUE THEN 1 ELSE 0 END) AS acp,
     sum(CASE WHEN has_andcs = TRUE THEN 1 ELSE 0 END) AS andcs,
     sum(CASE WHEN has_ccb = TRUE THEN 1 ELSE 0 END) AS ccb,
@@ -14,7 +15,7 @@ SELECT
     sum(CASE WHEN has_ccdf = TRUE THEN 1 ELSE 0 END) AS ccdf,
     sum(CASE WHEN has_cdhcs = TRUE THEN 1 ELSE 0 END) AS cdhcs,
     sum(CASE WHEN has_chp = TRUE THEN 1 ELSE 0 END) AS chp,
-    sum(CASE WHEN has_chs = TRUE THEN 1 ELSE 0 END) AS chs,
+    sum(CASE WHEN has_head_start = TRUE THEN 1 ELSE 0 END) AS co_head_start,
     sum(CASE WHEN has_co_andso = TRUE THEN 1 ELSE 0 END) AS co_andso,
     sum(CASE WHEN has_coctc = TRUE THEN 1 ELSE 0 END) AS coctc,
     sum(CASE WHEN has_coeitc = TRUE THEN 1 ELSE 0 END) AS coeitc,
@@ -56,4 +57,4 @@ SELECT
     sum(CASE WHEN has_va = TRUE THEN 1 ELSE 0 END) AS va,
     sum(CASE WHEN has_wic = TRUE THEN 1 ELSE 0 END) AS wic
 FROM {{ ref('int_complete_screener_data') }}
-GROUP BY white_label_id, partner
+GROUP BY white_label_id, partner, county

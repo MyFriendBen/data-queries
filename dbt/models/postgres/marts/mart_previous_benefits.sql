@@ -10,7 +10,8 @@ SELECT
     t.benefit,
     t.count,
     pb.white_label_id,
-    pb.partner
+    pb.partner,
+    pb.county
 FROM {{ ref('int_previous_benefits') }} AS pb
 CROSS JOIN LATERAL unnest(
     ARRAY[
@@ -21,7 +22,7 @@ CROSS JOIN LATERAL unnest(
         'CCDF',
         'CDHCS',
         'CHP',
-        'CHS',
+        'CO Head Start',
         'CO ANDSO',
         'COCTC',
         'COEITC',
@@ -71,7 +72,7 @@ CROSS JOIN LATERAL unnest(
         pb.ccdf,
         pb.cdhcs,
         pb.chp,
-        pb.chs,
+        pb.co_head_start,
         pb.co_andso,
         pb.coctc,
         pb.coeitc,
