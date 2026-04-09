@@ -93,6 +93,13 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Import singleton graphs if not in state
+        run: |
+          terraform state list | grep -q '^metabase_collection_graph\.graph$' \
+            || terraform import metabase_collection_graph.graph 1
+          terraform state list | grep -q '^metabase_permissions_graph\.graph$' \
+            || terraform import metabase_permissions_graph.graph 1
+
       - name: Terraform Plan
         id: plan
         run: |

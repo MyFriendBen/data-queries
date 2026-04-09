@@ -20,7 +20,7 @@
 # --- Global group -----------------------------------------------------------
 
 resource "metabase_permissions_group" "global" {
-  name = "Global"
+  name = "Global Viewers"
 }
 
 # --- Per-tenant groups -------------------------------------------------------
@@ -32,7 +32,7 @@ resource "metabase_permissions_group" "global" {
 resource "metabase_permissions_group" "tenant" {
   for_each = var.tenants
 
-  name = each.value.display_name
+  name = "${each.value.display_name} Viewers"
 }
 
 # =============================================================================
@@ -42,7 +42,7 @@ resource "metabase_permissions_group" "tenant" {
 # Controls which groups can see which collections (dashboards).
 #
 # Rules:
-#   - Global group  → read+write on Global collection AND all tenant collections
+#   - Global group  → read on Global collection AND all tenant collections
 #   - Tenant group  → read-only on their own tenant collection only
 #   - All Users (1) → no access to any collection (default deny)
 #
@@ -58,21 +58,21 @@ resource "metabase_collection_graph" "graph" {
   ignored_groups = [2]
 
   permissions = concat(
-    # --- Global group: write access to the global collection -----------------
+    # --- Global group: read access to the global collection ------------------
     [
       {
         group      = metabase_permissions_group.global.id
         collection = metabase_collection.global.id
-        permission = "write"
+        permission = "read"
       }
     ],
 
-    # --- Global group: write access to every tenant collection ---------------
+    # --- Global group: read access to every tenant collection ----------------
     [
       for key, col in local.tenant_collection_map : {
         group      = metabase_permissions_group.global.id
         collection = col.id
-        permission = "write"
+        permission = "read"
       }
     ],
 

@@ -116,10 +116,10 @@ Access to Metabase dashboards is controlled through **permission groups**. Terra
 
 | Group | Access |
 |---|---|
-| **Global** | All dashboards: Global collection + every tenant collection + all databases |
-| **North Carolina** | NC collection and NC database only |
-| **Colorado** | CO collection and CO database only |
-| *(new tenant)* | Automatically created for every entry in `var.tenants` |
+| **Global Viewers** | All dashboards: Global collection + every tenant collection + all databases |
+| **North Carolina Viewers** | NC collection and NC database only |
+| **Colorado Viewers** | CO collection and CO database only |
+| *(new tenant)* | `<Display Name> Viewers` — automatically created for every entry in `var.tenants` |
 
 A user can belong to more than one group. For example, a user who manages both NC and CO can be in both the NC and CO groups.
 
@@ -137,8 +137,8 @@ Both collection and data permissions are managed by Terraform:
 
 | Group | Collections | Query Builder (Data Sources) |
 |---|---|---|
-| **Global** | `write` on Global + all tenant collections | Full access (`query-builder-and-native`) to all databases |
-| **Tenant** (e.g. NC) | `read` on their own collection only | `query-builder` access to their own tenant DB only; no access to all others |
+| **Global Viewers** | `read` on Global + all tenant collections | Full access (`query-builder-and-native`) to all databases |
+| **Tenant Viewers** (e.g. NC Viewers) | `read` on their own collection only | `query-builder` access to their own tenant DB only; no access to all others |
 | **All Users (built-in)** | No access | No access (baseline deny for all databases) |
 
 Data isolation is enforced at two layers:
@@ -223,22 +223,13 @@ unset DB_PASSWORD
 
 ```bash
 terraform plan   # Review changes
-terraform apply  # First apply will fail with 409 on collection graph — this is expected
-
-# Re-sync both singleton graphs (creating new collections/databases increments
-# Metabase's revision counters, making cached state stale), then re-apply:
-terraform state rm metabase_collection_graph.graph
-terraform import metabase_collection_graph.graph 1
-terraform state rm metabase_permissions_graph.graph
-terraform import metabase_permissions_graph.graph 1
-terraform apply  # Should succeed now
-```
+terraform apply
 
 Terraform will automatically:
-- Create the new `<Display Name>` permissions group
+- Create the new `<Display Name> Viewers` permissions group
 - Grant it `read` access to the new tenant collection
 - Grant it `query-builder` access to the new tenant database only
-- Grant the Global group `write` access to the new collection and `query-builder-and-native` access to the new tenant database
+- Grant the Global Viewers group `read` access to the new collection and `query-builder-and-native` access to the new tenant database
 
 After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
 
