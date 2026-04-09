@@ -120,7 +120,6 @@ data "external" "partner_field_ids" {
   }
 }
 
-
 # Global collection for admin-level analytics
 resource "metabase_collection" "global" {
   depends_on = [time_sleep.wait_for_database_sync]
@@ -191,6 +190,33 @@ locals {
   }
 }
 
+# Card following GitHub example exactly but with our BigQuery table
+resource "metabase_card" "conversion_funnel" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Conversion Funnel Insights"
+    description         = "Analytics from BigQuery conversion funnel data"
+    collection_id       = tonumber(metabase_collection.global.id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "query"
+    dataset_query = {
+      database = data.metabase_table.conversion_funnel_table[0].db_id
+      query = {
+        source-table = data.metabase_table.conversion_funnel_table[0].id
+        aggregation = [
+          ["count"]
+        ]
+      }
+      type = "query"
+    }
+    parameter_mappings     = []
+    display                = "table"
+    visualization_settings = {}
+    parameters             = []
+  })
+}
 
 # Screen count card using PostgreSQL data
 resource "metabase_card" "screen_count" {
