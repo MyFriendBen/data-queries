@@ -191,33 +191,6 @@ locals {
   }
 }
 
-# Card following GitHub example exactly but with our BigQuery table
-resource "metabase_card" "conversion_funnel" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Conversion Funnel Insights"
-    description         = "Analytics from BigQuery conversion funnel data"
-    collection_id       = tonumber(metabase_collection.global.id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "query"
-    dataset_query = {
-      database = data.metabase_table.conversion_funnel_table[0].db_id
-      query = {
-        source-table = data.metabase_table.conversion_funnel_table[0].id
-        aggregation = [
-          ["count"]
-        ]
-      }
-      type = "query"
-    }
-    parameter_mappings     = []
-    display                = "table"
-    visualization_settings = {}
-    parameters             = []
-  })
-}
 
 # Screen count card using PostgreSQL data
 resource "metabase_card" "screen_count" {
@@ -983,7 +956,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_id       = tonumber(local.tenant_collection_map[each.key].id)
   collection_position = 1
 
-  parameters_json = jsonencode(concat([
+  parameters_json = jsonencode(concat(
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
@@ -1046,7 +1019,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         sectionId = "date"
       }
     ] : []
-  ]))
+  ))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
