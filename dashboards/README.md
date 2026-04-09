@@ -224,6 +224,7 @@ unset DB_PASSWORD
 ```bash
 terraform plan   # Review changes
 terraform apply
+```
 
 Terraform will automatically:
 - Create the new `<Display Name> Viewers` permissions group
