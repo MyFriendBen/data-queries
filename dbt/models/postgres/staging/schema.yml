@@ -10,3 +10,5 @@ models:
           - unique # Ensure no duplicate referrer codes
       - name: partner
         description: "The name of the partner associated with the referrer code."
+      - name: white_label_code
+        description: "The white label code this referrer belongs to. Null for generic/shared codes (e.g., other, searchEngine)."

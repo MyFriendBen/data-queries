@@ -15,7 +15,7 @@ SELECT
     sum(CASE WHEN name_abbreviated = 'cdhcs' THEN estimated_value ELSE 0 END) AS cdhcs_annual,
     sum(CASE WHEN name_abbreviated = 'cfhc' THEN estimated_value ELSE 0 END) AS cfhc_annual,
     sum(CASE WHEN name_abbreviated = 'chp' THEN estimated_value ELSE 0 END) AS chp_annual,
-    sum(CASE WHEN name_abbreviated = 'chs' THEN estimated_value ELSE 0 END) AS chs_annual,
+    sum(CASE WHEN name_abbreviated = 'co_head_start' THEN estimated_value ELSE 0 END) AS co_head_start_annual,
     sum(CASE WHEN name_abbreviated = 'cocb' THEN estimated_value ELSE 0 END) AS cocb_annual,
     sum(CASE WHEN name_abbreviated = 'coctc' THEN estimated_value ELSE 0 END) AS coctc_annual,
     sum(CASE WHEN name_abbreviated = 'coeitc' THEN estimated_value ELSE 0 END) AS coeitc_annual,

@@ -8,8 +8,8 @@ resource "metabase_card" "tenant_completed_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = { "scalar.field" = "count" }
@@ -25,8 +25,8 @@ resource "metabase_card" "tenant_already_had_benefits_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE has_benefits = 'true')::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT count(*) FILTER (WHERE has_benefits = 'true')::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
@@ -42,8 +42,8 @@ resource "metabase_card" "tenant_qualified_for_benefits_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
@@ -59,8 +59,8 @@ resource "metabase_card" "tenant_qualified_for_tax_creds_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]]"
-        "template-tags" = local.partner_template_tags[each.key]
+        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
@@ -79,13 +79,10 @@ resource "metabase_card" "tenant_current_benefits_table" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/current_benefits.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -101,13 +98,10 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/qualified_benefits.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
@@ -122,18 +116,15 @@ resource "metabase_card" "tenant_immediate_needs_table" {
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
         query           = templatefile("${path.module}/sql/immediate_needs.sql", {})
-        "template-tags" = local.partner_template_tags[each.key]
+        "template-tags" = local.filter_template_tags[each.key]
       }
     }
-    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Need Category", "width" = 300 }]
-      "column_settings"     = local.benefits_column_settings
-    })
+    visualization_settings = local.tenant_benefits_table_card_config.visualization_settings
   }))
 }
 
 locals {
-  # Shared column settings for benefits/needs table cards
+  # 1. Specialized column settings (the "style" for the tables)
   benefits_column_settings = {
     "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
     "[\"name\",\"% of Screeners\"]" = merge(
@@ -142,7 +133,15 @@ locals {
     )
   }
 
-  # Shared visualization settings for percentage scorecard cards
+  # 2. Reusable template for the tables themselves
+  tenant_benefits_table_card_config = merge(local.tenant_table_card_config, {
+    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
+      "column_settings" = local.benefits_column_settings
+    })
+  })
+
+  # 3. Reusable template for the percentage scorecards
   benefits_pct_visualization_settings = {
     "scalar.field" = "pct"
     "column_settings" = {
@@ -178,11 +177,18 @@ locals {
         col              = 0
         size_x           = 6
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -193,11 +199,18 @@ locals {
         col              = 6
         size_x           = 6
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_already_had_benefits_pct[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_already_had_benefits_pct[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_already_had_benefits_pct[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -208,11 +221,18 @@ locals {
         col              = 12
         size_x           = 6
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -223,11 +243,18 @@ locals {
         col              = 18
         size_x           = 6
         size_y           = 4
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -237,12 +264,19 @@ locals {
         row              = 6
         col              = 0
         size_x           = 12
-        size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_current_benefits_table[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        size_y           = 10
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -252,12 +286,19 @@ locals {
         row              = 6
         col              = 12
         size_x           = 12
-        size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        size_y           = 10
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       },
@@ -267,12 +308,19 @@ locals {
         row              = 14
         col              = 0
         size_x           = 12
-        size_y           = 8
-        parameter_mappings = [{
-          parameter_id = "partner_filter"
-          card_id      = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
-          target       = ["dimension", ["template-tag", "partner"]]
-        }]
+        size_y           = 10
+        parameter_mappings = [
+          {
+            parameter_id = "partner_filter"
+            card_id      = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
+            target       = ["dimension", ["template-tag", "partner"]]
+          },
+          {
+            parameter_id = "county_filter"
+            card_id      = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
+            target       = ["dimension", ["template-tag", "county"]]
+          }
+        ]
         series                 = []
         visualization_settings = {}
       }

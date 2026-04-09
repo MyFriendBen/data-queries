@@ -81,7 +81,7 @@ WITH base_table_1 AS (
         -- Benefits
         ss.has_cdhcs,
         ss.has_chp,
-        ss.has_chs,
+        ss.has_head_start,
         ss.has_co_andso,
         ss.has_coctc,
         ss.has_coeitc,
@@ -146,7 +146,7 @@ WITH base_table_1 AS (
         -- Program eligibility annual values
         pe.cfhc_annual,
         pe.chp_annual,
-        pe.chs_annual,
+        pe.co_head_start_annual,
         pe.cocb_annual,
         pe.coctc_annual,
         pe.coeitc_annual,
@@ -266,28 +266,11 @@ WITH base_table_1 AS (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN ss.referrer_code IS NULL OR trim(ss.referrer_code) = ''
-                THEN
-                    CASE
-                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN 'No Partner'
-                        WHEN drc2.referrer_code IS NOT NULL THEN drc2.partner
-                        ELSE 'Other'
-                    END
             WHEN ss.referrer_code IS NOT NULL AND trim(ss.referrer_code) <> ''
-                THEN
-                    CASE
-                        WHEN ss.referral_source IS NULL OR trim(ss.referral_source) = '' THEN drc1.partner
-                        WHEN trim(ss.referral_source) = trim(ss.referrer_code) THEN coalesce(drc1.partner, 'Other')
-                        WHEN trim(ss.referral_source) <> trim(ss.referrer_code)
-                            THEN
-                                CASE
-                                    WHEN drc2.referrer_code IS NOT NULL THEN concat_ws(', ', drc1.partner, drc2.partner)
-                                    WHEN drc1.referrer_code IS NOT NULL THEN drc1.partner
-                                    ELSE 'Other'
-                                END
-                        ELSE 'Other'
-                    END
-            ELSE 'Other'
+                THEN coalesce(drc1.partner, 'Other')
+            WHEN ss.referral_source IS NOT NULL AND trim(ss.referral_source) <> ''
+                THEN coalesce(drc2.partner, 'Other')
+            ELSE 'No Partner'
         END AS partner,
         to_char(ss.start_date, 'ID') AS start_day,
         to_char(ss.start_date, 'HH24') AS start_hour,
@@ -420,7 +403,7 @@ base_table_2 AS (
         + coalesce(cdhcs_annual, 0)
         + coalesce(cfhc_annual, 0)
         + coalesce(chp_annual, 0)
-        + coalesce(chs_annual, 0)
+        + coalesce(co_head_start_annual, 0)
         + coalesce(cocb_annual, 0)
         -- + coalesce(coctc_annual, 0) -- tax credit
         -- + coalesce(coeitc_annual, 0) -- tax credit

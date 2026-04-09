@@ -1,7 +1,11 @@
-WITH filtered AS (
-    SELECT age FROM analytics.mart_householdmembers
-    WHERE relationship = 'headOfHousehold'
-    [[AND {{partner}}]]
+WITH filter_keys AS (
+    SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1
+    [[AND {{partner}}]] [[AND {{county}}]]
+),
+filtered AS (
+    SELECT hm.age FROM analytics.mart_householdmembers hm
+    INNER JOIN filter_keys fk ON hm.partner IS NOT DISTINCT FROM fk.partner AND hm.county IS NOT DISTINCT FROM fk.county
+    WHERE hm.relationship = 'headOfHousehold'
 ),
 total AS (
     SELECT count(*) AS n FROM filtered WHERE age IS NOT NULL

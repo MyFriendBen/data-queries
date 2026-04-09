@@ -344,7 +344,7 @@ base_table_1 AS NOT MATERIALIZED (
         ss.has_chp,
 
         -- # Benefits
-        ss.has_chs,
+        ss.has_head_start,
         ss.has_co_andso,
         ss.has_coctc,
         ss.has_coeitc,

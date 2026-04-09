@@ -1,6 +1,6 @@
 WITH filtered AS (
     SELECT * FROM analytics.mart_screener_data
-    WHERE 1=1 [[AND {{partner}}]]
+    WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]
 ),
 ranked AS (
     SELECT partner, count(*) AS screeners
