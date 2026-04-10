@@ -262,13 +262,13 @@ resource "metabase_card" "ga_conversion_funnel_table" {
         template-tags = local.ga_date_tags
       }
     }
-    display                = "table"
+    display = "table"
     visualization_settings = {
       "table.row_index" = true
       "table.paginate"  = true
     }
-    parameter_mappings     = []
-    parameters             = []
+    parameter_mappings = []
+    parameters         = []
   })
 }
 
@@ -320,13 +320,13 @@ resource "metabase_card" "ga_traffic_mediums_table" {
         template-tags = local.ga_date_tags
       }
     }
-    display                = "table"
+    display = "table"
     visualization_settings = {
       "table.row_index" = true
       "table.paginate"  = true
     }
-    parameter_mappings     = []
-    parameters             = []
+    parameter_mappings = []
+    parameters         = []
   })
 }
 
@@ -378,13 +378,13 @@ resource "metabase_card" "ga_clicked_links_table" {
         template-tags = local.ga_date_tags
       }
     }
-    display                = "table"
+    display = "table"
     visualization_settings = {
       "table.row_index" = true
       "table.paginate"  = true
     }
-    parameter_mappings     = []
-    parameters             = []
+    parameter_mappings = []
+    parameters         = []
   })
 }
 
@@ -408,7 +408,7 @@ resource "metabase_card" "ga_users_in_week" {
         template-tags = {}
       }
     }
-    display                = "bar"
+    display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["event_date_parsed"]
       "graph.metrics"    = ["sessions"]
@@ -436,8 +436,8 @@ resource "metabase_card" "tenant_monthly_active_users" {
       database = tonumber(metabase_database.bigquery[0].id)
       native = {
         query = templatefile("${path.module}/sql/monthly_active_users.sql", {
-          state_codes          = join(", ", [for code in lookup(local.tenant_ga_state_codes, each.key, [each.key]) : "'${code}'"])
-          bq_internal_dataset  = "${var.gcp_project_id}.${var.bigquery_analytics_dataset}_internal"
+          state_codes         = join(", ", [for code in lookup(local.tenant_ga_state_codes, each.key, [each.key]) : "'${code}'"])
+          bq_internal_dataset = "${var.gcp_project_id}.${var.bigquery_analytics_dataset}_internal"
         })
       }
     }

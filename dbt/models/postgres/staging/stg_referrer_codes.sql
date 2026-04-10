@@ -6,7 +6,7 @@
 }}
 
 SELECT
-  referrer_code,
-  partner,
-  white_label_code
+    referrer_code,
+    partner,
+    white_label_code
 FROM {{ ref('referrer_codes') }}

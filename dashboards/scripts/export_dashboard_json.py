@@ -12,7 +12,7 @@ def load_tfvars():
     if not os.path.exists(tfvars_path):
         print(f"Error: terraform.tfvars not found at {tfvars_path}.")
         return None
-    
+
     creds = {}
     with open(tfvars_path, "r") as f:
         for line in f:
@@ -30,20 +30,20 @@ def get_metabase_session(url, email, password):
     parsed_url = urlparse(url)
     host = parsed_url.netloc
     path_prefix = parsed_url.path.rstrip('/')
-    
+
     conn = http.client.HTTPSConnection(host) if parsed_url.scheme == "https" else http.client.HTTPConnection(host)
     payload = json.dumps({"username": email, "password": password})
     headers = {"Content-Type": "application/json"}
-    
+
     try:
         conn.request("POST", f"{path_prefix}/api/session", payload, headers)
         res = conn.getresponse()
         data = res.read()
-        
+
         if res.status != 200:
             print(f"Metabase Login Error ({res.status}): {data.decode('utf-8')}")
             return None
-            
+
         try:
             return json.loads(data.decode('utf-8'))['id']
         except json.JSONDecodeError:
@@ -60,19 +60,19 @@ def fetch_metabase_dashboard(url, session_id, dashboard_id):
     parsed_url = urlparse(url)
     host = parsed_url.netloc
     path_prefix = parsed_url.path.rstrip('/')
-    
+
     conn = http.client.HTTPSConnection(host) if parsed_url.scheme == "https" else http.client.HTTPConnection(host)
     headers = {"Content-Type": "application/json", "X-Metabase-Session": session_id}
-    
+
     try:
         conn.request("GET", f"{path_prefix}/api/dashboard/{dashboard_id}", headers=headers)
         res = conn.getresponse()
         data = res.read()
-        
+
         if res.status != 200:
             print(f"Metabase Fetch Error ({res.status}): {data.decode('utf-8')}")
             return None
-            
+
         return data.decode('utf-8')
     except Exception as e:
         print(f"Metabase Fetch Error: {e}")
@@ -89,20 +89,20 @@ def main():
     creds = load_tfvars()
     if not creds:
         sys.exit(1)
-        
+
     url = creds.get('metabase_url')
     email = creds.get('metabase_admin_email')
     password = creds.get('metabase_admin_password')
-    
+
     if not all([url, email, password]):
         print("Error: credentials missing in terraform.tfvars")
         sys.exit(1)
-        
+
     print("Connecting to Metabase...")
     session_id = get_metabase_session(url, email, password)
     if not session_id:
         sys.exit(1)
-        
+
     print(f"Fetching dashboard {args.dashboard_id}...")
     json_content = fetch_metabase_dashboard(url, session_id, args.dashboard_id)
     if not json_content:
@@ -111,7 +111,7 @@ def main():
     # Setup output path
     output_dir = os.path.join(os.path.dirname(__file__), "generated")
     os.makedirs(output_dir, exist_ok=True)
-    
+
     output_file = args.output
     if not output_file:
         output_file = os.path.join(output_dir, f"dashboard_{args.dashboard_id}.json")

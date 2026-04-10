@@ -3,8 +3,8 @@ name: SQLFluff Lint
 on:
   pull_request:
     paths:
-      - '**/*.sql'
-      - '.github/workflows/sqlfluff-lint.yml'
+      - "**/*.sql"
+      - ".github/workflows/sqlfluff-lint.yml"
 
 jobs:
   lint:
@@ -18,8 +18,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install -r dbt/requirements.txt
