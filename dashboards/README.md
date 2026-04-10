@@ -73,16 +73,44 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Run Terraform**
+**5. Initialize and run Terraform**
+
+> **Running locally?** This project is configured to use HCP Terraform (Terraform Cloud) by default. To run locally instead, use the gitignored `local_override.tf` file (see [Local Terraform State for Development](#local-terraform-state-for-development) below) — this overrides the backend without touching `main.tf`, so there's no risk of accidentally committing a broken cloud config.
+
+The setup requires a specific sequence because the singleton permission graphs (`metabase_collection_graph` and `metabase_permissions_graph`) must be imported *after* Metabase has created the default groups and databases — which only happens on the first `apply`.
+
+Run these commands in order:
 
 ```bash
+# Step 1: Install providers
 terraform init
-terraform apply
+
+# Step 2: Create databases, groups, collections, and cards.
+# This also triggers Metabase to sync schemas and create its built-in groups/objects.
+terraform apply -auto-approve
+
+# Step 3: Import the permissions graph singleton into Terraform state.
+# (Must happen after apply so Metabase's default groups and databases exist.)
+terraform import metabase_permissions_graph.graph 1
+
+# Step 4: Re-import the collection graph singleton.
+# The first apply may have left it in an inconsistent state — remove and re-import.
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
+
+# Step 5: Final apply to reconcile any remaining state differences.
+terraform apply -auto-approve
 ```
 
 Terraform will wait for Metabase to sync database schemas before creating cards and dashboards. This is configurable via `database_sync_wait_seconds` in terraform.tfvars (default: 60s, recommend 30s for local dev).
 
 When complete, view your dashboards at http://localhost:3001!
+
+> **Already imported?** If you see `Error: Resource already managed by Terraform` on an import, that resource is already in state — skip that import. Verify with:
+> ```bash
+> terraform state list | grep -E "collection_graph|permissions_graph"
+> ```
+> Both `metabase_collection_graph.graph` and `metabase_permissions_graph.graph` (without the `data.` prefix) should be present before the final apply.
 
 ### Development Environment Configuration
 
@@ -95,6 +123,43 @@ These defaults are fine for local development since the database is only accessi
 **To customize:** Edit `docker-compose.yml` directly:
 - **Port:** Line 9 - change `"3001:3000"` to use a different port
 - **Database credentials:** Lines 12, 14-15 (Metabase config) and lines 36-38 (PostgreSQL config)
+
+## Managing User Access
+
+Access to Metabase dashboards is controlled through **permission groups**. Terraform creates and configures these groups automatically — the only ongoing manual task is assigning users to the right group(s) in the Metabase UI.
+
+### Groups
+
+| Group | Access |
+|---|---|
+| **Global Viewers** | All dashboards: Global collection + every tenant collection + all databases |
+| **North Carolina Viewers** | NC collection and NC database only |
+| **Colorado Viewers** | CO collection and CO database only |
+| *(new tenant)* | `<Display Name> Viewers` — automatically created for every entry in `var.tenants` |
+
+A user can belong to more than one group. For example, a user who manages both NC and CO can be in both the NC and CO groups.
+
+### Assigning Users to Groups
+
+1. In Metabase, go to **Admin → People**
+2. Click on a user and select **Edit groups**
+3. Add them to the appropriate group(s)
+
+The Terraform output `tenant_group_ids` lists the numeric ID of each tenant group, and `global_group_id` lists the Global group ID — useful when scripting bulk user assignments via the Metabase API.
+
+### Permission Model
+
+Both collection and data permissions are managed by Terraform:
+
+| Group | Collections | Query Builder (Data Sources) |
+|---|---|---|
+| **Global Viewers** | `read` on Global + all tenant collections | Full access (`query-builder-and-native`) to all databases |
+| **Tenant Viewers** (e.g. NC Viewers) | `read` on their own collection only | `query-builder` access to their own tenant DB only; no access to all others |
+| **All Users (built-in)** | No access | No access (baseline deny for all databases) |
+
+Data isolation is enforced at two layers:
+1. **Metabase data permissions** (managed here) — tenant group users cannot access other tenants' databases via the query builder.
+2. **PostgreSQL RLS** — within a given database connection, users can only see rows matching their own `white_label_id`.
 
 ## Adding New Tenants
 
@@ -147,6 +212,8 @@ locals {
 }
 ```
 
+> **Note on permissions:** The `metabase_permissions_group.tenant`, collection permission entries, and data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`, so the new group, its collection permissions, and its data source permissions are all created automatically. No changes to `permissions.tf` are needed.
+
 ### 3. Create Database User
 
 Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
@@ -171,9 +238,18 @@ unset DB_PASSWORD
 ### 4. Deploy New Tenant
 
 ```bash
-terraform plan  # Review changes
+terraform plan   # Review changes
 terraform apply  # Deploy new configuration
 ```
+
+Terraform will automatically:
+- Create the new `<Display Name> Viewers` permissions group
+- Grant it `read` access to the new tenant collection
+- Grant it `query-builder` access to the new tenant database only
+- Grant the Global Viewers group `read` access to the new collection and `query-builder-and-native` access to the new tenant database
+
+After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
+
 
 ## Local Terraform State for Development
 
@@ -256,4 +332,3 @@ terraform destroy
 git checkout <other-branch>
 terraform apply
 ```
-
