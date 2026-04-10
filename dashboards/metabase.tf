@@ -13,6 +13,7 @@ resource "metabase_database" "bigquery" {
     service_account_key  = local.bigquery_key
     project_id           = var.gcp_project_id
     dataset_filters_type = "all"
+    dataset_id           = var.bigquery_analytics_dataset
   }
 }
 
@@ -80,16 +81,6 @@ resource "time_sleep" "wait_for_database_sync" {
   ]
 
   create_duration = "${var.database_sync_wait_seconds}s"
-}
-
-# Get the table reference from BigQuery
-data "metabase_table" "conversion_funnel_table" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  depends_on = [time_sleep.wait_for_database_sync]
-
-  name  = "mart_screener_conversion_funnel"
-  db_id = tonumber(metabase_database.bigquery[0].id)
 }
 
 # Get the table reference from PostgreSQL
@@ -200,33 +191,6 @@ locals {
   }
 }
 
-# Card following GitHub example exactly but with our BigQuery table
-resource "metabase_card" "conversion_funnel" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Conversion Funnel Insights"
-    description         = "Analytics from BigQuery conversion funnel data"
-    collection_id       = tonumber(metabase_collection.global.id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "query"
-    dataset_query = {
-      database = data.metabase_table.conversion_funnel_table[0].db_id
-      query = {
-        source-table = data.metabase_table.conversion_funnel_table[0].id
-        aggregation = [
-          ["count"]
-        ]
-      }
-      type = "query"
-    }
-    parameter_mappings     = []
-    display                = "table"
-    visualization_settings = {}
-    parameters             = []
-  })
-}
 
 # Screen count card using PostgreSQL data
 resource "metabase_card" "screen_count" {
@@ -992,12 +956,12 @@ resource "metabase_dashboard" "tenant_analytics" {
   collection_id       = tonumber(local.tenant_collection_map[each.key].id)
   collection_position = 1
 
-  parameters_json = jsonencode(flatten([
+  parameters_json = jsonencode(concat(
     (
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
       local.tenant_has_tab[each.key]["benefits_needs"]
-      ) ? [
+    ) ? [
       {
         id                 = "partner_filter"
         name               = "Partner"
@@ -1034,8 +998,28 @@ resource "metabase_dashboard" "tenant_analytics" {
         sectionId = "date"
         default   = "past30days"
       }
+    ] : [],
+
+    # Start/End date filters — shown for tenants with a Google Analytics tab.
+    # Using plain date variables instead of field filters to avoid the Metabase BigQuery
+    # driver bug that generates `schema.table`.column references BigQuery can't parse.
+    local.tenant_has_tab[each.key]["google_analytics"] && var.bigquery_enabled ? [
+      {
+        id        = "ga_start_date_filter"
+        name      = "Start Date"
+        slug      = "start_date"
+        type      = "date/single"
+        sectionId = "date"
+      },
+      {
+        id        = "ga_end_date_filter"
+        name      = "End Date"
+        slug      = "end_date"
+        type      = "date/single"
+        sectionId = "date"
+      }
     ] : []
-  ]))
+  ))
 
   tabs_json = jsonencode([
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
