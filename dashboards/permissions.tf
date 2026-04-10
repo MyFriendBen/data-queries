@@ -152,19 +152,19 @@ locals {
 
   # Groups that exist in Metabase but are NOT managed by Terraform.
   # Discovered dynamically to handle groups created outside of Terraform.
-  # Excludes ignored groups (Administrators, etc.) since the provider handles those separately.
+  # We'll set minimal permissions for these to prevent API errors.
   unmanaged_group_ids = setsubtract(
     setsubtract(
       toset([for p in data.metabase_permissions_graph.current.permissions : tostring(p.group)]),
       toset([for id in local.all_managed_group_ids : tostring(id)])
     ),
-    toset(["2"]) # Excluded: Administrators
+    toset(["2"]) # Exclude Administrators group (it's in ignored_groups)
   )
 }
 
 resource "metabase_permissions_graph" "graph" {
   # Only ignore the Administrators group (id = 2) — its permissions cannot be
-  # changed via the API. All other groups are explicitly enumerated below.
+  # changed via the API. All other groups must have explicit permissions set.
   ignored_groups = [2]
 
   # advanced_permissions = false uses the free-tier permission model (view_data
@@ -251,8 +251,9 @@ resource "metabase_permissions_graph" "graph" {
     ]),
 
     # --- Unmanaged groups: no access to any database -------------------------
-    # Groups that exist in Metabase but aren't managed by Terraform.
-    # Give them no access to prevent API errors about missing permissions.
+    # Groups that exist in Metabase but aren't managed by Terraform (excluding
+    # Administrators which is in ignored_groups). Give them minimal permissions
+    # across all databases to prevent API errors about nil permissions.
     flatten([
       for group_id in local.unmanaged_group_ids : [
         for db_id in local.all_known_db_ids : {
