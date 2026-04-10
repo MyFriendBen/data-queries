@@ -54,8 +54,9 @@ resource "metabase_permissions_group" "tenant" {
 # =============================================================================
 
 resource "metabase_collection_graph" "graph" {
-  # Ignore the Administrators group (id = 2) - its permissions cannot be changed.
-  ignored_groups = [2]
+  # Ignore Administrators (id=2) and any manually created groups so they don't
+  # cause graph errors. See local.ignored_group_ids for the full derivation.
+  ignored_groups = local.ignored_group_ids
 
   permissions = concat(
     # --- Global group: read access to the global collection ------------------
