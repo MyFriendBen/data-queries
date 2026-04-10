@@ -113,7 +113,7 @@ variable "bigquery_service_account_key_content" {
 
 variable "bigquery_analytics_dataset" {
   description = "BigQuery dataset name where dbt analytics marts are materialized ( matched dbt profile dataset)"
-  type        = string  
+  type        = string
   default     = "analytics"
 }
 

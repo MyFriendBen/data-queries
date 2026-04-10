@@ -54,8 +54,9 @@ resource "metabase_permissions_group" "tenant" {
 # =============================================================================
 
 resource "metabase_collection_graph" "graph" {
-  # Ignore the Administrators group (id = 2) - its permissions cannot be changed.
-  ignored_groups = [2]
+  # Ignore Administrators (id=2) and any manually created groups so they don't
+  # cause graph errors. See local.ignored_group_ids for the full derivation.
+  ignored_groups = local.ignored_group_ids
 
   permissions = concat(
     # --- Global group: read access to the global collection ------------------
@@ -142,12 +143,31 @@ locals {
 
   # Every database ID that must appear in the graph (managed + unmanaged).
   all_known_db_ids = concat(local.all_db_ids, tolist(local.unmanaged_db_ids))
+
+  # Group IDs that Terraform manages (global + all per-tenant groups).
+  managed_group_ids = toset(concat(
+    [metabase_permissions_group.global.id],
+    [for k, g in metabase_permissions_group.tenant : g.id]
+  ))
+
+  # Groups that exist in Metabase but are NOT managed by Terraform
+  # (e.g. manually created groups). Derived dynamically from the current
+  # permissions graph so manually created groups never cause graph errors.
+  unmanaged_group_ids = setsubtract(
+    toset([for p in data.metabase_permissions_graph.current.permissions : p.group]),
+    local.managed_group_ids
+  )
+
+  # All groups to ignore in graph resources: Administrators (id=2) plus any
+  # unmanaged groups. Using a dynamic list means manual groups are silently
+  # skipped rather than causing a 400 error on apply.
+  ignored_group_ids = tolist(setunion(toset([2]), local.unmanaged_group_ids))
 }
 
 resource "metabase_permissions_graph" "graph" {
-  # Only ignore the Administrators group (id = 2) — its permissions cannot be
-  # changed via the API. All other groups are explicitly enumerated below.
-  ignored_groups = [2]
+  # Ignore Administrators (id=2) and any manually created groups so they don't
+  # cause graph errors. See local.ignored_group_ids for the full derivation.
+  ignored_groups = local.ignored_group_ids
 
   # advanced_permissions = false uses the free-tier permission model (view_data
   # is always "unrestricted"; access is controlled via create_queries).

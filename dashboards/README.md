@@ -33,33 +33,26 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 
 **3. Create tenant database users with row-level security**
 
-Each tenant needs a dedicated database user that only has access to their white-label data.
+Each tenant needs a dedicated database role whose name encodes the `white_label_id`. RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see their tenant's data; non-conforming roles get zero rows.
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your MyFriendBen database
 - Update the database name (`mfb`) and credentials to match your local setup
 
 ```bash
-# Set password as environment variable (keeps it out of shell history)
-export DB_PASSWORD="secure_password"
-
 psql -h localhost -U postgres -d mfb << EOF
--- Create user for North Carolina (white_label_id = 5)
-CREATE USER nc WITH PASSWORD '$DB_PASSWORD';
-ALTER USER nc SET rls.white_label_id = '5';
-GRANT CONNECT ON DATABASE mfb TO nc;
-GRANT USAGE ON SCHEMA analytics TO nc;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO nc;
+-- Create role for North Carolina (white_label_id = 5)
+CREATE ROLE wl_nc_5_ro LOGIN;
+GRANT CONNECT ON DATABASE mfb TO wl_nc_5_ro;
+GRANT USAGE ON SCHEMA analytics TO wl_nc_5_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_nc_5_ro;
 
--- Create user for Colorado (white_label_id = 1)
-CREATE USER co WITH PASSWORD '$DB_PASSWORD';
-ALTER USER co SET rls.white_label_id = '1';
-GRANT CONNECT ON DATABASE mfb TO co;
-GRANT USAGE ON SCHEMA analytics TO co;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO co;
+-- Create role for Colorado (white_label_id = 1)
+CREATE ROLE wl_co_1_ro LOGIN;
+GRANT CONNECT ON DATABASE mfb TO wl_co_1_ro;
+GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
 EOF
-
-unset DB_PASSWORD
 ```
 
 **4. Configure Terraform variables**
@@ -87,7 +80,7 @@ terraform init
 
 # Step 2: Create databases, groups, collections, and cards.
 # This also triggers Metabase to sync schemas and create its built-in groups/objects.
-terraform apply -auto-approve
+terraform apply
 
 # Step 3: Import the permissions graph singleton into Terraform state.
 # (Must happen after apply so Metabase's default groups and databases exist.)
@@ -176,10 +169,11 @@ tenants = {
 }
 
 # Add tenant database credentials
+# Convention: wl_<state>_<white_label_id>_ro — RLS policy extracts white_label_id from the username
 tenant_db_credentials = {
-  nc = { username = "nc", password = "secure_password" }
-  co = { username = "co", password = "secure_password" }
-  tx = { username = "tx", password = "secure_password" }  # ← New credentials
+  nc = { username = "wl_nc_5_ro",  password = "secure_password" }
+  co = { username = "wl_co_1_ro",  password = "secure_password" }
+  tx = { username = "wl_tx_40_ro", password = "secure_password" }  # ← New credentials
 }
 ```
 
@@ -216,23 +210,18 @@ locals {
 
 ### 3. Create Database User
 
-Create a new database user with row-level security (see Quick Start step 3 for detailed instructions).
+Create a new database role with row-level security (see Quick Start step 3 for detailed instructions).
 
 **Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new tenant.
 
 ```bash
-export DB_PASSWORD="secure_password"
-
 psql -h localhost -U postgres -d mfb << EOF
--- Create user for Texas (white_label_id = 40)
-CREATE USER tx WITH PASSWORD '$DB_PASSWORD';
-ALTER USER tx SET rls.white_label_id = '40';
-GRANT CONNECT ON DATABASE mfb TO tx;
-GRANT USAGE ON SCHEMA analytics TO tx;
-GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO tx;
+-- Create role for Texas (white_label_id = 40)
+CREATE ROLE wl_tx_40_ro LOGIN;
+GRANT CONNECT ON DATABASE mfb TO wl_tx_40_ro;
+GRANT USAGE ON SCHEMA analytics TO wl_tx_40_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_tx_40_ro;
 EOF
-
-unset DB_PASSWORD
 ```
 
 ### 4. Deploy New Tenant
