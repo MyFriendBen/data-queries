@@ -1,0 +1,32 @@
+name: SQLFluff Lint
+
+on:
+  pull_request:
+    paths:
+      - '**/*.sql'
+      - '.github/workflows/sqlfluff-lint.yml'
+
+jobs:
+  lint:
+    name: Lint all SQL files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r dbt/requirements.txt
+
+      - name: Run dbt deps
+        working-directory: ./dbt
+        run: dbt deps
+
+      - name: Run SQLFluff Lint
+        run: sqlfluff lint
