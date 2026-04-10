@@ -90,7 +90,7 @@ locals {
     il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     ma                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     cesn              = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    co_tax_calculator = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    co_tax_calculator = ["all_time", "last_30_days", "households", "benefits_needs"]
   }
 
   # Helper: quick lookup — local.tenant_has_tab["co"]["households"] → true
