@@ -104,12 +104,12 @@ resource "metabase_collection_graph" "graph" {
 # via the Metabase query builder. This resource enforces data source isolation
 # at the Metabase permission layer (in addition to PostgreSQL RLS).
 #
-# ⚠️  IMPORTANT — this resource is a singleton and must be imported before the
+# IMPORTANT — this resource is a singleton and must be imported before the
 #    first apply (just like the collection graph):
 #
 #      terraform import metabase_permissions_graph.graph 1
 #
-# ⚠️  TRADE-OFF: The provider sends the *complete* graph to Metabase on every
+# TRADE-OFF: The provider sends the complete graph to Metabase on every
 #    apply. Every group × database pair must be listed here. Missing pairs are
 #    sent as nil and will cause a 400 error. If a new built-in/sample database
 #    appears in Metabase (e.g. after an upgrade), add it to ignored_groups or
@@ -151,7 +151,7 @@ resource "metabase_permissions_graph" "graph" {
 
   # advanced_permissions = false uses the free-tier permission model (view_data
   # is always "unrestricted"; access is controlled via create_queries).
-  advanced_permissions = false
+  advanced_permissions = true
 
   permissions = concat(
     # --- All Users (group 1): no query access to any database ----------------
@@ -163,6 +163,8 @@ resource "metabase_permissions_graph" "graph" {
         database       = tonumber(db_id)
         view_data      = "unrestricted" # required by free-tier Metabase
         create_queries = "no"
+        download       = { schemas = "full" }
+        data_model     = null
       }
     ],
 
@@ -173,6 +175,8 @@ resource "metabase_permissions_graph" "graph" {
         database       = tonumber(db_id)
         view_data      = "unrestricted"
         create_queries = "query-builder-and-native"
+        download       = { schemas = "full" }
+        data_model     = null
       }
     ],
     # Global group on unmanaged DBs: no access needed, but must be listed
@@ -182,6 +186,8 @@ resource "metabase_permissions_graph" "graph" {
         database       = tonumber(db_id)
         view_data      = "unrestricted"
         create_queries = "no"
+        download       = { schemas = "full" }
+        data_model     = null
       }
     ],
 
@@ -196,6 +202,8 @@ resource "metabase_permissions_graph" "graph" {
             database       = tonumber(metabase_database.tenant_postgres[tenant_key].id)
             view_data      = "unrestricted"
             create_queries = "query-builder"
+            download       = { schemas = "full" }
+            data_model     = null
           }
         ],
         # All other managed databases: no access
@@ -205,6 +213,8 @@ resource "metabase_permissions_graph" "graph" {
             database       = tonumber(db_id)
             view_data      = "unrestricted"
             create_queries = "no"
+            download       = { schemas = "full" }
+            data_model     = null
           }
           if tonumber(db_id) != tonumber(metabase_database.tenant_postgres[tenant_key].id)
         ],
@@ -215,6 +225,8 @@ resource "metabase_permissions_graph" "graph" {
             database       = tonumber(db_id)
             view_data      = "unrestricted"
             create_queries = "no"
+            download       = { schemas = "full" }
+            data_model     = null
           }
         ]
       )

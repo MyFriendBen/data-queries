@@ -73,28 +73,44 @@ cp terraform.tfvars.example terraform.tfvars
 # Note: BigQuery key path defaults to ./secrets/bigquerykey.json (no need to set if using default location)
 ```
 
-**5. Initialize Terraform and import the singleton permission graphs**
-
-Metabase exposes collection permissions and data permissions each as a single global object. Both must be imported into Terraform state before they can be managed. Initialize Terraform first (to install providers), then run both imports once:
+**5. Initialize and run Terraform**
 
 > **Running locally?** This project is configured to use HCP Terraform (Terraform Cloud) by default. To run locally instead, use the gitignored `local_override.tf` file (see [Local Terraform State for Development](#local-terraform-state-for-development) below) — this overrides the backend without touching `main.tf`, so there's no risk of accidentally committing a broken cloud config.
 
+The setup requires a specific sequence because the singleton permission graphs (`metabase_collection_graph` and `metabase_permissions_graph`) must be imported *after* Metabase has created the default groups and databases — which only happens on the first `apply`.
+
+Run these commands in order:
+
 ```bash
+# Step 1: Install providers
 terraform init
-terraform import metabase_collection_graph.graph 1
+
+# Step 2: Create databases, groups, collections, and cards.
+# This also triggers Metabase to sync schemas and create its built-in groups/objects.
+terraform apply -auto-approve
+
+# Step 3: Import the permissions graph singleton into Terraform state.
+# (Must happen after apply so Metabase's default groups and databases exist.)
 terraform import metabase_permissions_graph.graph 1
-```
 
-**6. Run Terraform**
+# Step 4: Re-import the collection graph singleton.
+# The first apply may have left it in an inconsistent state — remove and re-import.
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
 
-```bash
-terraform plan   # review changes
-terraform apply
+# Step 5: Final apply to reconcile any remaining state differences.
+terraform apply -auto-approve
 ```
 
 Terraform will wait for Metabase to sync database schemas before creating cards and dashboards. This is configurable via `database_sync_wait_seconds` in terraform.tfvars (default: 60s, recommend 30s for local dev).
 
 When complete, view your dashboards at http://localhost:3001!
+
+> **Already imported?** If you see `Error: Resource already managed by Terraform` on an import, that resource is already in state — skip that import. Verify with:
+> ```bash
+> terraform state list | grep -E "collection_graph|permissions_graph"
+> ```
+> Both `metabase_collection_graph.graph` and `metabase_permissions_graph.graph` (without the `data.` prefix) should be present before the final apply.
 
 ### Development Environment Configuration
 
