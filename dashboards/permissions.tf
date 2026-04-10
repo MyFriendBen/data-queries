@@ -142,6 +142,24 @@ locals {
 
   # Every database ID that must appear in the graph (managed + unmanaged).
   all_known_db_ids = concat(local.all_db_ids, tolist(local.unmanaged_db_ids))
+
+  # All managed group IDs (groups created by Terraform)
+  all_managed_group_ids = concat(
+    [1], # All Users group
+    [metabase_permissions_group.global.id],
+    [for k, g in metabase_permissions_group.tenant : g.id]
+  )
+
+  # Groups that exist in Metabase but are NOT managed by Terraform.
+  # Discovered dynamically to handle groups created outside of Terraform.
+  # Excludes ignored groups (Administrators, etc.) since the provider handles those separately.
+  unmanaged_group_ids = setsubtract(
+    setsubtract(
+      toset([for p in data.metabase_permissions_graph.current.permissions : tostring(p.group)]),
+      toset([for id in local.all_managed_group_ids : tostring(id)])
+    ),
+    toset(["2"]) # Excluded: Administrators
+  )
 }
 
 resource "metabase_permissions_graph" "graph" {
@@ -230,6 +248,22 @@ resource "metabase_permissions_graph" "graph" {
           }
         ]
       )
+    ]),
+
+    # --- Unmanaged groups: no access to any database -------------------------
+    # Groups that exist in Metabase but aren't managed by Terraform.
+    # Give them no access to prevent API errors about missing permissions.
+    flatten([
+      for group_id in local.unmanaged_group_ids : [
+        for db_id in local.all_known_db_ids : {
+          group          = tonumber(group_id)
+          database       = tonumber(db_id)
+          view_data      = "unrestricted"
+          create_queries = "no"
+          download       = { schemas = "full" }
+          data_model     = null
+        }
+      ]
     ])
   )
 }
