@@ -10,7 +10,7 @@ For full architectural details, see [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) and
 
 The data pipeline is fully operational. GA4 event data flows from the screener into our own GCP project (`mfb-data`) via a direct BigQuery export link, and the nightly dbt cron builds analytics tables in both Postgres and BigQuery automatically.
 
-**GA4 BigQuery migration is complete** (April 13, 2026). The export was switched from Brian's `benefits-mfb` project (free sandbox, 60-day expiration) to `mfb-data` (billing enabled, no expiration). Raw event data in `mfb-data` goes back to January 18, 2026.
+**GA4 BigQuery migration is complete** (April 13, 2026). The export was switched from Gary's `benefits-mfb` project (free sandbox, 60-day expiration) to `mfb-data` (billing enabled, no expiration). Raw event data in `mfb-data` goes back to January 18, 2026.
 
 **In flight:**
 - [MFB-608](https://linear.app/myfriendben/issue/MFB-608/data-white-label-dashboard-google-analytics) — GA tab on tenant Metabase dashboards. Code merged (PR #61, April 10). In Staging QA — needs Terraform apply to production once QA is confirmed.
