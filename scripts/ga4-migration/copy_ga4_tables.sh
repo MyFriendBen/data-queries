@@ -59,7 +59,7 @@ for table in $TABLES; do
     fi
 
     echo "Copying $table... ($((SKIPPED + COPIED + FAILED + 1))/$TOTAL)"
-    if bq cp -n "$SOURCE_PROJECT:$DATASET.$table" "$TARGET_PROJECT:$DATASET.$table" 2>&1; then
+    if bq --project_id="$TARGET_PROJECT" cp -n "$SOURCE_PROJECT:$DATASET.$table" "$TARGET_PROJECT:$DATASET.$table" 2>&1; then
         echo "$table" >> "$MANIFEST"
         COPIED=$((COPIED + 1))
     else
