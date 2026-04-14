@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_current_benefits
-    description: "One row per screen × benefit. Thin, direct representation of screener_current_benefits. Downstream mart models join to programs_program directly for any program attributes they need."
+    description: "One row per screen × benefit. Thin, direct representation of screener_current_benefits."
     columns:
       - name: screen_id
         description: "Foreign key to screener_screen — identifies the screener submission"
