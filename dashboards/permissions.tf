@@ -152,20 +152,24 @@ locals {
 
   # Groups that exist in Metabase but are NOT managed by Terraform.
   # Discovered dynamically to handle groups created outside of Terraform.
-  # We'll set minimal permissions for these to prevent API errors.
+  # NOTE: `ignored_groups` does not reliably work for dynamically-discovered
+  # groups in this provider (v0.14.1) - the API still receives nil values.
+  # Instead, we set explicit minimal permissions for these groups below.
+  # Excludes Administrators (id = 2) since it's in `ignored_groups`.
   unmanaged_group_ids = setsubtract(
     setsubtract(
-      toset([for p in data.metabase_permissions_graph.current.permissions : tostring(p.group)]),
-      toset([for id in local.all_managed_group_ids : tostring(id)])
+      toset([for p in data.metabase_permissions_graph.current.permissions : p.group]),
+      toset(local.all_managed_group_ids)
     ),
-    toset(["2"]) # Exclude Administrators group (it's in ignored_groups)
+    toset([2])
   )
 }
 
 resource "metabase_permissions_graph" "graph" {
-  # Only ignore the Administrators group (id = 2) — its permissions cannot be
-  # changed via the API. All other groups must have explicit permissions set.
-  ignored_groups = [2]
+  # Ignore the Administrators group (id = 2) and pre-existing groups that are
+  # not managed by Terraform. All other groups (including unmanaged ones) must
+  # have explicit permissions defined to avoid API errors.
+  ignored_groups = [2, 34, 35, 36, 37, 38, 39, 40, 41, 67]
 
   # advanced_permissions = false uses the free-tier permission model (view_data
   # is always "unrestricted"; access is controlled via create_queries).
@@ -252,8 +256,9 @@ resource "metabase_permissions_graph" "graph" {
 
     # --- Unmanaged groups: no access to any database -------------------------
     # Groups that exist in Metabase but aren't managed by Terraform (excluding
-    # Administrators which is in ignored_groups). Give them minimal permissions
-    # across all databases to prevent API errors about nil permissions.
+    # Administrators which is in ignored_groups). The provider's ignored_groups
+    # option doesn't reliably skip dynamic groups, so we explicitly set minimal
+    # permissions across all databases to satisfy the API.
     flatten([
       for group_id in local.unmanaged_group_ids : [
         for db_id in local.all_known_db_ids : {
