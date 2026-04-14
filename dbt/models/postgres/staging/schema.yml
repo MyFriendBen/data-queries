@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_current_benefits
-    description: "One row per screen × benefit. Joins screener_current_benefits to programs_program to resolve the abbreviated program name."
+    description: "One row per screen × benefit. Thin, direct representation of screener_current_benefits. Downstream mart models join to programs_program directly for any program attributes they need."
     columns:
       - name: screen_id
         description: "Foreign key to screener_screen — identifies the screener submission"
@@ -10,10 +10,6 @@ models:
           - not_null
       - name: program_id
         description: "Foreign key to programs_program — identifies the benefit program"
-        tests:
-          - not_null
-      - name: benefit_name
-        description: "Abbreviated program name from programs_program.name_abbreviated"
         tests:
           - not_null
 
