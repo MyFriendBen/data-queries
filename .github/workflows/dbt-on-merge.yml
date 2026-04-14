@@ -12,6 +12,9 @@ jobs:
   dbt-build:
     runs-on: ubuntu-latest
     environment: staging
+    permissions:
+      contents: read
+      id-token: write
     defaults:
       run:
         working-directory: dbt
