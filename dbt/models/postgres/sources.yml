@@ -197,6 +197,21 @@ sources:
             description: "Relationship to head of household"
           - name: has_disability
             description: "Whether member has a disability"
+      - name: programs_referrer
+        description: "Referrer records from Django Referrer model. Each row stores a referrer_code and its display name inline, scoped to one white label."
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: white_label_id
+            description: "Foreign key to screener_whitelabel"
+          - name: referrer_code
+            description: "The referrer code used to identify partners"
+          - name: name
+            description: "Display name of the partner"
+          - name: show_in_dropdown
+            description: "Whether this referrer appears in the frontend dropdown"
+          - name: is_partner
+            description: "Whether this referrer is a named partner org (True) or a generic option like Friend/Google (False). Used to group options in the screener dropdown and filter the Metabase partner dashboard."
       - name: screener_energycalculatorscreen
         description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
         columns:

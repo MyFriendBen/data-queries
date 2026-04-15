@@ -381,8 +381,8 @@ WITH base_table_1 AS (
         END AS request_language_code
 
     FROM {{ source('django_apps', 'screener_screen') }} AS ss
-    LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc1 ON ss.referrer_code = drc1.referrer_code
-    LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc2 ON ss.referral_source = drc2.referrer_code
+    LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc1 ON ss.referrer_code = drc1.referrer_code AND ss.white_label_id = drc1.white_label_id
+    LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc2 ON ss.referral_source = drc2.referrer_code AND ss.white_label_id = drc2.white_label_id
     LEFT JOIN {{ ref('stg_latest_eligibility_snapshot') }} AS les ON ss.id = les.screen_id
     LEFT JOIN {{ ref('stg_program_eligibility') }} AS pe ON les.latest_snapshot_id = pe.eligibility_snapshot_id
     LEFT JOIN {{ ref('stg_monthly_income') }} AS mi ON ss.id = mi.screen_id
