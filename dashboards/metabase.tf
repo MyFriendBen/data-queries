@@ -189,6 +189,13 @@ locals {
     cesn              = metabase_collection.tenant_collection_cesn
     co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
+
+  # Scorecard counts for All-Time / Last 30 Days top row:
+  # non-CESN: Completed Screeners, Qualified for Benefits %, Median Annual Benefits,
+  #           Median Monthly Benefits, Qualified for Tax Credits %, Median Annual Tax Credits = 6
+  # CESN: first 4 only (no tax credit programs)
+  alltime_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 6 : 4 }
+  alltime_scorecard_width = { for k, v in var.tenants : k => 24 / local.alltime_scorecard_count[k] }
 }
 
 
@@ -1042,7 +1049,7 @@ resource "metabase_dashboard" "tenant_analytics" {
           dashboard_tab_id = 2
           row              = 0
           col              = 0
-          size_x           = 4
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {
@@ -1063,8 +1070,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
           dashboard_tab_id = 2
           row              = 0
-          col              = 4
-          size_x           = 4
+          col              = local.alltime_scorecard_width[each.key] * 1
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {
@@ -1085,8 +1092,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
           dashboard_tab_id = 2
           row              = 0
-          col              = 8
-          size_x           = 4
+          col              = local.alltime_scorecard_width[each.key] * 2
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {
@@ -1107,8 +1114,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
           dashboard_tab_id = 2
           row              = 0
-          col              = 12
-          size_x           = 4
+          col              = local.alltime_scorecard_width[each.key] * 3
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {
@@ -1132,8 +1139,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
           dashboard_tab_id = 2
           row              = 0
-          col              = 16
-          size_x           = 4
+          col              = local.alltime_scorecard_width[each.key] * 4
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {
@@ -1156,8 +1163,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
           dashboard_tab_id = 2
           row              = 0
-          col              = 20
-          size_x           = 4
+          col              = local.alltime_scorecard_width[each.key] * 5
+          size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
             {

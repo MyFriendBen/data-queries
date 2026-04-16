@@ -235,15 +235,20 @@ resource "metabase_card" "tenant_top_counties_30d" {
 # --- Dashboard layout for Tab 3 ---
 
 locals {
+  # Scorecard counts for Last 30 Days top row — same structure as All-Time:
+  # non-CESN: 6 scorecards (4 cols each); CESN: 4 scorecards (6 cols each)
+  last30_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 6 : 4 }
+  last30_scorecard_width = { for k, v in var.tenants : k => 24 / local.last30_scorecard_count[k] }
+
   tenant_dashboard_last_30_days_layout = {
     for k, v in var.tenants : k => flatten(concat(
-      # Row 0: base scorecards (always shown)
+      # Row 0: base scorecards — width auto-calculated so cards always fill the full row
       [{
         card_id          = tonumber(metabase_card.tenant_completed_screeners_30d[k].id)
         dashboard_tab_id = 3
         row              = 0
         col              = 0
-        size_x           = 4
+        size_x           = local.last30_scorecard_width[k]
         size_y           = 4
         parameter_mappings = [
           {
@@ -269,8 +274,8 @@ locals {
         card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
         dashboard_tab_id = 3
         row              = 0
-        col              = 4
-        size_x           = 4
+        col              = local.last30_scorecard_width[k] * 1
+        size_x           = local.last30_scorecard_width[k]
         size_y           = 4
         parameter_mappings = [
           {
@@ -296,8 +301,8 @@ locals {
         card_id          = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
         dashboard_tab_id = 3
         row              = 0
-        col              = 8
-        size_x           = 4
+        col              = local.last30_scorecard_width[k] * 2
+        size_x           = local.last30_scorecard_width[k]
         size_y           = 4
         parameter_mappings = [
           {
@@ -323,8 +328,8 @@ locals {
         card_id          = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
         dashboard_tab_id = 3
         row              = 0
-        col              = 12
-        size_x           = 4
+        col              = local.last30_scorecard_width[k] * 3
+        size_x           = local.last30_scorecard_width[k]
         size_y           = 4
         parameter_mappings = [
           {
@@ -352,8 +357,8 @@ locals {
           card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct_30d[k].id)
           dashboard_tab_id = 3
           row              = 0
-          col              = 16
-          size_x           = 4
+          col              = local.last30_scorecard_width[k] * 4
+          size_x           = local.last30_scorecard_width[k]
           size_y           = 4
           parameter_mappings = [
             {
@@ -381,8 +386,8 @@ locals {
           card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits_30d[k].id)
           dashboard_tab_id = 3
           row              = 0
-          col              = 20
-          size_x           = 4
+          col              = local.last30_scorecard_width[k] * 5
+          size_x           = local.last30_scorecard_width[k]
           size_y           = 4
           parameter_mappings = [
             {
