@@ -165,7 +165,7 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
 resource "metabase_card" "cesn_homeowners_electric_provider" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Who is your electricity provider?"
+    name          = "Homeowners – Electricity Provider"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -195,7 +195,7 @@ resource "metabase_card" "cesn_homeowners_electric_provider" {
 resource "metabase_card" "cesn_renters_electric_provider" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Who is your electricity provider?"
+    name          = "Renters – Electricity Provider"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -227,7 +227,7 @@ resource "metabase_card" "cesn_renters_electric_provider" {
 resource "metabase_card" "cesn_homeowners_gas_provider" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Who is your gas/heating provider?"
+    name          = "Homeowners – Gas/Heating Provider"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -257,7 +257,7 @@ resource "metabase_card" "cesn_homeowners_gas_provider" {
 resource "metabase_card" "cesn_renters_gas_provider" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Who is your gas/heating provider?"
+    name          = "Renters – Gas/Heating Provider"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -289,7 +289,7 @@ resource "metabase_card" "cesn_renters_gas_provider" {
 resource "metabase_card" "cesn_homeowners_disconnected" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Is your electricity, gas, or heating currently disconnected?"
+    name          = "Homeowners – Utility Currently Disconnected?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -318,7 +318,7 @@ resource "metabase_card" "cesn_homeowners_disconnected" {
 resource "metabase_card" "cesn_renters_disconnected" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Is your electricity, gas, or heating currently disconnected?"
+    name          = "Renters – Utility Currently Disconnected?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -349,7 +349,7 @@ resource "metabase_card" "cesn_renters_disconnected" {
 resource "metabase_card" "cesn_homeowners_past_due" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Do you have past due electricity, gas, or heating bills?"
+    name          = "Homeowners – Past Due Energy Bills?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -378,7 +378,7 @@ resource "metabase_card" "cesn_homeowners_past_due" {
 resource "metabase_card" "cesn_renters_past_due" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Do you have past due electricity, gas, or heating bills?"
+    name          = "Renters – Past Due Energy Bills?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -409,7 +409,7 @@ resource "metabase_card" "cesn_renters_past_due" {
 resource "metabase_card" "cesn_homeowners_old_car" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Do you have a vehicle 12+ years old or has failed an emissions test?"
+    name          = "Homeowners – Vehicle 12+ Years Old or Failed Emissions?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -438,7 +438,7 @@ resource "metabase_card" "cesn_homeowners_old_car" {
 resource "metabase_card" "cesn_renters_old_car" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Do you have a vehicle 12+ years old or has failed an emissions test?"
+    name          = "Renters – Vehicle 12+ Years Old or Failed Emissions?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -469,7 +469,7 @@ resource "metabase_card" "cesn_renters_old_car" {
 resource "metabase_card" "cesn_needs_stove" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Do you have a stove/range that is in need of repair or replacement?"
+    name          = "Homeowners – Stove/Range Needs Repair or Replacement?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -498,7 +498,7 @@ resource "metabase_card" "cesn_needs_stove" {
 resource "metabase_card" "cesn_needs_water_heater" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Do you have a water heater that is in need of repair or replacement?"
+    name          = "Homeowners – Water Heater Needs Repair or Replacement?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -527,7 +527,7 @@ resource "metabase_card" "cesn_needs_water_heater" {
 resource "metabase_card" "cesn_needs_hvac" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Do you have heating/cooling/ventilation that is in need of repair or replacement?"
+    name          = "Homeowners – HVAC Needs Repair or Replacement?"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
