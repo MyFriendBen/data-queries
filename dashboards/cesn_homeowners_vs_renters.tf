@@ -174,7 +174,7 @@ resource "metabase_card" "cesn_homeowners_electric_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(electric_provider, '(Unknown)') AS "Provider",
+              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
@@ -204,7 +204,7 @@ resource "metabase_card" "cesn_renters_electric_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(electric_provider, '(Unknown)') AS "Provider",
+              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
@@ -236,7 +236,7 @@ resource "metabase_card" "cesn_homeowners_gas_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(gas_heat_provider, '(Unknown)') AS "Provider",
+              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
@@ -266,7 +266,7 @@ resource "metabase_card" "cesn_renters_gas_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(gas_heat_provider, '(Unknown)') AS "Provider",
+              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
