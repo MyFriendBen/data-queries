@@ -76,11 +76,12 @@ locals {
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
     for k, v in var.tenants : k => {
-      google_analytics = { id = 1, name = "Google Analytics" }
-      all_time         = { id = 2, name = "All-Time Performance" }
-      last_30_days     = { id = 3, name = "Last 30 Days Performance" }
-      households       = { id = 4, name = "Households" }
-      benefits_needs   = { id = 5, name = k != "cesn" ? "Benefits & Immediate Needs" : "Benefits" }
+      google_analytics   = { id = 1, name = "Google Analytics" }
+      all_time           = { id = 2, name = "All-Time Performance" }
+      last_30_days       = { id = 3, name = "Last 30 Days Performance" }
+      households         = { id = 4, name = "Households" }
+      benefits_needs     = { id = 5, name = k != "cesn" ? "Benefits & Immediate Needs" : "Benefits" }
+      cesn_homeowners_vs_renters = { id = 6, name = "Homeowners vs Renters" }
     }
   }
 
@@ -91,7 +92,7 @@ locals {
     tx                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
     ma                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    cesn              = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
+    cesn              = ["all_time", "last_30_days", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics"]
     co_tax_calculator = ["all_time", "last_30_days", "households", "benefits_needs"]
   }
 

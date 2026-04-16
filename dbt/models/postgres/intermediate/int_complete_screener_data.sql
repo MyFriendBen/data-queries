@@ -278,7 +278,9 @@ WITH base_table_1 AS (
         secs.is_home_owner,
         secs.is_renter,
         secs.electric_provider,
+        secs.electric_provider_name,
         secs.gas_provider AS gas_heat_provider,
+        secs.gas_provider_name AS gas_heat_provider_name,
         secs.electricity_is_disconnected,
         secs.has_past_due_energy_bills,
 

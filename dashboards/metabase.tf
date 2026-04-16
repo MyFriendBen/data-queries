@@ -1275,5 +1275,7 @@ resource "metabase_dashboard" "tenant_analytics" {
     flatten([for k in [each.key] : local.tenant_dashboard_households_data_layout[k] if local.tenant_has_tab[k]["households"]]),
     # Tab 5: Benefits & Immediate Needs (all tenants)
     local.tenant_dashboard_benefits_needs_layout[each.key],
+    # Tab 6: Homeowners vs Renters (CESN only)
+    flatten([for k in [each.key] : local.tenant_dashboard_cesn_hvr_layout if local.tenant_has_tab[k]["cesn_homeowners_vs_renters"]]),
   ))
 }
