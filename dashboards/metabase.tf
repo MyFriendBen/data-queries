@@ -252,7 +252,7 @@ resource "metabase_card" "tenant_median_annual_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -274,7 +274,7 @@ resource "metabase_card" "tenant_median_monthly_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -296,7 +296,7 @@ resource "metabase_card" "tenant_median_annual_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -319,7 +319,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '6 days' [[AND {{partner}}]] [[AND {{county}}]] GROUP BY submission_date ORDER BY submission_date"
+        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '6 days' [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] GROUP BY submission_date ORDER BY submission_date"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -1000,7 +1000,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         }
       }
     ] : [],
-    (local.tenant_has_tab[each.key]["last_30_days"]) ? [
+    true ? [
       {
         id        = "date_range_filter"
         name      = "Date Range"
@@ -1053,6 +1053,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_y           = 4
           parameter_mappings = [
             {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
               target       = ["dimension", ["template-tag", "partner"]]
@@ -1074,6 +1079,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
             {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
@@ -1097,6 +1107,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_y           = 4
           parameter_mappings = [
             {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
               target       = ["dimension", ["template-tag", "partner"]]
@@ -1118,6 +1133,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
           parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
             {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
@@ -1144,6 +1164,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_y           = 4
           parameter_mappings = [
             {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
               target       = ["dimension", ["template-tag", "partner"]]
@@ -1168,6 +1193,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_y           = 4
           parameter_mappings = [
             {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
               target       = ["dimension", ["template-tag", "partner"]]
@@ -1191,6 +1221,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_x           = 24
           size_y           = 6
           parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
             {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
@@ -1217,6 +1252,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_y           = 8
           parameter_mappings = [
             {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
               target       = ["dimension", ["template-tag", "partner"]]
@@ -1240,6 +1280,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           size_x           = each.key != "cesn" ? 12 : 24
           size_y           = 8
           parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
             {
               parameter_id = "partner_filter"
               card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)

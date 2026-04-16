@@ -1,6 +1,6 @@
 WITH filtered_screeners AS (
     SELECT id FROM analytics.mart_screener_data
-    WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
 ),
 total AS (
     SELECT count(*) AS total_screeners FROM filtered_screeners

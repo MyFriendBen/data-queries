@@ -1,6 +1,6 @@
 WITH filter_keys AS (
     SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1
-    [[AND {{partner}}]] [[AND {{county}}]]
+    [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
 ),
 filtered AS (
     SELECT hm.age FROM analytics.mart_householdmembers hm

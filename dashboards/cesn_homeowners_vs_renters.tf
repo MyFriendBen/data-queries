@@ -35,7 +35,7 @@ resource "metabase_card" "cesn_homeowners_completed" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -52,7 +52,7 @@ resource "metabase_card" "cesn_homeowners_qualified_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -69,7 +69,7 @@ resource "metabase_card" "cesn_renters_completed" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -86,7 +86,7 @@ resource "metabase_card" "cesn_renters_qualified_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -111,6 +111,7 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND submission_date >= current_date - interval '7 days'
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
@@ -143,6 +144,7 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND submission_date >= current_date - interval '7 days'
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
@@ -179,6 +181,7 @@ resource "metabase_card" "cesn_homeowners_electric_provider" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND electric_provider IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -209,6 +212,7 @@ resource "metabase_card" "cesn_renters_electric_provider" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND electric_provider IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -241,6 +245,7 @@ resource "metabase_card" "cesn_homeowners_gas_provider" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND gas_heat_provider IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -271,6 +276,7 @@ resource "metabase_card" "cesn_renters_gas_provider" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND gas_heat_provider IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -303,6 +309,7 @@ resource "metabase_card" "cesn_homeowners_disconnected" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND electricity_is_disconnected IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -332,6 +339,7 @@ resource "metabase_card" "cesn_renters_disconnected" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND electricity_is_disconnected IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -363,6 +371,7 @@ resource "metabase_card" "cesn_homeowners_past_due" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND has_past_due_energy_bills IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -392,6 +401,7 @@ resource "metabase_card" "cesn_renters_past_due" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND has_past_due_energy_bills IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -423,6 +433,7 @@ resource "metabase_card" "cesn_homeowners_old_car" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND has_old_car IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -452,6 +463,7 @@ resource "metabase_card" "cesn_renters_old_car" {
             FROM analytics.mart_screener_data
             WHERE is_renter = true
               AND has_old_car IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -483,6 +495,7 @@ resource "metabase_card" "cesn_needs_stove" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND needs_stove IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -512,6 +525,7 @@ resource "metabase_card" "cesn_needs_water_heater" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND needs_water_heater IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -541,6 +555,7 @@ resource "metabase_card" "cesn_needs_hvac" {
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
               AND needs_hvac IS NOT NULL
+              [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY 1
@@ -568,6 +583,7 @@ locals {
       size_x           = 6
       size_y           = 4
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_completed["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_completed["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_completed["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -582,6 +598,7 @@ locals {
       size_x           = 6
       size_y           = 4
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -597,6 +614,7 @@ locals {
       size_x           = 6
       size_y           = 4
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_completed["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_completed["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_completed["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -611,6 +629,7 @@ locals {
       size_x           = 6
       size_y           = 4
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_qualified_pct["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -626,6 +645,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -640,6 +660,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_daily_screeners["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -655,6 +676,7 @@ locals {
       size_x           = 12
       size_y           = 8
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -669,6 +691,7 @@ locals {
       size_x           = 12
       size_y           = 8
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_electric_provider["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -684,6 +707,7 @@ locals {
       size_x           = 12
       size_y           = 8
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -698,6 +722,7 @@ locals {
       size_x           = 12
       size_y           = 8
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_gas_provider["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -713,6 +738,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_disconnected["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_disconnected["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_disconnected["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -727,6 +753,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_disconnected["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_disconnected["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_disconnected["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -742,6 +769,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_past_due["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_past_due["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_past_due["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -756,6 +784,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_past_due["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_past_due["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_past_due["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -771,6 +800,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_homeowners_old_car["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_homeowners_old_car["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_homeowners_old_car["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -785,6 +815,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_renters_old_car["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_renters_old_car["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_renters_old_car["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -800,6 +831,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_needs_stove["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_needs_stove["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_needs_stove["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -814,6 +846,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_needs_water_heater["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_needs_water_heater["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_needs_water_heater["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
@@ -828,6 +861,7 @@ locals {
       size_x           = 12
       size_y           = 6
       parameter_mappings = [
+        { parameter_id = "date_range_filter", card_id = tonumber(metabase_card.cesn_needs_hvac["cesn"].id), target = ["dimension", ["template-tag", "submission_date"]] },
         { parameter_id = "partner_filter", card_id = tonumber(metabase_card.cesn_needs_hvac["cesn"].id), target = ["dimension", ["template-tag", "partner"]] },
         { parameter_id = "county_filter", card_id = tonumber(metabase_card.cesn_needs_hvac["cesn"].id), target = ["dimension", ["template-tag", "county"]] }
       ]
