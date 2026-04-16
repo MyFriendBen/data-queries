@@ -191,10 +191,10 @@ locals {
   }
 
   # Scorecard counts for All-Time / Last 30 Days top row:
-  # non-CESN: Completed Screeners, Qualified for Benefits %, Median Annual Benefits,
-  #           Median Monthly Benefits, Qualified for Tax Credits %, Median Annual Tax Credits = 6
-  # CESN: first 4 only (no tax credit programs)
-  alltime_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 6 : 4 }
+  # with tax credits: Completed Screeners, Qualified for Benefits %, Median Annual Benefits,
+  #                   Median Monthly Benefits, Qualified for Tax Credits %, Median Annual Tax Credits = 6
+  # without tax credits: first 4 only
+  alltime_scorecard_count = { for k, v in var.tenants : k => local.tenant_features[k].has_tax_credits ? 6 : 4 }
   alltime_scorecard_width = { for k, v in var.tenants : k => 24 / local.alltime_scorecard_count[k] }
 }
 
@@ -1133,8 +1133,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ],
-      # Tax credit cards — hidden for CESN (no tax credit programs)
-      each.key != "cesn" ? [
+      # Tax credit cards — hidden for tenants that don't collect tax credit data
+      local.tenant_features[each.key].has_tax_credits ? [
         {
           card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
           dashboard_tab_id = 2
@@ -1158,7 +1158,7 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ] : [],
-      each.key != "cesn" ? [
+      local.tenant_features[each.key].has_tax_credits ? [
         {
           card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
           dashboard_tab_id = 2
@@ -1206,8 +1206,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ],
-      # Top Partners chart — hidden for CESN (no partner tracking)
-      each.key != "cesn" ? [
+      # Top Partners chart — hidden for tenants that don't track partners
+      local.tenant_features[each.key].has_partners ? [
         {
           card_id          = tonumber(metabase_card.tenant_top_partners[each.key].id)
           dashboard_tab_id = 2
@@ -1236,8 +1236,8 @@ resource "metabase_dashboard" "tenant_analytics" {
           card_id          = tonumber(metabase_card.tenant_top_counties[each.key].id)
           dashboard_tab_id = 2
           row              = 10
-          col              = each.key != "cesn" ? 12 : 0
-          size_x           = each.key != "cesn" ? 12 : 24
+          col              = local.tenant_features[each.key].has_partners ? 12 : 0
+          size_x           = local.tenant_features[each.key].has_partners ? 12 : 24
           size_y           = 8
           parameter_mappings = [
             {
