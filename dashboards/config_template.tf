@@ -72,14 +72,16 @@ locals {
     "show_mini_bar" = true
   }
 
-  # All available dashboard tabs with fixed IDs
+  # All available dashboard tabs with fixed IDs — per tenant so names can vary
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
-    google_analytics = { id = 1, name = "Google Analytics" }
-    all_time         = { id = 2, name = "All-Time Performance" }
-    last_30_days     = { id = 3, name = "Last 30 Days Performance" }
-    households       = { id = 4, name = "Households" }
-    benefits_needs   = { id = 5, name = "Benefits & Immediate Needs" }
+    for k, v in var.tenants : k => {
+      google_analytics = { id = 1, name = "Google Analytics" }
+      all_time         = { id = 2, name = "All-Time Performance" }
+      last_30_days     = { id = 3, name = "Last 30 Days Performance" }
+      households       = { id = 4, name = "Households" }
+      benefits_needs   = { id = 5, name = k != "cesn" ? "Benefits & Immediate Needs" : "Benefits" }
+    }
   }
 
   # Per-tenant tab selection — order determines tab display order

@@ -1033,7 +1033,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   ))
 
   tabs_json = jsonencode([
-    for tab_key in local.tenant_tabs[each.key] : local.all_tabs[tab_key]
+    for tab_key in local.tenant_tabs[each.key] : local.all_tabs[each.key][tab_key]
   ])
 
   cards_json = jsonencode(concat(
