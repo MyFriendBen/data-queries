@@ -150,30 +150,11 @@ locals {
   }
 
   tenant_dashboard_benefits_needs_layout = {
-    for k, v in var.tenants : k => [
-      {
-        card_id            = null
-        dashboard_tab_id   = 5
-        row                = 0
-        col                = 0
-        size_x             = 24
-        size_y             = 2
-        parameter_mappings = []
-        series             = []
-        visualization_settings = {
-          virtual_card = {
-            name                   = null
-            dataset_query          = {}
-            display                = "text"
-            visualization_settings = {}
-          }
-          text = "# Live | Benefits & Immediate Needs"
-        }
-      },
-      {
+    for k, v in var.tenants : k => flatten(concat(
+      [{
         card_id          = tonumber(metabase_card.tenant_completed_screeners[k].id)
         dashboard_tab_id = 5
-        row              = 2
+        row              = 0
         col              = 0
         size_x           = 6
         size_y           = 4
@@ -191,11 +172,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }],
+      [{
         card_id          = tonumber(metabase_card.tenant_already_had_benefits_pct[k].id)
         dashboard_tab_id = 5
-        row              = 2
+        row              = 0
         col              = 6
         size_x           = 6
         size_y           = 4
@@ -213,11 +194,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }],
+      [{
         card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct[k].id)
         dashboard_tab_id = 5
-        row              = 2
+        row              = 0
         col              = 12
         size_x           = 6
         size_y           = 4
@@ -235,11 +216,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }],
+      k != "cesn" ? [{
         card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[k].id)
         dashboard_tab_id = 5
-        row              = 2
+        row              = 0
         col              = 18
         size_x           = 6
         size_y           = 4
@@ -257,11 +238,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }] : [],
+      [{
         card_id          = tonumber(metabase_card.tenant_current_benefits_table[k].id)
         dashboard_tab_id = 5
-        row              = 6
+        row              = 4
         col              = 0
         size_x           = 12
         size_y           = 10
@@ -279,11 +260,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }],
+      [{
         card_id          = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
         dashboard_tab_id = 5
-        row              = 6
+        row              = 4
         col              = 12
         size_x           = 12
         size_y           = 10
@@ -301,11 +282,11 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
+      }],
+      k != "cesn" ? [{
         card_id          = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
         dashboard_tab_id = 5
-        row              = 14
+        row              = 12
         col              = 0
         size_x           = 12
         size_y           = 10
@@ -323,7 +304,7 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      }
-    ]
+      }] : []
+    ))
   }
 }

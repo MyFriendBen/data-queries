@@ -1033,206 +1033,222 @@ resource "metabase_dashboard" "tenant_analytics" {
     # Tab 1: Google Analytics
     local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
     # Tab 2: All-Time Performance (full layout with partner filter, or simple screen count)
-    local.tenant_has_tab[each.key]["households"] ? [
-      {
-        card_id          = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 0
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 4
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 8
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 12
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 16
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-        dashboard_tab_id = 2
-        row              = 0
-        col              = 20
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-        dashboard_tab_id = 2
-        row              = 4
-        col              = 0
-        size_x           = 24
-        size_y           = 6
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_top_partners[each.key].id)
-        dashboard_tab_id = 2
-        row              = 10
-        col              = 0
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_top_counties[each.key].id)
-        dashboard_tab_id = 2
-        row              = 10
-        col              = 12
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      ] : [
+    # Tab 2: All-Time Performance
+    # flatten(concat(...)) lets us conditionally include CESN-excluded cards
+    local.tenant_has_tab[each.key]["households"] ? flatten(concat(
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 0
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 4
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 8
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 12
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+      # Tax credit cards — hidden for CESN (no tax credit programs)
+      each.key != "cesn" ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 16
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      each.key != "cesn" ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = 20
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+          dashboard_tab_id = 2
+          row              = 4
+          col              = 0
+          size_x           = 24
+          size_y           = 6
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+      # Top Partners chart — hidden for CESN (no partner tracking)
+      each.key != "cesn" ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_top_partners[each.key].id)
+          dashboard_tab_id = 2
+          row              = 10
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_top_counties[each.key].id)
+          dashboard_tab_id = 2
+          row              = 10
+          col              = each.key != "cesn" ? 12 : 0
+          size_x           = each.key != "cesn" ? 12 : 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+    )) : [
       {
         card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
         dashboard_tab_id       = 2
