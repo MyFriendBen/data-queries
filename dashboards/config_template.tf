@@ -99,7 +99,7 @@ locals {
   # Helper: quick lookup — local.tenant_has_tab["co"]["households"] → true
   tenant_has_tab = {
     for key, tabs in local.tenant_tabs : key => {
-      for tab_key in keys(local.all_tabs) : tab_key => contains(tabs, tab_key)
+      for tab_key in keys(local.all_tabs[key]) : tab_key => contains(tabs, tab_key)
     }
   }
 
