@@ -142,12 +142,38 @@ locals {
 
   # Every database ID that must appear in the graph (managed + unmanaged).
   all_known_db_ids = concat(local.all_db_ids, tolist(local.unmanaged_db_ids))
+
+  # All managed group IDs (groups created by Terraform)
+  all_managed_group_ids = concat(
+    [1], # All Users group
+    [metabase_permissions_group.global.id],
+    [for k, g in metabase_permissions_group.tenant : g.id]
+  )
+
+  # Groups that exist in Metabase but are NOT managed by Terraform.
+  # Discovered dynamically from the current permissions graph so that groups
+  # created manually in the Metabase UI are automatically added to
+  # `ignored_groups` below. When a group is ignored, Terraform neither reads
+  # nor updates its permissions — whatever is configured manually in the
+  # Metabase UI stays untouched. Excludes Administrators (id = 2) since it's
+  # always ignored.
+  unmanaged_group_ids = setsubtract(
+    setsubtract(
+      toset([for p in data.metabase_permissions_graph.current.permissions : p.group]),
+      toset(local.all_managed_group_ids)
+    ),
+    toset([2])
+  )
 }
 
 resource "metabase_permissions_graph" "graph" {
-  # Only ignore the Administrators group (id = 2) — its permissions cannot be
-  # changed via the API. All other groups are explicitly enumerated below.
-  ignored_groups = [2]
+  # Ignore Administrators (id = 2) and any groups not managed by Terraform.
+  # When a group is ignored the provider skips it on both read and update,
+  # so its permissions stay whatever is set in the Metabase UI.
+  ignored_groups = concat(
+    [2],
+    [for id in local.unmanaged_group_ids : tonumber(id)]
+  )
 
   # advanced_permissions = false uses the free-tier permission model (view_data
   # is always "unrestricted"; access is controlled via create_queries).

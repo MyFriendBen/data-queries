@@ -965,7 +965,7 @@ resource "metabase_dashboard" "tenant_analytics" {
       local.tenant_has_tab[each.key]["households"] ||
       local.tenant_has_tab[each.key]["last_30_days"] ||
       local.tenant_has_tab[each.key]["benefits_needs"]
-    ) ? [
+      ) ? [
       {
         id                 = "partner_filter"
         name               = "Partner"
