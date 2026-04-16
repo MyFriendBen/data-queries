@@ -30,7 +30,7 @@ models:
               to: source('django_apps', 'screener_whitelabel')
               field: id
     tests:
-      - unique_combination_of_columns:
+      - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
             - referrer_code
             - white_label_id
