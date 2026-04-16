@@ -110,7 +110,6 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
-              AND submission_date >= current_date - interval '7 days'
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
@@ -142,7 +141,6 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
-              AND submission_date >= current_date - interval '7 days'
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
@@ -174,7 +172,7 @@ resource "metabase_card" "cesn_homeowners_electric_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
+              COALESCE(electric_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
@@ -204,7 +202,7 @@ resource "metabase_card" "cesn_renters_electric_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
+              COALESCE(electric_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
@@ -236,7 +234,7 @@ resource "metabase_card" "cesn_homeowners_gas_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
+              COALESCE(gas_heat_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
@@ -266,7 +264,7 @@ resource "metabase_card" "cesn_renters_gas_provider" {
       native = {
         query           = <<-SQL
             SELECT
-              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
+              COALESCE(gas_heat_provider, '(Unknown)') AS "Provider",
               count(*) AS "# of Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
@@ -559,31 +557,11 @@ resource "metabase_card" "cesn_needs_hvac" {
 
 locals {
   tenant_dashboard_cesn_hvr_layout = [
-    # Row 0: text header
-    {
-      card_id            = null
-      dashboard_tab_id   = 6
-      row                = 0
-      col                = 0
-      size_x             = 24
-      size_y             = 2
-      parameter_mappings = []
-      series             = []
-      visualization_settings = {
-        virtual_card = {
-          name                   = null
-          dataset_query          = {}
-          display                = "text"
-          visualization_settings = {}
-        }
-        text = "## Homeowners vs Renters\n* Non-Tax Credit benefits"
-      }
-    },
-    # Row 2: scorecards — homeowners
+    # Row 0: scorecards — homeowners
     {
       card_id          = tonumber(metabase_card.cesn_homeowners_completed["cesn"].id)
       dashboard_tab_id = 6
-      row              = 2
+      row              = 0
       col              = 0
       size_x           = 6
       size_y           = 4
@@ -597,7 +575,7 @@ locals {
     {
       card_id          = tonumber(metabase_card.cesn_homeowners_qualified_pct["cesn"].id)
       dashboard_tab_id = 6
-      row              = 2
+      row              = 0
       col              = 6
       size_x           = 6
       size_y           = 4
@@ -608,11 +586,11 @@ locals {
       series                 = []
       visualization_settings = {}
     },
-    # Row 2: scorecards — renters
+    # Row 0: scorecards — renters
     {
       card_id          = tonumber(metabase_card.cesn_renters_completed["cesn"].id)
       dashboard_tab_id = 6
-      row              = 2
+      row              = 0
       col              = 12
       size_x           = 6
       size_y           = 4
@@ -626,7 +604,7 @@ locals {
     {
       card_id          = tonumber(metabase_card.cesn_renters_qualified_pct["cesn"].id)
       dashboard_tab_id = 6
-      row              = 2
+      row              = 0
       col              = 18
       size_x           = 6
       size_y           = 4
