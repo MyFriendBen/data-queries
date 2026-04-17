@@ -236,8 +236,8 @@ resource "metabase_card" "tenant_top_counties_30d" {
 
 locals {
   # Scorecard counts for Last 30 Days top row — same structure as All-Time:
-  # non-CESN: 6 scorecards (4 cols each); CESN: 4 scorecards (6 cols each)
-  last30_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 6 : 4 }
+  # with tax credits: 6 scorecards (4 cols each); without: 4 scorecards (6 cols each)
+  last30_scorecard_count = { for k, v in var.tenants : k => local.tenant_features[k].has_tax_credits ? 6 : 4 }
   last30_scorecard_width = { for k, v in var.tenants : k => 24 / local.last30_scorecard_count[k] }
 
   tenant_dashboard_last_30_days_layout = {
@@ -351,8 +351,8 @@ locals {
         series                 = []
         visualization_settings = {}
       }],
-      # Tax credit cards — hidden for CESN (no tax credit programs)
-      k != "cesn" ? [
+      # Tax credit cards — hidden for tenants that don't collect tax credit data
+      local.tenant_features[k].has_tax_credits ? [
         {
           card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct_30d[k].id)
           dashboard_tab_id = 3
@@ -381,7 +381,7 @@ locals {
           visualization_settings = {}
         },
       ] : [],
-      k != "cesn" ? [
+      local.tenant_features[k].has_tax_credits ? [
         {
           card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits_30d[k].id)
           dashboard_tab_id = 3
@@ -438,8 +438,8 @@ locals {
         series                 = []
         visualization_settings = {}
       }],
-      # Row 10: Tables — Top Partners hidden for CESN
-      k != "cesn" ? [
+      # Row 10: Tables — Top Partners hidden for tenants that don't track partners
+      local.tenant_features[k].has_partners ? [
         {
           card_id          = tonumber(metabase_card.tenant_top_partners_30d[k].id)
           dashboard_tab_id = 3
@@ -473,8 +473,8 @@ locals {
           card_id          = tonumber(metabase_card.tenant_top_counties_30d[k].id)
           dashboard_tab_id = 3
           row              = 10
-          col              = k != "cesn" ? 12 : 0
-          size_x           = k != "cesn" ? 12 : 24
+          col              = local.tenant_features[k].has_partners ? 12 : 0
+          size_x           = local.tenant_features[k].has_partners ? 12 : 24
           size_y           = 8
           parameter_mappings = [
             {

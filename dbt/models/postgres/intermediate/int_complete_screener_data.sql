@@ -150,22 +150,6 @@ WITH base_table_1 AS (
         pe.cocb_annual,
         pe.coctc_annual,
         pe.coeitc_annual,
-        pe.co_energy_calculator_bheap_annual,
-        pe.co_energy_calculator_bhgap_annual,
-        pe.co_energy_calculator_care_annual,
-        pe.co_energy_calculator_cngba_annual,
-        pe.co_energy_calculator_cowap_annual, -- tax credit
-        pe.co_energy_calculator_cpcr_annual, -- tax credit
-        pe.co_energy_calculator_ea_annual,
-        pe.co_energy_calculator_energy_ebt_annual,
-        pe.co_energy_calculator_eoc_annual,
-        pe.co_energy_calculator_eoccip_annual,
-        pe.co_energy_calculator_eocs_annual,
-        pe.co_energy_calculator_leap_annual,
-        pe.co_energy_calculator_poipp_annual,
-        pe.co_energy_calculator_ubp_annual,
-        pe.co_energy_calculator_xceleap_annual,
-        pe.co_energy_calculator_xcelgap_annual,
         pe.co_medicaid_annual,
         pe.co_snap_annual,
         pe.co_tanf_annual,
@@ -433,22 +417,6 @@ base_table_2 AS (
         + coalesce(cocb_annual, 0)
         -- + coalesce(coctc_annual, 0) -- tax credit
         -- + coalesce(coeitc_annual, 0) -- tax credit
-        + coalesce(co_energy_calculator_bheap_annual, 0)
-        + coalesce(co_energy_calculator_bhgap_annual, 0)
-        + coalesce(co_energy_calculator_care_annual, 0)
-        + coalesce(co_energy_calculator_cngba_annual, 0)
-        + coalesce(co_energy_calculator_cowap_annual, 0)
-        + coalesce(co_energy_calculator_cpcr_annual, 0)
-        + coalesce(co_energy_calculator_ea_annual, 0)
-        + coalesce(co_energy_calculator_energy_ebt_annual, 0)
-        + coalesce(co_energy_calculator_eoc_annual, 0)
-        + coalesce(co_energy_calculator_eoccip_annual, 0)
-        + coalesce(co_energy_calculator_eocs_annual, 0)
-        + coalesce(co_energy_calculator_leap_annual, 0)
-        + coalesce(co_energy_calculator_poipp_annual, 0)
-        + coalesce(co_energy_calculator_ubp_annual, 0)
-        + coalesce(co_energy_calculator_xceleap_annual, 0)
-        + coalesce(co_energy_calculator_xcelgap_annual, 0)
         + coalesce(co_medicaid_annual, 0)
         + coalesce(co_snap_annual, 0)
         + coalesce(co_tanf_annual, 0)

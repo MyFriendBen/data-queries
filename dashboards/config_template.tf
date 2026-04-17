@@ -72,15 +72,27 @@ locals {
     "show_mini_bar" = true
   }
 
+  # Per-tenant feature flags — controls which cards appear on shared dashboard tabs.
+  # Add a new tenant here instead of scattering tenant-key conditionals across layout files.
+  tenant_features = {
+    nc                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    co                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    tx                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    il                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    ma                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false }
+    co_tax_calculator = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+  }
+
   # All available dashboard tabs with fixed IDs — per tenant so names can vary
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
     for k, v in var.tenants : k => {
-      google_analytics   = { id = 1, name = "Google Analytics" }
-      all_time           = { id = 2, name = "All-Time Performance" }
-      last_30_days       = { id = 3, name = "Last 30 Days Performance" }
-      households         = { id = 4, name = "Households" }
-      benefits_needs     = { id = 5, name = k != "cesn" ? "Benefits & Immediate Needs" : "Benefits" }
+      google_analytics           = { id = 1, name = "Google Analytics" }
+      all_time                   = { id = 2, name = "All-Time Performance" }
+      last_30_days               = { id = 3, name = "Last 30 Days Performance" }
+      households                 = { id = 4, name = "Households" }
+      benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "Benefits & Immediate Needs" : "Benefits" }
       cesn_homeowners_vs_renters = { id = 6, name = "Homeowners vs Renters" }
     }
   }

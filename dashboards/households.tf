@@ -298,9 +298,9 @@ locals {
   # so metabase.tf wraps this in jsondecode(jsonencode()) for conditional compatibility.
 
   # Scorecard counts per tenant for the Households top row:
-  # non-CESN: Completed Screeners, HH Size, Assets, Annual Income, Monthly Income, Expenses = 6
-  # CESN: Completed Screeners, HH Size, Annual Income, Monthly Income = 4 (no assets/expenses)
-  households_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 6 : 4 }
+  # with assets+expenses: Completed Screeners, HH Size, Assets, Annual Income, Monthly Income, Expenses = 6
+  # without: Completed Screeners, HH Size, Annual Income, Monthly Income = 4
+  households_scorecard_count = { for k, v in var.tenants : k => (local.tenant_features[k].has_assets ? 1 : 0) + (local.tenant_features[k].has_expenses ? 1 : 0) + 4 }
   households_scorecard_width = { for k, v in var.tenants : k => 24 / local.households_scorecard_count[k] }
 
   tenant_dashboard_households_data_layout = {
@@ -362,8 +362,8 @@ locals {
           visualization_settings = {}
         },
       ],
-      # Assets scorecard — hidden for CESN (not collected)
-      k != "cesn" ? [
+      # Assets scorecard — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
         {
           card_id          = tonumber(metabase_card.tenant_median_household_assets[k].id)
           dashboard_tab_id = 4
@@ -397,7 +397,7 @@ locals {
           card_id          = tonumber(metabase_card.tenant_median_annual_income[k].id)
           dashboard_tab_id = 4
           row              = 0
-          col              = k != "cesn" ? local.households_scorecard_width[k] * 3 : local.households_scorecard_width[k] * 2
+          col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 3 : 2)
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
           parameter_mappings = [
@@ -424,7 +424,7 @@ locals {
           card_id          = tonumber(metabase_card.tenant_median_monthly_income[k].id)
           dashboard_tab_id = 4
           row              = 0
-          col              = k != "cesn" ? local.households_scorecard_width[k] * 4 : local.households_scorecard_width[k] * 3
+          col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 4 : 3)
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
           parameter_mappings = [
@@ -448,8 +448,8 @@ locals {
           visualization_settings = {}
         },
       ],
-      # Expenses scorecard — hidden for CESN (not collected)
-      k != "cesn" ? [
+      # Expenses scorecard — hidden for tenants that don't collect expense data
+      local.tenant_features[k].has_expenses ? [
         {
           card_id          = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
           dashboard_tab_id = 4
@@ -608,8 +608,8 @@ locals {
         visualization_settings = {}
       }],
       # Row 20: Text block + income/assets distributions
-      # Text block — hidden for CESN
-      k != "cesn" ? [
+      # Text block — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
         {
           card_id            = null
           dashboard_tab_id   = 4
@@ -630,8 +630,8 @@ locals {
           }
         },
       ] : [],
-      # Income distribution chart — hidden for CESN
-      k != "cesn" ? [
+      # Income distribution chart — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
         {
           card_id          = tonumber(metabase_card.tenant_household_income_distribution[k].id)
           dashboard_tab_id = 4
@@ -660,8 +660,8 @@ locals {
           visualization_settings = {}
         },
       ] : [],
-      # Assets distribution chart — hidden for CESN
-      k != "cesn" ? [
+      # Assets distribution chart — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
         {
           card_id          = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
           dashboard_tab_id = 4
@@ -697,7 +697,7 @@ locals {
           dashboard_tab_id = 4
           row              = 28
           col              = 0
-          size_x           = k != "cesn" ? 12 : 24
+          size_x           = local.tenant_features[k].has_expenses ? 12 : 24
           size_y           = 8
           parameter_mappings = [
             {
@@ -720,7 +720,7 @@ locals {
           visualization_settings = {}
         },
       ],
-      k != "cesn" ? [
+      local.tenant_features[k].has_expenses ? [
         {
           card_id          = tonumber(metabase_card.tenant_common_expenses[k].id)
           dashboard_tab_id = 4

@@ -150,9 +150,9 @@ locals {
   }
 
   # Scorecard counts per tenant for the Benefits & Immediate Needs top row:
-  # non-CESN: Completed Screeners, Already Had Benefits, Qualified for Benefits, Qualified for Tax Credits = 4
-  # CESN: Completed Screeners, Already Had Benefits, Qualified for Benefits = 3 (no tax credits)
-  benefits_scorecard_count = { for k, v in var.tenants : k => k != "cesn" ? 4 : 3 }
+  # with tax credits: Completed Screeners, Already Had Benefits, Qualified for Benefits, Qualified for Tax Credits = 4
+  # without tax credits: first 3 only
+  benefits_scorecard_count = { for k, v in var.tenants : k => local.tenant_features[k].has_tax_credits ? 4 : 3 }
   benefits_scorecard_width = { for k, v in var.tenants : k => 24 / local.benefits_scorecard_count[k] }
 
   tenant_dashboard_benefits_needs_layout = {
@@ -238,7 +238,7 @@ locals {
         series                 = []
         visualization_settings = {}
       }],
-      k != "cesn" ? [{
+      local.tenant_features[k].has_tax_credits ? [{
         card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[k].id)
         dashboard_tab_id = 5
         row              = 0
@@ -319,7 +319,7 @@ locals {
         series                 = []
         visualization_settings = {}
       }],
-      k != "cesn" ? [{
+      local.tenant_features[k].has_immediate_needs ? [{
         card_id          = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
         dashboard_tab_id = 5
         row              = 12
