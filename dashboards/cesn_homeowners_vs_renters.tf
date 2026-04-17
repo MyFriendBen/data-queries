@@ -110,13 +110,16 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
-              AND submission_date >= current_date - interval '7 days'
               [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
           SQL
-        "template-tags" = local.filter_template_tags[each.key]
+        "template-tags" = merge(local.filter_template_tags[each.key], {
+          submission_date = merge(local.filter_template_tags[each.key].submission_date, {
+            default = "past7days"
+          })
+        })
       }
     }
     visualization_settings = {
@@ -143,13 +146,16 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
-              AND submission_date >= current_date - interval '7 days'
               [[AND {{submission_date}}]]
               [[AND {{partner}}]]
               [[AND {{county}}]]
             GROUP BY submission_date ORDER BY submission_date
           SQL
-        "template-tags" = local.filter_template_tags[each.key]
+        "template-tags" = merge(local.filter_template_tags[each.key], {
+          submission_date = merge(local.filter_template_tags[each.key].submission_date, {
+            default = "past7days"
+          })
+        })
       }
     }
     visualization_settings = {
