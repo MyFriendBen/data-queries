@@ -24,7 +24,7 @@ locals {
     tx   = ["tx"]
     il   = ["il"]
     ma   = ["ma"]
-    cesn = ["cesn", "co_energy_calculator"]
+    cesn = ["cesn"]
   }
 
   # Pre-computed SQL IN clause per tenant for use in native queries.

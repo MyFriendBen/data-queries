@@ -297,143 +297,159 @@ locals {
   # visualization_settings types (empty {} vs {virtual_card, text}) create a tuple,
   # so metabase.tf wraps this in jsondecode(jsonencode()) for conditional compatibility.
 
+  # Scorecard counts per tenant for the Households top row:
+  # with assets+expenses: Completed Screeners, HH Size, Assets, Annual Income, Monthly Income, Expenses = 6
+  # without: Completed Screeners, HH Size, Annual Income, Monthly Income = 4
+  households_scorecard_count = { for k, v in var.tenants : k => (local.tenant_features[k].has_assets ? 1 : 0) + (local.tenant_features[k].has_expenses ? 1 : 0) + 4 }
+  households_scorecard_width = { for k, v in var.tenants : k => 24 / local.households_scorecard_count[k] }
+
   tenant_dashboard_households_data_layout = {
-    for k, v in var.tenants : k => [
-      # Row 0: 6 scorecards (reuse completed_screeners + 5 new)
-      {
-        card_id          = tonumber(metabase_card.tenant_completed_screeners[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 0
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_household_size[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 4
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_household_assets[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 8
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_annual_income[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 12
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 16
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-        dashboard_tab_id = 4
-        row              = 0
-        col              = 20
-        size_x           = 4
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
+    for k, v in var.tenants : k => flatten(concat(
+      # Row 0: scorecards — width auto-calculated so cards always fill the full row
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_completed_screeners[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = 0
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_household_size[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = local.households_scorecard_width[k] * 1
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+      # Assets scorecard — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_median_household_assets[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = local.households_scorecard_width[k] * 2
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_median_annual_income[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 3 : 2)
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 4 : 3)
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+      # Expenses scorecard — hidden for tenants that don't collect expense data
+      local.tenant_features[k].has_expenses ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+          dashboard_tab_id = 4
+          row              = 0
+          col              = local.households_scorecard_width[k] * 5
+          size_x           = local.households_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
       # Row 4: Text block + 2 age distribution charts
-      {
+      [{
         card_id            = null
         dashboard_tab_id   = 4
         row                = 4
@@ -540,117 +556,130 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
+      }],
       # Row 20: Text block + income/assets distributions
-      {
-        card_id            = null
-        dashboard_tab_id   = 4
-        row                = 20
-        col                = 0
-        size_x             = 6
-        size_y             = 8
-        parameter_mappings = []
-        series             = []
-        visualization_settings = {
-          virtual_card = {
-            name                   = null
-            dataset_query          = {}
-            display                = "text"
-            visualization_settings = {}
+      # Text block — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
+        {
+          card_id            = null
+          dashboard_tab_id   = 4
+          row                = 20
+          col                = 0
+          size_x             = 6
+          size_y             = 8
+          parameter_mappings = []
+          series             = []
+          visualization_settings = {
+            virtual_card = {
+              name                   = null
+              dataset_query          = {}
+              display                = "text"
+              visualization_settings = {}
+            }
+            text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
           }
-          text = "### Household Assets & Income\nAssets include savings, checking, and investment accounts.\n\nHouseholds reporting **$50,000+** in assets are likely homeowners (home equity included)."
-        }
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-        dashboard_tab_id = 4
-        row              = 20
-        col              = 6
-        size_x           = 9
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-        dashboard_tab_id = 4
-        row              = 20
-        col              = 15
-        size_x           = 9
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      # Row 28: Income streams + expenses tables
-      {
-        card_id          = tonumber(metabase_card.tenant_income_streams[k].id)
-        dashboard_tab_id = 4
-        row              = 28
-        col              = 0
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_common_expenses[k].id)
-        dashboard_tab_id = 4
-        row              = 28
-        col              = 12
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-    ]
+        },
+      ] : [],
+      # Income distribution chart — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+          dashboard_tab_id = 4
+          row              = 20
+          col              = 6
+          size_x           = 9
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      # Assets distribution chart — hidden for tenants that don't collect asset data
+      local.tenant_features[k].has_assets ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+          dashboard_tab_id = 4
+          row              = 20
+          col              = 15
+          size_x           = 9
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      # Row 28: Income streams table (always shown) + expenses table (hidden for CESN)
+      [
+        {
+          card_id          = tonumber(metabase_card.tenant_income_streams[k].id)
+          dashboard_tab_id = 4
+          row              = 28
+          col              = 0
+          size_x           = local.tenant_features[k].has_expenses ? 12 : 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ],
+      local.tenant_features[k].has_expenses ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_common_expenses[k].id)
+          dashboard_tab_id = 4
+          row              = 28
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+    ))
   }
 
 }

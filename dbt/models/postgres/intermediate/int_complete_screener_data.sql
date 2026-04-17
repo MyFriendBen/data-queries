@@ -150,22 +150,6 @@ WITH base_table_1 AS (
         pe.cocb_annual,
         pe.coctc_annual,
         pe.coeitc_annual,
-        pe.co_energy_calculator_bheap_annual,
-        pe.co_energy_calculator_bhgap_annual,
-        pe.co_energy_calculator_care_annual,
-        pe.co_energy_calculator_cngba_annual,
-        pe.co_energy_calculator_cowap_annual, -- tax credit
-        pe.co_energy_calculator_cpcr_annual, -- tax credit
-        pe.co_energy_calculator_ea_annual,
-        pe.co_energy_calculator_energy_ebt_annual,
-        pe.co_energy_calculator_eoc_annual,
-        pe.co_energy_calculator_eoccip_annual,
-        pe.co_energy_calculator_eocs_annual,
-        pe.co_energy_calculator_leap_annual,
-        pe.co_energy_calculator_poipp_annual,
-        pe.co_energy_calculator_ubp_annual,
-        pe.co_energy_calculator_xceleap_annual,
-        pe.co_energy_calculator_xcelgap_annual,
         pe.co_medicaid_annual,
         pe.co_snap_annual,
         pe.co_tanf_annual,
@@ -251,10 +235,36 @@ WITH base_table_1 AS (
         pe.ubp_annual,
         pe.upk_annual,
         pe.wic_annual,
+        -- CESN energy assistance programs (see MFB-950 for long-term fix)
+        pe.cesn_bheap_annual,
+        pe.cesn_bhgap_annual,
+        pe.cesn_care_annual,
+        pe.cesn_cngba_annual,
+        pe.cesn_cope_annual,
+        pe.cesn_cowap_annual,
+        pe.cesn_cpcr_annual,
+        pe.cesn_ea_annual,
+        pe.cesn_energy_ebt_annual,
+        pe.cesn_energy_mep_annual,
+        pe.cesn_energy_vec_annual,
+        pe.cesn_eoc_annual,
+        pe.cesn_eoccip_annual,
+        pe.cesn_eocs_annual,
+        pe.cesn_heap_annual,
+        pe.cesn_ilp_annual,
+        pe.cesn_lccc_annual,
+        pe.cesn_leap_annual,
+        pe.cesn_mcp_annual,
+        pe.cesn_poipp_annual,
+        pe.cesn_ubp_annual,
+        pe.cesn_xceleap_annual,
+        pe.cesn_xcelgap_annual,
         secs.is_home_owner,
         secs.is_renter,
         secs.electric_provider,
+        secs.electric_provider_name,
         secs.gas_provider AS gas_heat_provider,
+        secs.gas_provider_name AS gas_heat_provider_name,
         secs.electricity_is_disconnected,
         secs.has_past_due_energy_bills,
 
@@ -407,22 +417,6 @@ base_table_2 AS (
         + coalesce(cocb_annual, 0)
         -- + coalesce(coctc_annual, 0) -- tax credit
         -- + coalesce(coeitc_annual, 0) -- tax credit
-        + coalesce(co_energy_calculator_bheap_annual, 0)
-        + coalesce(co_energy_calculator_bhgap_annual, 0)
-        + coalesce(co_energy_calculator_care_annual, 0)
-        + coalesce(co_energy_calculator_cngba_annual, 0)
-        + coalesce(co_energy_calculator_cowap_annual, 0)
-        + coalesce(co_energy_calculator_cpcr_annual, 0)
-        + coalesce(co_energy_calculator_ea_annual, 0)
-        + coalesce(co_energy_calculator_energy_ebt_annual, 0)
-        + coalesce(co_energy_calculator_eoc_annual, 0)
-        + coalesce(co_energy_calculator_eoccip_annual, 0)
-        + coalesce(co_energy_calculator_eocs_annual, 0)
-        + coalesce(co_energy_calculator_leap_annual, 0)
-        + coalesce(co_energy_calculator_poipp_annual, 0)
-        + coalesce(co_energy_calculator_ubp_annual, 0)
-        + coalesce(co_energy_calculator_xceleap_annual, 0)
-        + coalesce(co_energy_calculator_xcelgap_annual, 0)
         + coalesce(co_medicaid_annual, 0)
         + coalesce(co_snap_annual, 0)
         + coalesce(co_tanf_annual, 0)
@@ -500,7 +494,31 @@ base_table_2 AS (
         + coalesce(trua_annual, 0)
         + coalesce(ubp_annual, 0)
         + coalesce(upk_annual, 0)
-        + coalesce(wic_annual, 0) AS non_tax_credit_benefits_annual,
+        + coalesce(wic_annual, 0)
+        -- CESN energy assistance programs (see MFB-950 for long-term fix)
+        + coalesce(cesn_bheap_annual, 0)
+        + coalesce(cesn_bhgap_annual, 0)
+        + coalesce(cesn_care_annual, 0)
+        + coalesce(cesn_cngba_annual, 0)
+        + coalesce(cesn_cope_annual, 0)
+        + coalesce(cesn_cowap_annual, 0)
+        + coalesce(cesn_cpcr_annual, 0)
+        + coalesce(cesn_ea_annual, 0)
+        + coalesce(cesn_energy_ebt_annual, 0)
+        + coalesce(cesn_energy_mep_annual, 0)
+        + coalesce(cesn_energy_vec_annual, 0)
+        + coalesce(cesn_eoc_annual, 0)
+        + coalesce(cesn_eoccip_annual, 0)
+        + coalesce(cesn_eocs_annual, 0)
+        + coalesce(cesn_heap_annual, 0)
+        + coalesce(cesn_ilp_annual, 0)
+        + coalesce(cesn_lccc_annual, 0)
+        + coalesce(cesn_leap_annual, 0)
+        + coalesce(cesn_mcp_annual, 0)
+        + coalesce(cesn_poipp_annual, 0)
+        + coalesce(cesn_ubp_annual, 0)
+        + coalesce(cesn_xceleap_annual, 0)
+        + coalesce(cesn_xcelgap_annual, 0) AS non_tax_credit_benefits_annual,
 
         -- Calculate tax credits total
         coalesce(coctc_annual, 0)
