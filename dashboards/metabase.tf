@@ -312,7 +312,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
   for_each = var.tenants
 
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Daily Screeners (Last 7 Days)"
+    name          = "Daily Screeners"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
