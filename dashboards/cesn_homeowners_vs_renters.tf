@@ -99,7 +99,7 @@ resource "metabase_card" "cesn_renters_qualified_pct" {
 resource "metabase_card" "cesn_homeowners_daily_screeners" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Homeowners – Daily Screeners (Past Week)"
+    name          = "Homeowners – Daily Screeners"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
@@ -131,7 +131,7 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
 resource "metabase_card" "cesn_renters_daily_screeners" {
   for_each = var.tenants
   json = jsonencode(merge(local.tenant_card_base_config, {
-    name          = "Renters – Daily Screeners (Past Week)"
+    name          = "Renters – Daily Screeners"
     collection_id = tonumber(local.tenant_collection_map[each.key].id)
     display       = "bar"
     dataset_query = {
