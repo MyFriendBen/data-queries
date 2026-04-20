@@ -1,14 +1,36 @@
 version: 2
 
 models:
+  - name: stg_current_benefits
+    description: "One row per screen × benefit. Thin, direct representation of screener_current_benefits."
+    columns:
+      - name: screen_id
+        description: "Foreign key to screener_screen — identifies the screener submission"
+        tests:
+          - not_null
+      - name: program_id
+        description: "Foreign key to programs_program — identifies the benefit program"
+        tests:
+          - not_null
+
   - name: stg_referrer_codes
-    description: "This model maps referrer codes to partner names."
+    description: "Referrer codes with partner display names, sourced directly from the Django Referrer model. Partner names are stored inline — no separate mapping needed."
     columns:
       - name: referrer_code
-        description: "The referrer code used to identify partners."
-        tests:
-          - unique # Ensure no duplicate referrer codes
+        description: "The referrer code used to identify partners. Unique per white label, not globally."
       - name: partner
-        description: "The name of the partner associated with the referrer code."
-      - name: white_label_code
-        description: "The white label code this referrer belongs to. Null for generic/shared codes (e.g., other, searchEngine)."
+        description: "The display name of the partner, stored directly on the Referrer model."
+        tests:
+          - not_null
+      - name: white_label_id
+        description: "FK to screener_whitelabel. Every referrer belongs to exactly one white label."
+        tests:
+          - not_null
+          - relationships:
+              to: source('django_apps', 'screener_whitelabel')
+              field: id
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - referrer_code
+            - white_label_id

@@ -100,10 +100,33 @@ sources:
         columns:
           - name: id
             description: "Primary key"
+          - name: name_abbreviated
+            description: "Abbreviated program name (slug)"
           - name: value_type_id
             description: "Foreign key to translations_translation for the value type"
           - name: white_label_id
             description: "White label organization ID for RLS"
+      - name: screener_current_benefits
+        description: "Join table recording which programs a household currently receives at screen time"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: screen_id
+            description: "Foreign key to screener_screen"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'screener_screen')
+          - name: program_id
+            description: "Foreign key to programs_program"
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    field: id
+                    to: source('django_apps', 'programs_program')
       - name: screener_incomestream
         description: "Income stream records from Django IncomeStream model"
         columns:
@@ -174,6 +197,21 @@ sources:
             description: "Relationship to head of household"
           - name: has_disability
             description: "Whether member has a disability"
+      - name: programs_referrer
+        description: "Referrer records from Django Referrer model. Each row stores a referrer_code and its display name inline, scoped to one white label."
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: white_label_id
+            description: "Foreign key to screener_whitelabel"
+          - name: referrer_code
+            description: "The referrer code used to identify partners"
+          - name: name
+            description: "Display name of the partner"
+          - name: show_in_dropdown
+            description: "Whether this referrer appears in the frontend dropdown"
+          - name: is_partner
+            description: "Whether this referrer is a named partner org (True) or a generic option like Friend/Google (False). Used to group options in the screener dropdown and filter the Metabase partner dashboard."
       - name: screener_energycalculatorscreen
         description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
         columns:

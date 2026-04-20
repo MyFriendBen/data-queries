@@ -5,8 +5,8 @@
 }}
 
 -- Google Analytics outbound link click events
--- Captures click events tracked by GA4 enhanced measurement
--- GA4 auto-tracks outbound links when enhanced measurement is enabled
+-- Captures outbound_link events fired by the custom MFB GA4 tag
+-- (GA4 enhanced measurement uses 'click'; MFB fires 'outbound_link')
 
 select
     -- Event/date info
@@ -39,7 +39,7 @@ select
 from {{ source('google_analytics', 'events_*') }}
 cross join unnest(event_params) as ep
 
-where event_name = 'click'
+where event_name = 'outbound_link'
 
 group by
     event_date,

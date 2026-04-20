@@ -1,12 +1,13 @@
 {{
   config(
     materialized='view',
-    description='This model maps referrer codes to partner names. It is used to standardize referrer codes across the system and ensure consistency in downstream models.'
+    description='Referrer codes with partner display names, sourced directly from the Django Referrer model. Partner names are stored inline on each Referrer row.'
   )
 }}
 
 SELECT
-    referrer_code,
-    partner,
-    white_label_code
-FROM {{ ref('referrer_codes') }}
+    r.referrer_code,
+    r.name AS partner,
+    r.white_label_id,
+    r.is_partner
+FROM {{ source('django_apps', 'programs_referrer') }} r

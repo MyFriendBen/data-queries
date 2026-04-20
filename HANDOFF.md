@@ -1,8 +1,48 @@
-# Data Pipeline Handoff Guide
+# Data Pipeline Operational Guide
 
-This document captures the current state of the MFB data pipeline and what needs ongoing attention. It's designed so the team can continue operating and completing in-progress work without context loss.
+This document captures the current state of the MFB data pipeline and serves as a reference for ongoing operations and future handoffs. To hand off: update the "Current State" section, work through the Access Verification Checklist with the new owner, and transfer credentials.
 
 For full architectural details, see [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) and [BIGQUERY_INTEGRATION.md](BIGQUERY_INTEGRATION.md).
+
+---
+
+## Current State (April 2026)
+
+The data pipeline is fully operational. GA4 event data flows from the screener into our own GCP project (`mfb-data`) via a direct BigQuery export link, and the nightly dbt cron builds analytics tables in both Postgres and BigQuery automatically.
+
+**GA4 BigQuery migration is complete** (April 13, 2026). The export was switched from Gary's `benefits-mfb` project (free sandbox, 60-day expiration) to `mfb-data` (billing enabled, no expiration). Raw event data in `mfb-data` goes back to January 18, 2026.
+
+**In flight:**
+- [MFB-608](https://linear.app/myfriendben/issue/MFB-608/data-white-label-dashboard-google-analytics) — GA tab on tenant Metabase dashboards. Code merged (PR #61, April 10). In Staging QA — needs Terraform apply to production once QA is confirmed.
+- [MFB-940](https://linear.app/myfriendben/issue/MFB-940/backfill-historical-ga4-data-from-reporting-api-into-bigquery) — Backfill historical GA4 data (pre-January 2026) from the GA4 Reporting API into BigQuery. Time-sensitive: the API retains up to 14 months of aggregated metrics.
+
+**Known gap:**
+- GTM custom events (`Page Change`, `outbound_click`) are not forwarding to GA4. The app pushes these to `window.dataLayer` correctly but the GTM container has not been configured with the corresponding tags/triggers. Needs GTM container access to resolve.
+
+---
+
+## What's Running Today
+
+| System | Staging | Production |
+|--------|---------|------------|
+| **Metabase** (dashboards) | Running on Heroku (`mfb-metabase-staging`) | Running on Heroku (`mfb-metabase-production`) |
+| **dbt** (analytics tables) | Nightly cron at 6 AM UTC | Nightly cron at 6 AM UTC |
+| **Terraform** (Metabase config) | Auto-applies on merge to `main` | Manual dispatch only |
+| **BigQuery / GA4** | Enabled — exporting to `mfb-data` | Enabled — exporting to `mfb-data` |
+
+### Nightly dbt Cron
+
+The `dbt-nightly.yml` workflow runs at 6 AM UTC and refreshes **both staging and production** (via matrix strategy). Each run:
+
+1. Builds Postgres analytics tables (`analytics` schema)
+2. Builds BigQuery analytics tables (only if `BIGQUERY_ENABLED=true` for that environment)
+3. Triggers a Metabase schema sync so dashboards pick up fresh data
+
+To trigger manually:
+```bash
+gh workflow run dbt-nightly.yml -f environment=production --repo MyFriendBen/data-queries
+gh workflow run dbt-nightly.yml -f environment=staging --repo MyFriendBen/data-queries
+```
 
 ---
 
@@ -14,12 +54,10 @@ Work through this checklist with the person taking over the project **before the
 
 - [ ] **Google Cloud SDK installed** — Run `gcloud version` (install with `brew install google-cloud-sdk` if needed)
 - [ ] **Authenticated to Google Cloud** — Run `gcloud auth login` and sign in
-- [ ] **Read access to `benefits-mfb` project** (old, Gary-owned) — Verify: `bq ls benefits-mfb:analytics_335669714 | head -5`
-- [ ] **Read/write access to `mfb-data` project** (new, MFB-owned) — Verify: `bq ls mfb-data:analytics_335669714 | head -5`
+- [ ] **Read/write access to `mfb-data` project** — Verify: `bq ls mfb-data:analytics_335669714 | head -5`
 - [ ] **GA4 property admin access** — Go to [Google Analytics](https://analytics.google.com/) > Admin > Property Access Management and confirm your account is listed as Admin or Editor
 - [ ] **GCP project-level permissions on `mfb-data`** — Verify: `gcloud projects get-iam-policy mfb-data --format="table(bindings.role,bindings.members)" | grep <your-email>`
   - Need at minimum: `roles/bigquery.dataEditor`, `roles/bigquery.jobUser`
-  - For org policy overrides (SA key rotation): `roles/orgpolicy.policyAdmin` at the org level
 
 ### GitHub (`gh` CLI)
 
@@ -43,12 +81,12 @@ Work through this checklist with the person taking over the project **before the
 
 - [ ] **Staging admin login** — Can sign in at `https://mfb-metabase-staging-0805953c70da.herokuapp.com`
 - [ ] **Production admin login** — Can sign in at `https://mfb-metabase-production-baf31df893fc.herokuapp.com`
-- [ ] **Admin credentials documented** — Stored in a shared password manager or documented securely
+- [ ] **Admin credentials documented** — Stored in 1Password
 
 ### Terraform Cloud
 
 - [ ] **Terraform Cloud account** — Can sign in at [app.terraform.io](https://app.terraform.io)
-- [ ] **Access to `mfb` organization** — Can see the `mfb-dashboards-staging` workspace
+- [ ] **Access to `MyFriendBen` organization** — Can see `mfb-dashboards-staging` and `mfb-dashboards-production` workspaces
 - [ ] **API token available** — Stored as `TF_API_TOKEN` in GitHub secrets (verify with `gh secret list --env staging --repo MyFriendBen/data-queries | grep TF_API_TOKEN`)
 
 ### Local Tools
@@ -60,112 +98,10 @@ Work through this checklist with the person taking over the project **before the
 
 ### Key Credentials to Transfer
 
-These credentials are needed for ongoing operations. Ensure the new owner has access or knows where to find them:
-
-- [ ] **Metabase admin email/password** (staging + production) — needed for Terraform workflows and direct admin access
+- [ ] **Metabase admin email/password** (staging + production) — stored in 1Password
 - [ ] **`metabase-bigquery-key.json`** — service account key for Metabase BigQuery access (stored as `BIGQUERY_SA_KEY` GitHub secret)
 - [ ] **Terraform Cloud API token** — stored as `TF_API_TOKEN` GitHub secret
 - [ ] **Heroku team/account ownership** — ensure new owner is a collaborator or team member on all three Heroku apps
-
----
-
-## What's Running Today
-
-| System | Staging | Production |
-|--------|---------|------------|
-| **Metabase** (dashboards) | Running on Heroku (`mfb-metabase-staging`) | Running on Heroku (`mfb-metabase-production`) |
-| **dbt** (analytics tables) | Nightly cron at 6 AM UTC | Nightly cron at 6 AM UTC |
-| **Terraform** (Metabase config) | Auto-applies on merge to `main` | Manual dispatch only |
-| **BigQuery / GA4** | Enabled (dbt builds BQ models) | Enabled (dbt builds BQ models) |
-
-### Nightly dbt Cron
-
-The `dbt-nightly.yml` workflow runs at 6 AM UTC and refreshes **both staging and production** (via matrix strategy). Each run:
-
-1. Builds Postgres analytics tables (`analytics` schema)
-2. Builds BigQuery analytics tables (only if `BIGQUERY_ENABLED=true` for that environment)
-3. Triggers a Metabase schema sync so dashboards pick up fresh data
-
-To trigger manually:
-```bash
-gh workflow run dbt-nightly.yml -f environment=production --repo MyFriendBen/data-queries
-gh workflow run dbt-nightly.yml -f environment=staging --repo MyFriendBen/data-queries
-```
-
----
-
-## Ongoing Task: GA4 Data Sync (Manual)
-
-**This is the most time-sensitive item.** Until the GA4 BigQuery export is switched to our own GCP project, GA4 data must be manually copied.
-
-### Background
-
-GA4 event data currently exports to a GCP project (`benefits-mfb`) owned by **Brian at Gary Community Ventures**. We've created our own GCP project (`mfb-data`) and are copying data over, but the GA4 export link still points to the old project.
-
-### The 60-Day Expiration Problem
-
-The `benefits-mfb` project is on BigQuery's **free sandbox tier**, which enforces a **60-day automatic table expiration**. One table disappears every day. We cannot recover expired tables. This means the copy script must be run regularly to avoid permanent data loss.
-
-### How to Run the Copy Script
-
-**Prerequisites:** Google Cloud SDK installed and authenticated with access to both `benefits-mfb` and `mfb-data` projects.
-
-```bash
-# Authenticate (one-time, or when session expires)
-gcloud auth login
-
-# See what would be copied (safe, no changes)
-./scripts/ga4-migration/copy_ga4_tables.sh --dry-run
-
-# Copy new tables
-./scripts/ga4-migration/copy_ga4_tables.sh
-```
-
-The script is resumable — it tracks what's been copied in `scripts/ga4-migration/ga4_copy_manifest.log` and skips already-copied tables.
-
-**How often:** Run at least weekly to stay ahead of the 60-day expiration. Running daily is ideal.
-
-### Current State of Copied Data
-
-As of late March 2026, the manifest shows 69 tables copied: `events_20260118` through `events_20260326`. The earliest available data in `benefits-mfb` goes back ~60 days; anything older has already expired.
-
----
-
-## In-Progress: GA4 BigQuery Migration (Phase 3)
-
-The full migration plan is in [BIGQUERY_INTEGRATION.md](BIGQUERY_INTEGRATION.md). Phases 1-2 are complete. Phase 3 is the cutover.
-
-### What's Done (Phases 1-2)
-
-- Created `mfb-data` GCP project with billing enabled (avoids sandbox expiration)
-- Copied historical GA4 data from `benefits-mfb` to `mfb-data`
-- Set up Workload Identity Federation for keyless GitHub Actions auth
-- Created Metabase service account + key for BigQuery access
-- Added GitHub Environment variables/secrets for **both staging and production**
-- dbt builds BigQuery models on both environments (`mart_screener_conversion_funnel`, `referrer_codes`)
-- Terraform creates BigQuery data source + conversion funnel card on staging Metabase
-
-### What's Left (Phase 3 — Cutover)
-
-These steps are in order. See `BIGQUERY_INTEGRATION.md` for full details on each.
-
-1. **Switch the GA4 BigQuery link** — In GA4 Admin > Product Links > BigQuery Links:
-   - Remove the link to `benefits-mfb`
-   - Add a new link to `mfb-data` (same export settings: daily events)
-   - Note: GA4 only allows one BigQuery link at a time
-
-2. **Run a final catch-up copy** — After switching the link, run the copy script one last time to capture any gap-period tables.
-
-3. **Notify Brian at Gary Community Ventures** — Let him know the old export has stopped and old dashboards will no longer receive new data.
-
-4. **Team decision: backfill historical data?** — Data older than 60 days is permanently gone from BigQuery. The GA4 reporting API retains up to 14 months of aggregated metrics. Decide if backfilling aggregated data is worth the effort.
-
-### After Cutover
-
-Once the GA4 link points to `mfb-data`:
-- New GA4 events flow directly to `mfb-data` (no more manual copies)
-- The nightly dbt cron handles everything automatically
-- The copy script and manifest are no longer needed
 
 ---
 
@@ -173,11 +109,10 @@ Once the GA4 link points to `mfb-data`:
 
 | What | Who / Where |
 |------|-------------|
-| **GA4 property admin** | MFB team (we have admin access) |
-| **`benefits-mfb` GCP project owner** | Brian, Gary Community Ventures |
+| **GA4 property admin** | MFB team (`caton@myfriendben.org`) |
 | **`mfb-data` GCP project owner** | MFB team |
 | **Heroku apps** | `mfb-metabase-staging`, `mfb-metabase-production` |
-| **Terraform Cloud org** | `mfb`, workspace `mfb-dashboards-staging` (production workspace TBD) |
+| **Terraform Cloud org** | `MyFriendBen`, workspaces `mfb-dashboards-staging` + `mfb-dashboards-production` |
 | **GitHub repo** | `MyFriendBen/data-queries` |
 
 ---
@@ -199,12 +134,6 @@ gh workflow run dbt-nightly.yml -f environment=production -f full_refresh=true -
 gh workflow run terraform-apply.yml -f environment=production --repo MyFriendBen/data-queries
 ```
 
-### Copy latest GA4 data (until cutover is complete)
-```bash
-gcloud auth login
-./scripts/ga4-migration/copy_ga4_tables.sh
-```
-
 ### Upgrade Metabase version
 See "Metabase Container Updates" section in [README.md](README.md). Key points:
 - Update `FROM` tag in `dashboards/Dockerfile.heroku`
@@ -215,3 +144,12 @@ See "Metabase Container Updates" section in [README.md](README.md). Key points:
 ```bash
 gh run list --workflow=dbt-nightly.yml --limit=5 --repo MyFriendBen/data-queries
 ```
+
+### Rotate Metabase BigQuery service account key
+The `mfb-data` project has `iam.disableServiceAccountKeyCreation` org policy. To rotate:
+1. Temporarily disable at project level: `gcloud resource-manager org-policies disable-enforce iam.disableServiceAccountKeyCreation --project=mfb-data`
+2. Create new key: `gcloud iam service-accounts keys create metabase-bigquery-key.json --iam-account=metabase-bigquery@mfb-data.iam.gserviceaccount.com --project=mfb-data`
+3. Re-enable immediately: `gcloud resource-manager org-policies enable-enforce iam.disableServiceAccountKeyCreation --project=mfb-data`
+4. Update GitHub secret: `gh secret set BIGQUERY_SA_KEY --env production --repo MyFriendBen/data-queries < metabase-bigquery-key.json`
+5. Run `terraform apply` to push the new key to Metabase
+6. Delete the old key from GCP Console
