@@ -1255,7 +1255,7 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ],
-    )) : [
+      )) : [
       {
         card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
         dashboard_tab_id       = 2
