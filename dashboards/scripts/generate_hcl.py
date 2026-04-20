@@ -15,19 +15,19 @@ def load_env():
     if not os.path.exists(env_path):
         print(f"Error: .env file not found at {env_path}")
         sys.exit(1)
-    
+
     with open(env_path, "r") as f:
         for line in f:
             if line.startswith("ANTHROPIC_API_KEY="):
                 return line.strip().split("=", 1)[1]
-    
+
     print("Error: ANTHROPIC_API_KEY not found in .env")
     sys.exit(1)
 
 def call_anthropic_api(api_key, system_prompt, user_prompt, model="claude-3-haiku-20240307"):
     """Call the Claude API using standard http.client."""
     conn = http.client.HTTPSConnection(ANTHROPIC_HOST)
-    
+
     payload = json.dumps({
         "model": model,
         "max_tokens": 4096,
@@ -36,18 +36,18 @@ def call_anthropic_api(api_key, system_prompt, user_prompt, model="claude-3-haik
             {"role": "user", "content": user_prompt}
         ]
     })
-    
+
     headers = {
         "x-api-key": api_key,
         "anthropic-version": ANTHROPIC_VERSION,
         "content-type": "application/json"
     }
-    
+
     try:
         conn.request("POST", ANTHROPIC_PATH, payload, headers)
         res = conn.getresponse()
         data = res.read()
-        
+
         if res.status != 200:
             error_text = data.decode('utf-8')
             print("\n" + "!"*60)
@@ -61,7 +61,7 @@ def call_anthropic_api(api_key, system_prompt, user_prompt, model="claude-3-haik
                 print(f"Error details: {error_text}")
             print("!"*60 + "\n")
             sys.exit(1)
-            
+
         response_json = json.loads(data.decode('utf-8'))
         return response_json['content'][0]['text']
     except Exception as e:
@@ -85,7 +85,7 @@ def main():
         json_content = f.read()
 
     api_key = load_env()
-    
+
     # Load reference from metabase.tf for context
     tf_path = os.path.join(os.path.dirname(__file__), "..", "metabase.tf")
     reference_code = ""
@@ -185,7 +185,7 @@ JSON DATA:
 """
     print("Generating Terraform HCL...")
     generated_code = call_anthropic_api(api_key, system_prompt, user_prompt)
-    
+
     # Extraction logic
     if "```hcl" in generated_code:
         generated_code = generated_code.split("```hcl")[1].split("```")[0].strip()
@@ -200,11 +200,11 @@ JSON DATA:
         base_name = os.path.basename(args.input_json).replace(".json", "")
         output_dir = os.path.dirname(args.input_json)
         output_file = os.path.join(output_dir, f"{base_name}_hcl.tf.ref")
-        
+
     print(f"Writing generated HCL to {output_file}...")
     with open(output_file, "w") as f:
         f.write(generated_code)
-        
+
     print(f"\nSuccess! Code saved to {output_file}")
     print("You can now review the file and manually copy the blocks you want into metabase.tf.")
 

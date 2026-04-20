@@ -155,7 +155,7 @@ resource "metabase_card" "global_median_annual_tax_credits" {
 
 resource "metabase_card" "global_daily_screeners_7d" {
   json = jsonencode(merge(local.global_card_base_config, {
-    name          = "Daily Screeners (Last 7 Days)"
+    name          = "Daily Screeners"
     collection_id = local.global_col_id
     display       = "bar"
     dataset_query = {

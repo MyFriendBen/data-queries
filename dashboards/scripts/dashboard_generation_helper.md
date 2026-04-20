@@ -44,7 +44,7 @@ The `.tf.ref` extension is intentional! It tricks Terraform into ignoring the fi
 
 ---
 
-### Step 3: Review and Copy 
+### Step 3: Review and Copy
 Open the generated `.tf.ref` file in your editor. Review the code to ensure it follows multi-tenant patterns.
 
 **Where to put the code:**
@@ -56,7 +56,7 @@ Inside `generate_hcl.py`, you will see a detailed prompt containing an example H
 
 1.  **Metabase Provider Quirks**: The `flovouin/metabase` provider requires wrapping card settings in a `jsonencode()` block.
 2.  **Inconsistent Results Error**: Upon creating a card or dashboard, Metabase automatically populates fields (like `cache_ttl`, `description`). We include these boilerplate fields as defaults in both the **card resources** and the **`cards_json` entries** to satisfy the provider and prevent drift errors.
-3.  **Required vs. Metadata IDs**: 
+3.  **Required vs. Metadata IDs**:
     *   KEEP: Numeric `id` (in `tabs_json`) and `dashboard_tab_id` (in `cards_json`). These are REQUIRED to link cards to the correct tabs.
     *   REMOVE: Strings like `entity_id` (e.g., `axV0Xby...`) or other Metabase-internal tracking fields. These are unnecessary metadata.
 

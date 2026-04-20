@@ -19,38 +19,6 @@ SELECT
     sum(CASE WHEN name_abbreviated = 'cocb' THEN estimated_value ELSE 0 END) AS cocb_annual,
     sum(CASE WHEN name_abbreviated = 'coctc' THEN estimated_value ELSE 0 END) AS coctc_annual,
     sum(CASE WHEN name_abbreviated = 'coeitc' THEN estimated_value ELSE 0 END) AS coeitc_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_bheap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_bheap_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_bhgap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_bhgap_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_care' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_care_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_cngba' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_cngba_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_cowap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_cowap_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_cpcr' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_cpcr_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_ea' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_ea_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_energy_ebt' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_energy_ebt_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_eoc' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_eoc_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_eoccip' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_eoccip_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_eocs' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_eocs_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_leap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_leap_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_poipp' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_poipp_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_ubp' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_ubp_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_xceleap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_xceleap_annual,
-    sum(CASE WHEN name_abbreviated = 'co_energy_calculator_xcelgap' THEN estimated_value ELSE 0 END)
-        AS co_energy_calculator_xcelgap_annual,
     sum(CASE WHEN name_abbreviated = 'co_medicaid' THEN estimated_value ELSE 0 END) AS co_medicaid_annual,
     sum(CASE WHEN name_abbreviated = 'co_snap' THEN estimated_value ELSE 0 END) AS co_snap_annual,
     sum(CASE WHEN name_abbreviated = 'co_tanf' THEN estimated_value ELSE 0 END) AS co_tanf_annual,
@@ -138,7 +106,31 @@ SELECT
     sum(CASE WHEN name_abbreviated = 'trua' THEN estimated_value ELSE 0 END) AS trua_annual,
     sum(CASE WHEN name_abbreviated = 'ubp' THEN estimated_value ELSE 0 END) AS ubp_annual,
     sum(CASE WHEN name_abbreviated = 'upk' THEN estimated_value ELSE 0 END) AS upk_annual,
-    sum(CASE WHEN name_abbreviated = 'wic' THEN estimated_value ELSE 0 END) AS wic_annual
+    sum(CASE WHEN name_abbreviated = 'wic' THEN estimated_value ELSE 0 END) AS wic_annual,
+    -- CESN energy assistance programs
+    sum(CASE WHEN name_abbreviated = 'cesn_bheap' THEN estimated_value ELSE 0 END) AS cesn_bheap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_bhgap' THEN estimated_value ELSE 0 END) AS cesn_bhgap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_care' THEN estimated_value ELSE 0 END) AS cesn_care_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_cngba' THEN estimated_value ELSE 0 END) AS cesn_cngba_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_cope' THEN estimated_value ELSE 0 END) AS cesn_cope_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_cowap' THEN estimated_value ELSE 0 END) AS cesn_cowap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_cpcr' THEN estimated_value ELSE 0 END) AS cesn_cpcr_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_ea' THEN estimated_value ELSE 0 END) AS cesn_ea_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_energy_ebt' THEN estimated_value ELSE 0 END) AS cesn_energy_ebt_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_energy_mep' THEN estimated_value ELSE 0 END) AS cesn_energy_mep_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_energy_vec' THEN estimated_value ELSE 0 END) AS cesn_energy_vec_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_eoc' THEN estimated_value ELSE 0 END) AS cesn_eoc_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_eoccip' THEN estimated_value ELSE 0 END) AS cesn_eoccip_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_eocs' THEN estimated_value ELSE 0 END) AS cesn_eocs_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_heap' THEN estimated_value ELSE 0 END) AS cesn_heap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_ilp' THEN estimated_value ELSE 0 END) AS cesn_ilp_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_lccc' THEN estimated_value ELSE 0 END) AS cesn_lccc_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_leap' THEN estimated_value ELSE 0 END) AS cesn_leap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_mcp' THEN estimated_value ELSE 0 END) AS cesn_mcp_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_poipp' THEN estimated_value ELSE 0 END) AS cesn_poipp_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_ubp' THEN estimated_value ELSE 0 END) AS cesn_ubp_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_xceleap' THEN estimated_value ELSE 0 END) AS cesn_xceleap_annual,
+    sum(CASE WHEN name_abbreviated = 'cesn_xcelgap' THEN estimated_value ELSE 0 END) AS cesn_xcelgap_annual
 FROM {{ source('django_apps', 'screener_programeligibilitysnapshot') }}
 WHERE eligible = TRUE
 GROUP BY eligibility_snapshot_id
