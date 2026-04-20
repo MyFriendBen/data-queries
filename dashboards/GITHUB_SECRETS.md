@@ -37,6 +37,7 @@ Shared across all environments. Add at **Settings → Secrets and variables → 
 | Secret Name | Description | How to Get It |
 |-------------|-------------|---------------|
 | `TF_API_TOKEN` | Terraform Cloud API token (authenticates to all workspaces in the MyFriendBen org) | From https://app.terraform.io → User Settings → Tokens |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL for nightly build notifications (dbt + materialized view refresh status) | From Slack app settings → Incoming Webhooks → Add New Webhook to Workspace |
 
 ---
 

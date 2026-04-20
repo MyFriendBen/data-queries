@@ -159,6 +159,16 @@ jobs:
           METABASE_ADMIN_EMAIL: ${{ vars.METABASE_ADMIN_EMAIL }}
           METABASE_ADMIN_PASSWORD: ${{ secrets.METABASE_ADMIN_PASSWORD }}
 
+      - name: Refresh materialized views
+        id: refresh_materialized_views
+        working-directory: ${{ github.workspace }}
+        run: |
+          PGPASSWORD="$DB_PASS" psql \
+            -h "$DB_HOST" \
+            -U "$DB_USER" \
+            -d "$DB_NAME" \
+            -f data-queries/refresh_v1_dashboards.sql
+
       - name: Upload dbt artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -168,3 +178,37 @@ jobs:
             dbt/target/manifest.json
             dbt/target/run_results.json
           retention-days: 7
+
+  notify:
+    needs: dbt-build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Slack notification
+        run: |
+          RESULT="${{ needs.dbt-build.result }}"
+          if [ "$RESULT" = "success" ]; then
+            ICON=":white_check_mark:"
+            TITLE="dbt + materialized view refresh succeeded — dashboards are up to date"
+          else
+            ICON=":x:"
+            TITLE="dbt + materialized view refresh failed — dashboards may be stale"
+          fi
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {\"type\": \"mrkdwn\", \"text\": \"${ICON} *${TITLE}*\"}
+                },
+                {
+                  \"type\": \"section\",
+                  \"fields\": [
+                    {\"type\": \"mrkdwn\", \"text\": \"*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>\"}
+                  ]
+                }
+              ]
+            }"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
