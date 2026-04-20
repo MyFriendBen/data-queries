@@ -75,13 +75,13 @@ locals {
   # Per-tenant feature flags — controls which cards appear on shared dashboard tabs.
   # Add a new tenant here instead of scattering tenant-key conditionals across layout files.
   tenant_features = {
-    nc                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
-    co                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
-    tx                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
-    il                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
-    ma                = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
+    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
+    tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
+    il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
+    ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
     cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false }
-    co_tax_calculator = { has_tax_credits = true,  has_immediate_needs = true,  has_assets = true,  has_expenses = true,  has_partners = true  }
+    co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
   }
 
   # All available dashboard tabs with fixed IDs — per tenant so names can vary
