@@ -6,13 +6,13 @@ This document lists all secrets and variables needed for Terraform workflows.
 
 Secrets and variables are stored at different levels based on scope and sensitivity:
 
-| Storage Level | What Goes Here | Why |
-|---------------|---------------|-----|
-| **Repository-level secrets** | `TF_API_TOKEN` | Authenticates to Terraform Cloud, which is shared infrastructure across all environments. One token accesses all workspaces. Stored at the repo level so both staging and production workflows can use it without duplication. |
-| **Environment variables** | `METABASE_URL`, `METABASE_ADMIN_EMAIL`, `DATABASE_NAME`, `BIGQUERY_ENABLED`, `GCP_PROJECT_ID` | Non-sensitive, environment-specific configuration. Variables are visible in logs and workflow files. Different per environment (staging Metabase URL vs production Metabase URL). |
-| **Environment secrets** | `METABASE_ADMIN_PASSWORD`, `DATABASE_HOST`, all `*_DB_USER`/`*_DB_PASS` | Sensitive credentials that differ per environment. GitHub encrypts these and masks them in logs. Environment-scoped so staging credentials can't accidentally be used against production. |
-| **Heroku config vars** | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`, `MB_SITE_URL` | Runtime config for Metabase containers. These are read by the Metabase process at startup, not by GitHub Actions. Heroku config vars are the standard way to configure Heroku apps. |
-| **Terraform Cloud** | Terraform state files | State contains resource IDs and sensitive values in plaintext. Terraform Cloud encrypts state at rest, provides locking to prevent concurrent applies, and keeps separate state per workspace (`mfb-dashboards-staging` vs `mfb-dashboards-production`). Chosen over GCS because GCP org policy blocks service account key creation needed for GCS auth. |
+| Storage Level                | What Goes Here                                                                                | Why                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Repository-level secrets** | `TF_API_TOKEN`                                                                                | Authenticates to Terraform Cloud, which is shared infrastructure across all environments. One token accesses all workspaces. Stored at the repo level so both staging and production workflows can use it without duplication.                                                                                                                           |
+| **Environment variables**    | `METABASE_URL`, `METABASE_ADMIN_EMAIL`, `DATABASE_NAME`, `BIGQUERY_ENABLED`, `GCP_PROJECT_ID` | Non-sensitive, environment-specific configuration. Variables are visible in logs and workflow files. Different per environment (staging Metabase URL vs production Metabase URL).                                                                                                                                                                        |
+| **Environment secrets**      | `METABASE_ADMIN_PASSWORD`, `DATABASE_HOST`, all `*_DB_USER`/`*_DB_PASS`                       | Sensitive credentials that differ per environment. GitHub encrypts these and masks them in logs. Environment-scoped so staging credentials can't accidentally be used against production.                                                                                                                                                                |
+| **Heroku config vars**       | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`, `MB_SITE_URL`                                          | Runtime config for Metabase containers. These are read by the Metabase process at startup, not by GitHub Actions. Heroku config vars are the standard way to configure Heroku apps.                                                                                                                                                                      |
+| **Terraform Cloud**          | Terraform state files                                                                         | State contains resource IDs and sensitive values in plaintext. Terraform Cloud encrypts state at rest, provides locking to prevent concurrent applies, and keeps separate state per workspace (`mfb-dashboards-staging` vs `mfb-dashboards-production`). Chosen over GCS because GCP org policy blocks service account key creation needed for GCS auth. |
 
 ## How to Add Secrets/Variables
 
@@ -34,9 +34,9 @@ See sections below for what to add at each level.
 
 Shared across all environments. Add at **Settings → Secrets and variables → Actions → Secrets tab → "New repository secret"**.
 
-| Secret Name | Description | How to Get It |
-|-------------|-------------|---------------|
-| `TF_API_TOKEN` | Terraform Cloud API token (authenticates to all workspaces in the MyFriendBen org) | From https://app.terraform.io → User Settings → Tokens |
+| Secret Name         | Description                                                                                         | How to Get It                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `TF_API_TOKEN`      | Terraform Cloud API token (authenticates to all workspaces in the MyFriendBen org)                  | From https://app.terraform.io → User Settings → Tokens                     |
 | `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL for nightly build notifications (dbt + materialized view refresh status) | From Slack app settings → Incoming Webhooks → Add New Webhook to Workspace |
 
 ---
@@ -50,10 +50,10 @@ Each environment has its own workspace for isolated state. Create these at https
 3. Name it (see table below)
 4. Create the workspace
 
-| Workspace Name | Environment | Execution Mode |
-|---------------|-------------|----------------|
-| `mfb-dashboards-staging` | staging | Local |
-| `mfb-dashboards-production` | production | Local |
+| Workspace Name              | Environment | Execution Mode |
+| --------------------------- | ----------- | -------------- |
+| `mfb-dashboards-staging`    | staging     | Local          |
+| `mfb-dashboards-production` | production  | Local          |
 
 The CLI-driven workflow sets execution mode to **Local**, meaning GitHub Actions runs `plan`/`apply` and Terraform Cloud only stores state and provides locking.
 
@@ -74,30 +74,30 @@ Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets b
 
 ### Variables (Settings → Environments → staging → Variables)
 
-| Variable Name | Description | Value |
-|---------------|-------------|-------|
-| `METABASE_URL` | Staging Metabase URL | `https://mfb-metabase-staging-0805953c70da.herokuapp.com` |
-| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | (your admin email) |
-| `DATABASE_NAME` | Staging database name | From `heroku pg:credentials:url` output |
-| `BIGQUERY_ENABLED` | Enable BigQuery data source | `true` |
-| `GCP_PROJECT_ID` | Google Cloud project ID | `mfb-data` |
-| `GCP_ANALYTICS_TABLE` | GA4 BigQuery table | `analytics_335669714` |
-| `WIF_PROVIDER` | Workload Identity Federation provider | (see BIGQUERY_INTEGRATION.md) |
-| `WIF_SERVICE_ACCOUNT` | WIF service account | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` |
+| Variable Name          | Description                           | Value                                                     |
+| ---------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `METABASE_URL`         | Staging Metabase URL                  | `https://mfb-metabase-staging-0805953c70da.herokuapp.com` |
+| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard         | (your admin email)                                        |
+| `DATABASE_NAME`        | Staging database name                 | From `heroku pg:credentials:url` output                   |
+| `BIGQUERY_ENABLED`     | Enable BigQuery data source           | `true`                                                    |
+| `GCP_PROJECT_ID`       | Google Cloud project ID               | `mfb-data`                                                |
+| `GCP_ANALYTICS_TABLE`  | GA4 BigQuery table                    | `analytics_335669714`                                     |
+| `WIF_PROVIDER`         | Workload Identity Federation provider | (see BIGQUERY_INTEGRATION.md)                             |
+| `WIF_SERVICE_ACCOUNT`  | WIF service account                   | `github-actions-dbt@mfb-data.iam.gserviceaccount.com`     |
 
 ### Secrets (Settings → Environments → staging → Secrets)
 
-| Secret Name | Description | How to Get It |
-|-------------|-------------|---------------|
-| `METABASE_ADMIN_PASSWORD` | Admin password from setup wizard | From the Metabase wizard you completed |
-| `DATABASE_HOST` | Staging Django database hostname | From `heroku pg:credentials:url` output |
-| `GLOBAL_DB_USER` | Database user for global dashboard | From `heroku pg:credentials:url` (default user) |
-| `GLOBAL_DB_PASS` | Database password for global dashboard | From `heroku pg:credentials:url` (default password) |
-| `NC_DB_USER` | Database user for NC tenant | Same as `GLOBAL_DB_USER` (single credential on staging) |
-| `NC_DB_PASS` | Database password for NC tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
-| `CO_DB_USER` | Database user for CO tenant | Same as `GLOBAL_DB_USER` (single credential on staging) |
-| `CO_DB_PASS` | Database password for CO tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
-| `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | From `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
+| Secret Name               | Description                            | How to Get It                                             |
+| ------------------------- | -------------------------------------- | --------------------------------------------------------- |
+| `METABASE_ADMIN_PASSWORD` | Admin password from setup wizard       | From the Metabase wizard you completed                    |
+| `DATABASE_HOST`           | Staging Django database hostname       | From `heroku pg:credentials:url` output                   |
+| `GLOBAL_DB_USER`          | Database user for global dashboard     | From `heroku pg:credentials:url` (default user)           |
+| `GLOBAL_DB_PASS`          | Database password for global dashboard | From `heroku pg:credentials:url` (default password)       |
+| `NC_DB_USER`              | Database user for NC tenant            | Same as `GLOBAL_DB_USER` (single credential on staging)   |
+| `NC_DB_PASS`              | Database password for NC tenant        | Same as `GLOBAL_DB_PASS` (single credential on staging)   |
+| `CO_DB_USER`              | Database user for CO tenant            | Same as `GLOBAL_DB_USER` (single credential on staging)   |
+| `CO_DB_PASS`              | Database password for CO tenant        | Same as `GLOBAL_DB_PASS` (single credential on staging)   |
+| `BIGQUERY_SA_KEY`         | BigQuery service account key (JSON)    | From `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
 
 ---
 
@@ -116,6 +116,7 @@ See `BIGQUERY_INTEGRATION.md` for full details.
 ## Environment: `production`
 
 Same secrets/variables as staging, but with **production values**:
+
 - Different `METABASE_URL` (production Metabase)
 - Different `DATABASE_HOST` (production database)
 - Different admin password
@@ -127,10 +128,12 @@ Same secrets/variables as staging, but with **production values**:
 Production uses Heroku Postgres Standard-tier, which supports multiple credentials. RLS is enforced by extracting the `white_label_id` from the credential username via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`.
 
 This same pattern is used in two places:
+
 - **dbt analytics tables** — the RLS policy in `dbt/macros/row_level_security.sql` filters rows by the extracted ID
 - **`data_tenant` view** — a `security_barrier` view in `public` schema that filters the legacy `data` table the same way
 
 Credential names must follow the convention `wl_<state>_<white_label_id>_ro`:
+
 - `wl_nc_5_ro` → extracts `5` (NC)
 - `wl_co_1_ro` → extracts `1` (CO)
 
@@ -165,53 +168,53 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 
 ### Production Credentials Reference
 
-| GitHub Secret | Heroku Credential | Purpose |
-|---------------|-------------------|---------|
-| `GLOBAL_DB_USER/PASS` | `default` | dbt writes + global Metabase access |
-| `NC_DB_USER/PASS` | `wl_nc_5_ro` | NC tenant Metabase (white_label_id=5) |
-| `CO_DB_USER/PASS` | `wl_co_1_ro` | CO tenant Metabase (white_label_id=1) |
-| `TX_DB_USER/PASS` | `wl_tx_40_ro` | TX tenant Metabase (white_label_id=40) |
-| `IL_DB_USER/PASS` | `wl_il_39_ro` | IL tenant Metabase (white_label_id=39) |
-| `MA_DB_USER/PASS` | `wl_ma_38_ro` | MA tenant Metabase (white_label_id=38) |
-| `CESN_DB_USER/PASS` | `wl_cesn_4_ro` | CESN tenant Metabase (white_label_id=4) |
+| GitHub Secret                    | Heroku Credential           | Purpose                                       |
+| -------------------------------- | --------------------------- | --------------------------------------------- |
+| `GLOBAL_DB_USER/PASS`            | `default`                   | dbt writes + global Metabase access           |
+| `NC_DB_USER/PASS`                | `wl_nc_5_ro`                | NC tenant Metabase (white_label_id=5)         |
+| `CO_DB_USER/PASS`                | `wl_co_1_ro`                | CO tenant Metabase (white_label_id=1)         |
+| `TX_DB_USER/PASS`                | `wl_tx_40_ro`               | TX tenant Metabase (white_label_id=40)        |
+| `IL_DB_USER/PASS`                | `wl_il_39_ro`               | IL tenant Metabase (white_label_id=39)        |
+| `MA_DB_USER/PASS`                | `wl_ma_38_ro`               | MA tenant Metabase (white_label_id=38)        |
+| `CESN_DB_USER/PASS`              | `wl_cesn_4_ro`              | CESN tenant Metabase (white_label_id=4)       |
 | `CO_TAX_CALCULATOR_DB_USER/PASS` | `wl_co_tax_calculator_3_ro` | CO Tax Calculator Metabase (white_label_id=3) |
 
 ### Variables (Settings → Environments → production → Variables)
 
-| Variable Name | Description | Value |
-|---------------|-------------|-------|
-| `METABASE_URL` | Production Metabase URL | `https://mfb-metabase-production-baf31df893fc.herokuapp.com` |
-| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | (your admin email) |
-| `DATABASE_NAME` | Production database name | `d2ng9i7crgcemt` |
-| `BIGQUERY_ENABLED` | Enable BigQuery data source | `true` |
-| `GCP_PROJECT_ID` | Google Cloud project ID | `mfb-data` |
-| `GCP_ANALYTICS_TABLE` | GA4 BigQuery table | `analytics_335669714` |
-| `WIF_PROVIDER` | Workload Identity Federation provider | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` |
-| `WIF_SERVICE_ACCOUNT` | WIF service account | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` |
+| Variable Name          | Description                           | Value                                                                                         |
+| ---------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `METABASE_URL`         | Production Metabase URL               | `https://mfb-metabase-production-baf31df893fc.herokuapp.com`                                  |
+| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard         | (your admin email)                                                                            |
+| `DATABASE_NAME`        | Production database name              | `d2ng9i7crgcemt`                                                                              |
+| `BIGQUERY_ENABLED`     | Enable BigQuery data source           | `true`                                                                                        |
+| `GCP_PROJECT_ID`       | Google Cloud project ID               | `mfb-data`                                                                                    |
+| `GCP_ANALYTICS_TABLE`  | GA4 BigQuery table                    | `analytics_335669714`                                                                         |
+| `WIF_PROVIDER`         | Workload Identity Federation provider | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` |
+| `WIF_SERVICE_ACCOUNT`  | WIF service account                   | `github-actions-dbt@mfb-data.iam.gserviceaccount.com`                                         |
 
 ### Secrets (Settings → Environments → production → Secrets)
 
-| Secret Name | Description | How to Get It |
-|-------------|-------------|---------------|
-| `METABASE_ADMIN_PASSWORD` | Admin password from setup wizard | From the Metabase wizard you completed |
-| `DATABASE_HOST` | Production Django database hostname | `heroku pg:credentials:url -a cobenefits-api` |
-| `GLOBAL_DB_USER` | Default credential username | `heroku pg:credentials:url -a cobenefits-api` |
-| `GLOBAL_DB_PASS` | Default credential password | `heroku pg:credentials:url -a cobenefits-api` |
-| `NC_DB_USER` | NC tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_nc_5_ro` |
-| `NC_DB_PASS` | NC tenant credential password | Same as above |
-| `CO_DB_USER` | CO tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro` |
-| `CO_DB_PASS` | CO tenant credential password | Same as above |
-| `TX_DB_USER` | TX tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_tx_40_ro` |
-| `TX_DB_PASS` | TX tenant credential password | Same as above |
-| `IL_DB_USER` | IL tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_il_39_ro` |
-| `IL_DB_PASS` | IL tenant credential password | Same as above |
-| `MA_DB_USER` | MA tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_ma_38_ro` |
-| `MA_DB_PASS` | MA tenant credential password | Same as above |
-| `CESN_DB_USER` | CESN tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_cesn_4_ro` |
-| `CESN_DB_PASS` | CESN tenant credential password | Same as above |
+| Secret Name                 | Description                           | How to Get It                                                                  |
+| --------------------------- | ------------------------------------- | ------------------------------------------------------------------------------ |
+| `METABASE_ADMIN_PASSWORD`   | Admin password from setup wizard      | From the Metabase wizard you completed                                         |
+| `DATABASE_HOST`             | Production Django database hostname   | `heroku pg:credentials:url -a cobenefits-api`                                  |
+| `GLOBAL_DB_USER`            | Default credential username           | `heroku pg:credentials:url -a cobenefits-api`                                  |
+| `GLOBAL_DB_PASS`            | Default credential password           | `heroku pg:credentials:url -a cobenefits-api`                                  |
+| `NC_DB_USER`                | NC tenant credential username         | `heroku pg:credentials:url -a cobenefits-api --name wl_nc_5_ro`                |
+| `NC_DB_PASS`                | NC tenant credential password         | Same as above                                                                  |
+| `CO_DB_USER`                | CO tenant credential username         | `heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro`                |
+| `CO_DB_PASS`                | CO tenant credential password         | Same as above                                                                  |
+| `TX_DB_USER`                | TX tenant credential username         | `heroku pg:credentials:url -a cobenefits-api --name wl_tx_40_ro`               |
+| `TX_DB_PASS`                | TX tenant credential password         | Same as above                                                                  |
+| `IL_DB_USER`                | IL tenant credential username         | `heroku pg:credentials:url -a cobenefits-api --name wl_il_39_ro`               |
+| `IL_DB_PASS`                | IL tenant credential password         | Same as above                                                                  |
+| `MA_DB_USER`                | MA tenant credential username         | `heroku pg:credentials:url -a cobenefits-api --name wl_ma_38_ro`               |
+| `MA_DB_PASS`                | MA tenant credential password         | Same as above                                                                  |
+| `CESN_DB_USER`              | CESN tenant credential username       | `heroku pg:credentials:url -a cobenefits-api --name wl_cesn_4_ro`              |
+| `CESN_DB_PASS`              | CESN tenant credential password       | Same as above                                                                  |
 | `CO_TAX_CALCULATOR_DB_USER` | CO Tax Calculator credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_tax_calculator_3_ro` |
-| `CO_TAX_CALCULATOR_DB_PASS` | CO Tax Calculator credential password | Same as above |
-| `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | Same key as staging |
+| `CO_TAX_CALCULATOR_DB_PASS` | CO Tax Calculator credential password | Same as above                                                                  |
+| `BIGQUERY_SA_KEY`           | BigQuery service account key (JSON)   | Same key as staging                                                            |
 
 ---
 
@@ -219,14 +222,14 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 
 The `dbt-nightly.yml` workflow reuses the same staging environment secrets as Terraform — no new secrets are needed:
 
-| dbt env var | GitHub secret/variable |
-|-------------|----------------------|
-| `DB_HOST` | `DATABASE_HOST` (secret) |
-| `DB_USER` | `GLOBAL_DB_USER` (secret) |
-| `DB_PASS` | `GLOBAL_DB_PASS` (secret) |
-| `DB_NAME` | `DATABASE_NAME` (variable) |
-| `DB_SSLMODE` | Hardcoded to `require` |
-| `DB_SCHEMA` | Hardcoded to `analytics` |
+| dbt env var  | GitHub secret/variable     |
+| ------------ | -------------------------- |
+| `DB_HOST`    | `DATABASE_HOST` (secret)   |
+| `DB_USER`    | `GLOBAL_DB_USER` (secret)  |
+| `DB_PASS`    | `GLOBAL_DB_PASS` (secret)  |
+| `DB_NAME`    | `DATABASE_NAME` (variable) |
+| `DB_SSLMODE` | Hardcoded to `require`     |
+| `DB_SCHEMA`  | Hardcoded to `analytics`   |
 
 The workflow runs nightly at 6 AM UTC against staging. Production runs require manual dispatch from the `main` branch.
 
@@ -249,25 +252,30 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 ## Checklist
 
 ### Repository-Level
+
 - [x] Add `TF_API_TOKEN` as a repository secret
 
 ### Terraform Cloud
+
 - [x] Create workspace `mfb-dashboards-staging` (execution mode: Local)
 - [x] Create workspace `mfb-dashboards-production` (execution mode: Local)
 
 ### BigQuery
+
 - [x] Set up Workload Identity Federation for GitHub Actions
 - [x] Create SA key for Metabase (org policy exception)
 - [x] Add `BIGQUERY_SA_KEY`, `GCP_PROJECT_ID`, `GCP_ANALYTICS_TABLE`, `WIF_*` to both environments
 - [x] Set `BIGQUERY_ENABLED` to `true` in both environments
 
 ### Staging — Complete
+
 - [x] Create `staging` GitHub Environment
 - [x] Ensure `analytics` schema exists in staging database
 - [x] Add all Variables and Secrets to staging environment
 - [x] Verify `dbt-nightly` and `terraform-apply` workflows run successfully
 
 ### Production — In Progress
+
 - [x] Create `production` GitHub Environment
 - [x] Create analytics schema on production DB
 - [x] Create RLS credentials (`wl_nc_5_ro` pre-existing, `wl_co_1_ro` created)
