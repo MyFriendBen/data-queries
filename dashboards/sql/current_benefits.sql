@@ -1,5 +1,5 @@
-WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]]),
-filter_keys AS (SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1 [[AND {{partner}}]] [[AND {{county}}]])
+WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]),
+filter_keys AS (SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]])
 SELECT
     pb.benefit as "Benefit Name",
     SUM(pb.count) as "# of Screeners",

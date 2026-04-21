@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT household_assets
     FROM analytics.mart_screener_data
-    WHERE household_assets IS NOT NULL [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE household_assets IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
 ),
 total AS (
     SELECT count(*) AS n FROM filtered
