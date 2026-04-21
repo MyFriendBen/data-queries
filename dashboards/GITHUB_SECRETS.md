@@ -8,21 +8,20 @@ Secrets and variables are stored at different levels based on scope and sensitiv
 
 | Storage Level | What Goes Here | Why |
 |---------------|---------------|-----|
-| **Repository-level secrets** | `TF_API_TOKEN` | Authenticates to Terraform Cloud, which is shared infrastructure across all environments. One token accesses all workspaces. Stored at the repo level so both staging and production workflows can use it without duplication. |
-| **Environment variables** | `METABASE_URL`, `METABASE_ADMIN_EMAIL`, `DATABASE_NAME`, `BIGQUERY_ENABLED`, `GCP_PROJECT_ID` | Non-sensitive, environment-specific configuration. Variables are visible in logs and workflow files. Different per environment (staging Metabase URL vs production Metabase URL). |
-| **Environment secrets** | `METABASE_ADMIN_PASSWORD`, `DATABASE_HOST`, all `*_DB_USER`/`*_DB_PASS` | Sensitive credentials that differ per environment. GitHub encrypts these and masks them in logs. Environment-scoped so staging credentials can't accidentally be used against production. |
+| **Repository-level secrets** | `TF_API_TOKEN` | Authenticates to Terraform Cloud. One token accesses all workspaces. Stored at the repo level so all workflows can use it. |
+| **Environment variables** | `METABASE_URL`, `METABASE_ADMIN_EMAIL`, `DATABASE_NAME`, `BIGQUERY_ENABLED`, `GCP_PROJECT_ID` | Non-sensitive, environment-specific configuration. Variables are visible in logs and workflow files. |
+| **Environment secrets** | `METABASE_ADMIN_PASSWORD`, `DATABASE_HOST`, all `*_DB_USER`/`*_DB_PASS` | Sensitive credentials. GitHub encrypts these and masks them in logs. |
 | **Heroku config vars** | `MB_DB_*`, `MB_ENCRYPTION_SECRET_KEY`, `MB_SITE_URL` | Runtime config for Metabase containers. These are read by the Metabase process at startup, not by GitHub Actions. Heroku config vars are the standard way to configure Heroku apps. |
-| **Terraform Cloud** | Terraform state files | State contains resource IDs and sensitive values in plaintext. Terraform Cloud encrypts state at rest, provides locking to prevent concurrent applies, and keeps separate state per workspace (`mfb-dashboards-staging` vs `mfb-dashboards-production`). Chosen over GCS because GCP org policy blocks service account key creation needed for GCS auth. |
+| **Terraform Cloud** | Terraform state files | State contains resource IDs and sensitive values in plaintext. Terraform Cloud encrypts state at rest and provides locking to prevent concurrent applies. Chosen over GCS because GCP org policy blocks service account key creation needed for GCS auth. |
 
 ## How to Add Secrets/Variables
 
-### Step 1: Create Environments
+### Step 1: Create Environment
 
 Environments are managed in **repository settings**, not the Actions dashboard.
 
 1. Go to **Settings → Environments**: https://github.com/MyFriendBen/data-queries/settings/environments
-2. Click **"New environment"**, name it `staging`, click **"Configure environment"**
-3. Repeat to create a `production` environment
+2. Click **"New environment"**, name it `production`, click **"Configure environment"**
 
 ### Step 2: Add Secrets and Variables
 
@@ -40,69 +39,26 @@ Shared across all environments. Add at **Settings → Secrets and variables → 
 
 ---
 
-## Terraform Cloud Workspaces
+## Terraform Cloud Workspace
 
-Each environment has its own workspace for isolated state. Create these at https://app.terraform.io:
+Create one workspace at https://app.terraform.io:
 
 1. Click **"New Workspace"**
 2. Select **"CLI-driven workflow"**
-3. Name it (see table below)
+3. Name it `mfb-dashboards-production`
 4. Create the workspace
 
-| Workspace Name | Environment | Execution Mode |
-|---------------|-------------|----------------|
-| `mfb-dashboards-staging` | staging | Local |
-| `mfb-dashboards-production` | production | Local |
+| Workspace Name | Execution Mode |
+|---------------|----------------|
+| `mfb-dashboards-production` | Local |
 
 The CLI-driven workflow sets execution mode to **Local**, meaning GitHub Actions runs `plan`/`apply` and Terraform Cloud only stores state and provides locking.
 
 ---
 
-## Environment: `staging`
-
-### Getting Your Staging Database Credentials
-
-Staging uses the default Heroku Postgres credential for all Metabase database connections (Essential-tier doesn't support custom credentials).
-
-```bash
-# Get the default credential (host, user, password, database name)
-heroku pg:credentials:url -a cobenefits-api-staging
-```
-
-Use the same user/password for `GLOBAL_DB_*`, `NC_DB_*`, and `CO_DB_*` secrets below.
-
-### Variables (Settings → Environments → staging → Variables)
-
-| Variable Name | Description | Value |
-|---------------|-------------|-------|
-| `METABASE_URL` | Staging Metabase URL | `https://mfb-metabase-staging-0805953c70da.herokuapp.com` |
-| `METABASE_ADMIN_EMAIL` | Admin email from setup wizard | (your admin email) |
-| `DATABASE_NAME` | Staging database name | From `heroku pg:credentials:url` output |
-| `BIGQUERY_ENABLED` | Enable BigQuery data source | `true` |
-| `GCP_PROJECT_ID` | Google Cloud project ID | `mfb-data` |
-| `GCP_ANALYTICS_TABLE` | GA4 BigQuery table | `analytics_335669714` |
-| `WIF_PROVIDER` | Workload Identity Federation provider | (see BIGQUERY_INTEGRATION.md) |
-| `WIF_SERVICE_ACCOUNT` | WIF service account | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` |
-
-### Secrets (Settings → Environments → staging → Secrets)
-
-| Secret Name | Description | How to Get It |
-|-------------|-------------|---------------|
-| `METABASE_ADMIN_PASSWORD` | Admin password from setup wizard | From the Metabase wizard you completed |
-| `DATABASE_HOST` | Staging Django database hostname | From `heroku pg:credentials:url` output |
-| `GLOBAL_DB_USER` | Database user for global dashboard | From `heroku pg:credentials:url` (default user) |
-| `GLOBAL_DB_PASS` | Database password for global dashboard | From `heroku pg:credentials:url` (default password) |
-| `NC_DB_USER` | Database user for NC tenant | Same as `GLOBAL_DB_USER` (single credential on staging) |
-| `NC_DB_PASS` | Database password for NC tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
-| `CO_DB_USER` | Database user for CO tenant | Same as `GLOBAL_DB_USER` (single credential on staging) |
-| `CO_DB_PASS` | Database password for CO tenant | Same as `GLOBAL_DB_PASS` (single credential on staging) |
-| `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | From `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
-
----
-
 ## BigQuery Authentication
 
-BigQuery integration is **enabled** on both staging and production. The GCP org policy (`iam.disableServiceAccountKeyCreation`) was resolved with two approaches:
+BigQuery integration is **enabled** for production. The GCP org policy (`iam.disableServiceAccountKeyCreation`) was resolved with two approaches:
 
 - **dbt (GitHub Actions):** Uses Workload Identity Federation (OIDC, no key needed). Configured via `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` variables.
 - **Terraform (GitHub Actions):** Uses the service account key via `BIGQUERY_SA_KEY` secret (passed as `TF_VAR_bigquery_service_account_key_content`). WIF is not used here because the Metabase Terraform provider needs the raw key to configure Metabase's BigQuery data source.
@@ -113,13 +69,6 @@ See `BIGQUERY_INTEGRATION.md` for full details.
 ---
 
 ## Environment: `production`
-
-Same secrets/variables as staging, but with **production values**:
-- Different `METABASE_URL` (production Metabase)
-- Different `DATABASE_HOST` (production database)
-- Different admin password
-- `BIGQUERY_ENABLED` = `true`
-- Production uses separate Heroku Postgres credentials for tenant isolation (Standard-tier+)
 
 ### Production Database Users (RLS)
 
@@ -210,13 +159,13 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 | `CESN_DB_PASS` | CESN tenant credential password | Same as above |
 | `CO_TAX_CALCULATOR_DB_USER` | CO Tax Calculator credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_tax_calculator_3_ro` |
 | `CO_TAX_CALCULATOR_DB_PASS` | CO Tax Calculator credential password | Same as above |
-| `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | Same key as staging |
+| `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | From `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
 
 ---
 
 ## dbt Nightly Workflow
 
-The `dbt-nightly.yml` workflow reuses the same staging environment secrets as Terraform — no new secrets are needed:
+The `dbt-nightly.yml` workflow reuses the same production environment secrets as Terraform — no new secrets are needed:
 
 | dbt env var | GitHub secret/variable |
 |-------------|----------------------|
@@ -227,13 +176,13 @@ The `dbt-nightly.yml` workflow reuses the same staging environment secrets as Te
 | `DB_SSLMODE` | Hardcoded to `require` |
 | `DB_SCHEMA` | Hardcoded to `analytics` |
 
-The workflow runs nightly at 6 AM UTC against staging. Production runs require manual dispatch from the `main` branch.
+The workflow runs nightly at 6 AM UTC against production. Manual dispatch is also available from the `main` branch.
 
 ---
 
 ## Prerequisite: Analytics Schema
 
-Ensure the `analytics` schema exists in both staging and production databases:
+Ensure the `analytics` schema exists in the production database:
 
 ```bash
 heroku pg:psql -a <your-django-app-name>
@@ -251,22 +200,15 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 - [x] Add `TF_API_TOKEN` as a repository secret
 
 ### Terraform Cloud
-- [x] Create workspace `mfb-dashboards-staging` (execution mode: Local)
 - [x] Create workspace `mfb-dashboards-production` (execution mode: Local)
 
 ### BigQuery
 - [x] Set up Workload Identity Federation for GitHub Actions
 - [x] Create SA key for Metabase (org policy exception)
-- [x] Add `BIGQUERY_SA_KEY`, `GCP_PROJECT_ID`, `GCP_ANALYTICS_TABLE`, `WIF_*` to both environments
-- [x] Set `BIGQUERY_ENABLED` to `true` in both environments
+- [x] Add `BIGQUERY_SA_KEY`, `GCP_PROJECT_ID`, `GCP_ANALYTICS_TABLE`, `WIF_*` to production environment
+- [x] Set `BIGQUERY_ENABLED` to `true` in production environment
 
-### Staging — Complete
-- [x] Create `staging` GitHub Environment
-- [x] Ensure `analytics` schema exists in staging database
-- [x] Add all Variables and Secrets to staging environment
-- [x] Verify `dbt-nightly` and `terraform-apply` workflows run successfully
-
-### Production — In Progress
+### Production
 - [x] Create `production` GitHub Environment
 - [x] Create analytics schema on production DB
 - [x] Create RLS credentials (`wl_nc_5_ro` pre-existing, `wl_co_1_ro` created)

@@ -273,7 +273,7 @@ terraform init    # uses local state, no Terraform Cloud token needed
 instance — see the Quick Start section above for that setup.
 
 `local_override.tf` is gitignored — CI/CD never sees it, so GitHub Actions
-continues using Terraform Cloud for staging and production.
+continues using Terraform Cloud for production.
 
 ## BigQuery Setup
 
