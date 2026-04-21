@@ -25,4 +25,3 @@ output "tenant_group_ids" {
     k => g.id
   }
 }
-

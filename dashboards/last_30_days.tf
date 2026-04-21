@@ -269,87 +269,87 @@ locals {
         ]
         series                 = []
         visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
-        dashboard_tab_id = 3
-        row              = 0
-        col              = local.last30_scorecard_width[k] * 1
-        size_x           = local.last30_scorecard_width[k]
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
-        dashboard_tab_id = 3
-        row              = 0
-        col              = local.last30_scorecard_width[k] * 2
-        size_x           = local.last30_scorecard_width[k]
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
-        dashboard_tab_id = 3
-        row              = 0
-        col              = local.last30_scorecard_width[k] * 3
-        size_x           = local.last30_scorecard_width[k]
-        size_y           = 4
-        parameter_mappings = [
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
+          dashboard_tab_id = 3
+          row              = 0
+          col              = local.last30_scorecard_width[k] * 1
+          size_x           = local.last30_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct_30d[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
+          dashboard_tab_id = 3
+          row              = 0
+          col              = local.last30_scorecard_width[k] * 2
+          size_x           = local.last30_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_annual_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
+          dashboard_tab_id = 3
+          row              = 0
+          col              = local.last30_scorecard_width[k] * 3
+          size_x           = local.last30_scorecard_width[k]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits_30d[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
       }],
       # Tax credit cards — hidden for tenants that don't collect tax credit data
       local.tenant_features[k].has_tax_credits ? [

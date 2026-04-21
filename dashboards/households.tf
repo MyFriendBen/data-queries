@@ -497,115 +497,115 @@ locals {
           }
           text = "### Heads of Household\nThe head of household is the person who filled out the screener. If there is more than one adult in the household, the head of household is the oldest adult.\n\n### Age Groups\nAge bins follow U.S. Census Bureau conventions.\n\n**Head of Household:** 0-18, 19-24, 25-44, 45-64, 65+\n**All Members:** <5, 5-18, 19-24, 25-44, 45-64, 65+"
         }
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-        dashboard_tab_id = 4
-        row              = 4
-        col              = 6
-        size_x           = 9
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_household_member_ages[k].id)
-        dashboard_tab_id = 4
-        row              = 4
-        col              = 15
-        size_x           = 9
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      # Row 12: Household sizes + languages
-      {
-        card_id          = tonumber(metabase_card.tenant_household_sizes[k].id)
-        dashboard_tab_id = 4
-        row              = 12
-        col              = 0
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id          = tonumber(metabase_card.tenant_household_languages[k].id)
-        dashboard_tab_id = 4
-        row              = 12
-        col              = 12
-        size_x           = 12
-        size_y           = 8
-        parameter_mappings = [
-          {
-            parameter_id = "date_range_filter"
-            card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-            target       = ["dimension", ["template-tag", "submission_date"]]
-          },
-          {
-            parameter_id = "partner_filter"
-            card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-            target       = ["dimension", ["template-tag", "partner"]]
-          },
-          {
-            parameter_id = "county_filter"
-            card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-            target       = ["dimension", ["template-tag", "county"]]
-          }
-        ]
-        series                 = []
-        visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+          dashboard_tab_id = 4
+          row              = 4
+          col              = 6
+          size_x           = 9
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_household_member_ages[k].id)
+          dashboard_tab_id = 4
+          row              = 4
+          col              = 15
+          size_x           = 9
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        # Row 12: Household sizes + languages
+        {
+          card_id          = tonumber(metabase_card.tenant_household_sizes[k].id)
+          dashboard_tab_id = 4
+          row              = 12
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_household_languages[k].id)
+          dashboard_tab_id = 4
+          row              = 12
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
       }],
       # Row 20: Text block + income/assets distributions
       # Text block — hidden for tenants that don't collect asset data

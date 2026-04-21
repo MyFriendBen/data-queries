@@ -1,0 +1,58 @@
+name: Code Formatting Check
+
+on:
+  pull_request:
+    paths:
+      - "dbt/models/**/*.sql"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - "dashboards/**/*.tf"
+
+jobs:
+  sqlfluff:
+    name: SQLFluff (dbt SQL models)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r dbt/requirements.txt
+
+      - name: Run dbt deps
+        working-directory: ./dbt
+        run: dbt deps
+
+      - name: Lint SQL
+        run: sqlfluff lint dbt/models/
+
+  prettier:
+    name: Prettier (YAML)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Prettier
+        run: npm install -g prettier
+
+      - name: Check YAML formatting
+        run: prettier --check '**/*.yml' '**/*.yaml'
+
+  terraform-fmt:
+    name: Terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive dashboards/
