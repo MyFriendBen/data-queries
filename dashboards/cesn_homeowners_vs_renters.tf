@@ -106,7 +106,7 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
+        query = <<-SQL
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_home_owner = true
@@ -142,7 +142,7 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
+        query = <<-SQL
             SELECT submission_date, count(*) AS "Screeners"
             FROM analytics.mart_screener_data
             WHERE is_renter = true
