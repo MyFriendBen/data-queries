@@ -9,9 +9,7 @@ locals {
   # For SQL files: remove the partner and county filter clauses
   _partner_clause     = " [[AND {{partner}}]]"
   _partner_clause_alt = "\n    [[AND {{partner}}]]"
-  # submission_date clause — only in 30d files
-  _submission_date_clause = " [[AND {{submission_date}}]]"
-  _county_clause          = " [[AND {{county}}]]"
+  _county_clause = " [[AND {{county}}]]"
   _county_clause_alt      = "\n    [[AND {{county}}]]"
 
   # Base config for global cards (no template-tags, no partner filter)
@@ -51,7 +49,7 @@ locals {
 }
 
 # =============================================================================
-# Tab 1: All-Time Performance — 9 cards
+# Tab 1: Overall Performance — 9 cards
 # =============================================================================
 
 resource "metabase_card" "global_completed_screeners" {
@@ -232,196 +230,7 @@ resource "metabase_card" "global_top_counties" {
 }
 
 # =============================================================================
-# Tab 2: Last 30 Days Performance — 9 cards
-# =============================================================================
-
-resource "metabase_card" "global_completed_screeners_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Completed Screeners (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT count(*) FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = { "scalar.field" = "count" }
-  }))
-}
-
-resource "metabase_card" "global_qualified_for_benefits_pct_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Qualified for Benefits (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = local.benefits_pct_visualization_settings
-  }))
-}
-
-resource "metabase_card" "global_median_annual_benefits_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Median Annual Benefits (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = {
-      "scalar.field"    = "median"
-      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
-    }
-  }))
-}
-
-resource "metabase_card" "global_median_monthly_benefits_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Median Monthly Benefits (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = {
-      "scalar.field"    = "median"
-      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
-    }
-  }))
-}
-
-resource "metabase_card" "global_qualified_for_tax_creds_pct_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Qualified for Tax Credits (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = local.benefits_pct_visualization_settings
-  }))
-}
-
-resource "metabase_card" "global_median_annual_tax_credits_30d" {
-  json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Median Annual Tax Credits (30d)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 AND submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-      }
-    }
-    visualization_settings = {
-      "scalar.field"    = "median"
-      "column_settings" = { "[\"name\",\"median\"]" = local.currency_format_0 }
-    }
-  }))
-}
-
-resource "metabase_card" "global_daily_screeners_30d" {
-  json = jsonencode(merge(local.global_card_base_config, {
-    name          = "Daily Screeners"
-    collection_id = local.global_col_id
-    display       = "bar"
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '29 days' GROUP BY submission_date ORDER BY submission_date"
-      }
-    }
-    visualization_settings = {
-      "graph.dimensions"        = ["SUBMISSION_DATE"]
-      "graph.metrics"           = ["SCREENERS"]
-      "graph.x_axis.title_text" = "Date"
-      "graph.y_axis.title_text" = "Screeners Completed"
-      "graph.show_values"       = true
-    }
-  }))
-}
-
-resource "metabase_card" "global_top_partners_30d" {
-  json = jsonencode(merge(local.global_table_card_config, {
-    name          = "Top Partners (Last 30 Days)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = replace(replace(
-          replace(replace(
-            replace(
-              templatefile("${path.module}/sql/top_partners_30d.sql", {}),
-              local._submission_date_clause, " AND submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-            ),
-            local._partner_clause_alt, ""), local._partner_clause, ""
-          ),
-          local._county_clause_alt, ""), local._county_clause, ""
-        )
-      }
-    }
-    visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
-          local.show_minibar_true,
-          local.number_format_percent_0
-        )
-      }
-    })
-  }))
-}
-
-resource "metabase_card" "global_top_counties_30d" {
-  json = jsonencode(merge(local.global_table_card_config, {
-    name          = "Top Counties (Last 30 Days)"
-    collection_id = local.global_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.global_db_id
-      native = {
-        query = replace(replace(
-          replace(replace(
-            replace(
-              templatefile("${path.module}/sql/top_counties_30d.sql", {}),
-              local._submission_date_clause, " AND submission_date >= CURRENT_DATE - INTERVAL '29 days'"
-            ),
-            local._partner_clause_alt, ""), local._partner_clause, ""
-          ),
-          local._county_clause_alt, ""), local._county_clause, ""
-        )
-      }
-    }
-    visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
-          local.show_minibar_true,
-          local.number_format_percent_0
-        )
-      }
-    })
-  }))
-}
-
-# =============================================================================
-# Tab 3: Households — 13 cards (reuses global_completed_screeners from Tab 1)
+# Tab 2: Households — 13 cards (reuses global_completed_screeners from Tab 1)
 # =============================================================================
 
 resource "metabase_card" "global_median_household_size" {
