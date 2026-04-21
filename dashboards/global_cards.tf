@@ -9,8 +9,8 @@ locals {
   # For SQL files: remove the partner and county filter clauses
   _partner_clause     = " [[AND {{partner}}]]"
   _partner_clause_alt = "\n    [[AND {{partner}}]]"
-  _county_clause = " [[AND {{county}}]]"
-  _county_clause_alt      = "\n    [[AND {{county}}]]"
+  _county_clause      = " [[AND {{county}}]]"
+  _county_clause_alt  = "\n    [[AND {{county}}]]"
 
   # Base config for global cards (no template-tags, no partner filter)
   global_card_base_config = {
