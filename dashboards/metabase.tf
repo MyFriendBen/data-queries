@@ -1007,6 +1007,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         slug      = "date_range"
         type      = "date/all-options"
         sectionId = "date"
+        default   = null
       }
     ] : [],
 
