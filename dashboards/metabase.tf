@@ -929,7 +929,7 @@ resource "metabase_dashboard" "tenant_analytics" {
   cards_json = jsonencode(concat(
     # Tab 1: Google Analytics
     local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
-    # Tab 2: Overall Performance (full layout with partner filter, or simple screen count)
+    # Tab 2: Overall Performance
     # flatten(concat(...)) lets us conditionally include CESN-excluded cards
     local.tenant_has_tab[each.key]["households"] ? flatten(concat(
       [
