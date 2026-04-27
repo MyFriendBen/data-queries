@@ -520,7 +520,33 @@ base_table_2 AS (
         + coalesce(cesn_poipp_annual, 0)
         + coalesce(cesn_ubp_annual, 0)
         + coalesce(cesn_xceleap_annual, 0)
-        + coalesce(cesn_xcelgap_annual, 0) AS non_tax_credit_benefits_annual,
+        + coalesce(cesn_xcelgap_annual, 0)
+        -- Texas programs
+        + coalesce(tx_aca_annual, 0)
+        + coalesce(tx_ccad_annual, 0)
+        + coalesce(tx_ccs_annual, 0)
+        + coalesce(tx_chip_annual, 0)
+        + coalesce(tx_csfp_annual, 0)
+        + coalesce(tx_dart_annual, 0)
+        + coalesce(tx_early_head_start_annual, 0)
+        + coalesce(tx_emergency_medicaid_annual, 0)
+        + coalesce(tx_fpp_annual, 0)
+        + coalesce(tx_harris_rides_annual, 0)
+        + coalesce(tx_head_start_annual, 0)
+        + coalesce(tx_hse_annual, 0)
+        + coalesce(tx_lifeline_annual, 0)
+        + coalesce(tx_medicaid_for_children_annual, 0)
+        + coalesce(tx_medicaid_for_parents_and_caretakers_annual, 0)
+        + coalesce(tx_medicaid_for_pregnant_women_annual, 0)
+        + coalesce(tx_medicare_savings_program_annual, 0)
+        + coalesce(tx_nslp_annual, 0)
+        + coalesce(tx_snap_annual, 0)
+        + coalesce(tx_ssi_annual, 0)
+        + coalesce(tx_ssdi_annual, 0)
+        + coalesce(tx_tanf_annual, 0)
+        + coalesce(tx_wap_annual, 0)
+        + coalesce(tx_wic_annual, 0)
+        + coalesce(trump_account_annual, 0) AS non_tax_credit_benefits_annual,
 
         -- Calculate tax credits total
         coalesce(coctc_annual, 0)
@@ -531,7 +557,10 @@ base_table_2 AS (
         + coalesce(il_ctc_annual, 0)
         + coalesce(il_eitc_annual, 0)
         + coalesce(ma_maeitc_annual, 0)
-        + coalesce(shitc_annual, 0) AS tax_credits_annual
+        + coalesce(shitc_annual, 0)
+        -- Texas tax credits
+        + coalesce(tx_ctc_annual, 0)
+        + coalesce(tx_eitc_annual, 0) AS tax_credits_annual
 
     FROM base_table_1
 )
