@@ -25,11 +25,11 @@ select
     -- Started Screener (B): sessions that hit /step-1
     count(distinct case when hit_screener_start = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) as sessions_started_screener,
 
-    -- Completed Screener (C): sessions that hit /results
-    count(distinct case when hit_screener_results = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) as sessions_completed_screener,
+    -- Completed Screener (C): sessions that hit both /step-1 and /results
+    count(distinct case when hit_screener_start = 1 and hit_screener_results = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) as sessions_completed_screener,
 
     -- Clicked Link (D): sessions that completed AND clicked an outbound link
-    count(distinct case when hit_screener_results = 1 and has_outbound_click = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) as sessions_clicked_after_completion,
+    count(distinct case when hit_screener_start = 1 and hit_screener_results = 1 and has_outbound_click = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) as sessions_clicked_after_completion,
 
     -- Started Screener %: B / A × 100
     round(
@@ -40,8 +40,8 @@ select
 
     -- Completed to Click Rate (D/C ratio): D / C × 100
     round(
-        count(distinct case when hit_screener_results = 1 and has_outbound_click = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) * 100.0
-        / nullif(count(distinct case when hit_screener_results = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end), 0),
+        count(distinct case when hit_screener_start = 1 and hit_screener_results = 1 and has_outbound_click = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end) * 100.0
+        / nullif(count(distinct case when hit_screener_start = 1 and hit_screener_results = 1 then TO_JSON_STRING(struct(user_pseudo_id, ga_session_id)) end), 0),
         2
     ) as completed_to_click_rate_pct,
 
