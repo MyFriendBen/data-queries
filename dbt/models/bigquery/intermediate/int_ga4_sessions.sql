@@ -98,10 +98,11 @@ select
     coalesce(pa.hit_screener_results, 0) as hit_screener_results,
 
     -- Completion time in seconds (null if session did not complete the screener)
+    -- Exclude sessions where gap < 20s to filter out direct /results navigations
     case
         when pa.first_screener_start_ts is not null
             and pa.first_screener_results_ts is not null
-            and pa.first_screener_results_ts > pa.first_screener_start_ts
+            and (pa.first_screener_results_ts - pa.first_screener_start_ts) / 1000000.0 >= 20
         then (pa.first_screener_results_ts - pa.first_screener_start_ts) / 1000000.0
         else null
     end as completion_time_seconds,
