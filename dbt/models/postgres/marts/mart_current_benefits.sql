@@ -5,4 +5,4 @@
 ) }}
 
 SELECT *
-FROM {{ ref('int_current_benefits_unpivoted') }}
+FROM {{ ref('int_current_benefits') }}

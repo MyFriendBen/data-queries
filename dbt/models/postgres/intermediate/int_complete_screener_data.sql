@@ -287,7 +287,7 @@ benefit_aggregates AS (
         ) AS tax_credits_annual,
         sum(
             CASE
-                WHEN pe.value_type <> 'tax_credit' OR pe.value_type IS NULL
+                WHEN pe.value_type <> 'tax_credit' AND pe.value_type IS NOT NULL
                     THEN pe.annual_value
                 ELSE 0
             END
