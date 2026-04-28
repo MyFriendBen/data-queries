@@ -2,12 +2,13 @@
   config(
     materialized='table',
     post_hook="{{ setup_white_label_rls(this.name) }}",
-    description='Materialized mart of per-program eligibility counts by partner and county. Dynamic: joins stg_program_eligibility directly, so new programs are included automatically without code changes. benefit column contains name_abbreviated (stable slug from programs_program).'
+    description='Materialized mart of per-program eligibility counts by partner and county. Dynamic: joins stg_program_eligibility directly, so new programs are included automatically without code changes.'
   )
 }}
 
 SELECT
-    pe.name_abbreviated AS benefit,
+    pe.name_abbreviated AS benefit_slug,
+    pe.name AS benefit,
     count(*) AS count,
     msd.white_label_id,
     msd.partner,
@@ -19,6 +20,7 @@ INNER JOIN {{ ref('stg_program_eligibility') }} AS pe
         AND pe.annual_value > 0
 GROUP BY
     pe.name_abbreviated,
+    pe.name,
     msd.white_label_id,
     msd.partner,
     msd.county

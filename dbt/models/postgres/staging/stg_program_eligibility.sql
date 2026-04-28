@@ -8,8 +8,9 @@
 SELECT
     eligibility_snapshot_id,
     name_abbreviated,
+    name,
     value_type,
     sum(estimated_value) AS annual_value
 FROM {{ source('django_apps', 'screener_programeligibilitysnapshot') }}
 WHERE eligible = TRUE
-GROUP BY eligibility_snapshot_id, name_abbreviated, value_type
+GROUP BY eligibility_snapshot_id, name_abbreviated, name, value_type
