@@ -18,6 +18,7 @@ INNER JOIN {{ ref('stg_program_eligibility') }} AS pe
     ON
         msd.latest_snapshot_id = pe.eligibility_snapshot_id
         AND pe.annual_value > 0
+        AND msd.white_label_id = pe.white_label_id
 GROUP BY
     pe.name_abbreviated,
     pe.name,
