@@ -532,7 +532,7 @@ resource "metabase_card" "global_current_benefits_table" {
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
+      "table.column_widths" = [300, 120, 120]
       "column_settings"     = local.benefits_column_settings
     })
   }))
@@ -554,7 +554,7 @@ resource "metabase_card" "global_qualified_benefits_table" {
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Benefit Name", "width" = 300 }]
+      "table.column_widths" = [300, 120, 120]
       "column_settings"     = local.benefits_column_settings
     })
   }))
@@ -575,7 +575,7 @@ resource "metabase_card" "global_immediate_needs_table" {
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "table.column_widths" = [{ "name" = "Need Category", "width" = 300 }]
+      "table.column_widths" = [300, 120, 120]
       "column_settings"     = local.benefits_column_settings
     })
   }))
