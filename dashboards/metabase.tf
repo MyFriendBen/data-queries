@@ -128,20 +128,31 @@ resource "metabase_collection" "global" {
   name = "Global"
 }
 
-# Tenant collections - created sequentially to avoid Metabase race condition
-# When adding new tenants, add a new resource and chain it to the previous one
+# Tenant collections — created sequentially to avoid a Metabase race condition.
 #
-# NOTE: Ideally we'd use for_each here, but Metabase has a race condition when
-# creating multiple collections concurrently (duplicate key error in
-# collection_permission_graph_revision). Tested with provider v0.14.0 and
-# the issue persists. If fixed in a future version, replace with:
+# ROOT CAUSE: Metabase's collection creation endpoint updates
+# collection_permission_graph_revision using a non-atomic read-modify-write.
+# Concurrent requests read the same max revision, both try to insert the same
+# next revision, and PostgreSQL rejects the second with a duplicate key error.
 #
-#   resource "metabase_collection" "tenant_collection" {
-#     for_each   = var.tenants
-#     name       = each.value.display_name
-#     depends_on = [metabase_collection.global]
-#   }
-#   locals { tenant_collection_map = metabase_collection.tenant_collection }
+# WORKAROUND: Each collection is a separate named resource with depends_on
+# chained to the previous one, forcing strictly sequential API calls.
+# Terraform's for_each (which is parallel) cannot be used here.
+#
+# TO ADD A NEW TENANT — two edits required:
+#   1. Append the tenant key to tenant_collection_order in variables.tf
+#   2. Copy this template, replacing XX with the new tenant key:
+#
+#        resource "metabase_collection" "tenant_collection_XX" {
+#          name       = var.tenants["XX"].display_name
+#          depends_on = [metabase_collection.tenant_collection_<LAST_TENANT>]
+#        }
+#
+#      Then add the new resource to the resource list in tenant_collection_map
+#      (the zipmap block in the locals below).
+#
+# tenant_collection_map is auto-generated from tenant_collection_order —
+# no third edit needed there.
 
 resource "metabase_collection" "tenant_collection_nc" {
   name       = "North Carolina"
@@ -178,17 +189,31 @@ resource "metabase_collection" "tenant_collection_co_tax_calculator" {
   depends_on = [metabase_collection.tenant_collection_cesn]
 }
 
-# Map for other resources to reference tenant collections by key
+# Map for other resources to reference tenant collections by key.
+# Auto-generated from tenant_collection_order — no manual edits needed here.
+# When adding a tenant: (1) add the key to tenant_collection_order in variables.tf,
+# (2) add a new resource block below with a chained depends_on.
 locals {
-  tenant_collection_map = {
-    nc                = metabase_collection.tenant_collection_nc
-    co                = metabase_collection.tenant_collection_co
-    tx                = metabase_collection.tenant_collection_tx
-    il                = metabase_collection.tenant_collection_il
-    ma                = metabase_collection.tenant_collection_ma
-    cesn              = metabase_collection.tenant_collection_cesn
-    co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
-  }
+  tenant_collection_map = zipmap(
+    local.tenant_collection_order,
+    [
+      metabase_collection.tenant_collection_nc,
+      metabase_collection.tenant_collection_co,
+      metabase_collection.tenant_collection_tx,
+      metabase_collection.tenant_collection_il,
+      metabase_collection.tenant_collection_ma,
+      metabase_collection.tenant_collection_cesn,
+      metabase_collection.tenant_collection_co_tax_calculator,
+    ]
+  )
+
+  # Fail fast if tenant_collection_order and the resource list in zipmap are out of sync.
+  # A length mismatch means a developer added to one but not the other.
+  _validate_collection_order = (
+    length(local.tenant_collection_order) == length(local.tenant_collection_map)
+    ? null
+    : tobool("tenant_collection_order length does not match the resource list in tenant_collection_map — update both together")
+  )
 
   # Scorecard counts for Overall Performance top row:
   # with tax credits: Completed Screeners, Qualified for Benefits %, Median Annual Benefits,

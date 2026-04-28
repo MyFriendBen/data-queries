@@ -147,4 +147,32 @@ locals {
       password = var.global_db_credentials.password
     })
   }
+
+  # Ordered list of tenant keys for sequential collection creation.
+  #
+  # WHY THIS EXISTS: Metabase has a race condition when collections are created
+  # concurrently — parallel writes to collection_permission_graph_revision cause
+  # a duplicate key error. We work around it by creating each collection as a
+  # separate named resource with a chained depends_on (see metabase.tf). This
+  # list drives the auto-generated tenant_collection_map so the map never needs
+  # manual editing.
+  #
+  # IMPORTANT: Always append new tenants to the END of this list.
+  # Do not reorder existing entries — that would break the depends_on chain and
+  # cause Terraform to see resource name mismatches.
+  #
+  # When adding a new tenant:
+  #   1. Add the tenant key here (end of list)
+  #   2. Add a new metabase_collection resource block in metabase.tf, chaining
+  #      depends_on to the last existing collection resource
+  #   (tenant_collection_map updates automatically — no third edit needed)
+  tenant_collection_order = [
+    "nc",
+    "co",
+    "tx",
+    "il",
+    "ma",
+    "cesn",
+    "co_tax_calculator",
+  ]
 }
