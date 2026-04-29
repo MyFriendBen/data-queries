@@ -254,16 +254,17 @@ resource "metabase_card" "screen_count" {
 resource "metabase_card" "tenant_screen_count" {
   for_each = var.tenants
 
-  json = jsonencode(merge(local.screen_count_card_config, {
-    # Override just the tenant-specific parts
-    collection_id = tonumber(local.tenant_collection_map[each.key].id)
-    dataset_query = merge(local.screen_count_card_config.dataset_query, {
-      database = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].db_id)
-      query = merge(local.screen_count_card_config.dataset_query.query, {
-        source-table = tonumber(data.metabase_table.tenant_screen_summary_tables[each.key].id)
-      })
-    })
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Completed Screens"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)  
+    dataset_query = {
+      type      = "native"
+      database  = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native    = { query = "SELECT count(*) AS \"Completed Screens\" FROM analytics.mart_screener_data"}      
+    }
+    visualization_settings = { "scalar.field" = "Completed Screens" }    
   }))
+
 }
 
 # Tenant-specific median annual benefits scorecard

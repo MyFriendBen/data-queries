@@ -1,25 +1,5 @@
-# Shared configuration template for screen count cards
-locals {
-  screen_count_card_config = {
-    name                = "Completed Screens"
-    description         = "Total count of completed screens from PostgreSQL"
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "query"
-    dataset_query = {
-      query = {
-        aggregation = [
-          ["count"]
-        ]
-      }
-      type = "query"
-    }
-    parameter_mappings     = []
-    display                = "scalar"
-    visualization_settings = {}
-    parameters             = []
-  }
-
+# Shared configuration template for tenant dashboard cards
+locals {  
   # Shared templates for tenant cards (reusable across all dashboard tabs)
   tenant_card_base_config = {
     description         = null
