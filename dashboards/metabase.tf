@@ -256,13 +256,13 @@ resource "metabase_card" "tenant_screen_count" {
 
   json = jsonencode(merge(local.tenant_scorecard_config, {
     name          = "Completed Screens"
-    collection_id = tonumber(local.tenant_collection_map[each.key].id)  
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
     dataset_query = {
-      type      = "native"
-      database  = tonumber(metabase_database.tenant_postgres[each.key].id)
-      native    = { query = "SELECT count(*) AS \"Completed Screens\" FROM analytics.mart_screener_data"}      
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT count(*) AS \"Completed Screens\" FROM analytics.mart_screener_data" }
     }
-    visualization_settings = { "scalar.field" = "Completed Screens" }    
+    visualization_settings = { "scalar.field" = "Completed Screens" }
   }))
 
 }

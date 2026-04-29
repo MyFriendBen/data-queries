@@ -1,5 +1,5 @@
 # Shared configuration template for tenant dashboard cards
-locals {  
+locals {
   # Shared templates for tenant cards (reusable across all dashboard tabs)
   tenant_card_base_config = {
     description         = null
