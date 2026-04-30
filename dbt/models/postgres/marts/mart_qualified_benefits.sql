@@ -7,7 +7,7 @@
 }}
 
 SELECT
-    pe.name_abbreviated AS benefit_slug,
+    pe.name_abbreviated,
     pe.name AS benefit,
     count(*) AS count,
     msd.white_label_id,
