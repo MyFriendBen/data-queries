@@ -33,26 +33,31 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 
 **3. Create tenant database users with row-level security**
 
-Each tenant needs a dedicated database role whose name encodes the `white_label_id`. RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see their tenant's data; non-conforming roles get zero rows.
+Each tenant needs a dedicated database role whose name encodes the `white_label_id`. RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see their tenant's data; non-conforming roles get zero rows.
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your MyFriendBen database
 - Update the database name (`mfb`) and credentials to match your local setup
 
 ```bash
+# Set password as environment variable (keeps it out of shell history)
+export DB_PASSWORD="secure_password"
+
 psql -h localhost -U postgres -d mfb << EOF
 -- Create role for North Carolina (white_label_id = 5)
-CREATE ROLE wl_nc_5_ro LOGIN;
+CREATE ROLE wl_nc_5_ro WITH LOGIN PASSWORD '$DB_PASSWORD';
 GRANT CONNECT ON DATABASE mfb TO wl_nc_5_ro;
 GRANT USAGE ON SCHEMA analytics TO wl_nc_5_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_nc_5_ro;
 
 -- Create role for Colorado (white_label_id = 1)
-CREATE ROLE wl_co_1_ro LOGIN;
+CREATE ROLE wl_co_1_ro WITH LOGIN PASSWORD '$DB_PASSWORD';
 GRANT CONNECT ON DATABASE mfb TO wl_co_1_ro;
 GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
 EOF
+
+unset DB_PASSWORD
 ```
 
 **4. Configure Terraform variables**
@@ -80,7 +85,7 @@ terraform init
 
 # Step 2: Create databases, groups, collections, and cards.
 # This also triggers Metabase to sync schemas and create its built-in groups/objects.
-terraform apply
+terraform apply -auto-approve
 
 # Step 3: Import the permissions graph singleton into Terraform state.
 # (Must happen after apply so Metabase's default groups and databases exist.)
@@ -208,20 +213,25 @@ locals {
 
 > **Note on permissions:** The `metabase_permissions_group.tenant`, collection permission entries, and data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`, so the new group, its collection permissions, and its data source permissions are all created automatically. No changes to `permissions.tf` are needed.
 
-### 3. Create Database User
+### 3. Create Database Role
 
 Create a new database role with row-level security (see Quick Start step 3 for detailed instructions).
 
 **Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new tenant.
 
 ```bash
+# Set password as environment variable (keeps it out of shell history)
+export DB_PASSWORD="secure_password"
+
 psql -h localhost -U postgres -d mfb << EOF
 -- Create role for Texas (white_label_id = 40)
-CREATE ROLE wl_tx_40_ro LOGIN;
+CREATE ROLE wl_tx_40_ro WITH LOGIN PASSWORD '$DB_PASSWORD';
 GRANT CONNECT ON DATABASE mfb TO wl_tx_40_ro;
 GRANT USAGE ON SCHEMA analytics TO wl_tx_40_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_tx_40_ro;
 EOF
+
+unset DB_PASSWORD
 ```
 
 ### 4. Deploy New Tenant
@@ -309,6 +319,67 @@ Verify database user exists and has correct `white_label_id` setting
 ### Connection errors
 
 Check credentials in `terraform.tfvars`
+
+### Permissions graph: stale state (409)
+
+```
+Status code: 409, body: Looks like someone else edited the permissions and your data is out of date.
+```
+
+Terraform's cached state is behind Metabase's current revision (happens after manual UI changes). Re-import both graphs to get fresh state, then apply:
+
+```bash
+terraform state rm metabase_permissions_graph.graph
+terraform import metabase_permissions_graph.graph 1
+
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
+
+terraform apply
+```
+
+### Permissions graph: unmarshal crash
+
+```
+json: cannot unmarshal object into Go struct field PermissionsGraphDatabasePermissions.groups.create-queries
+```
+
+A group in Metabase has schema-level (per-schema) query permissions instead of a flat top-level value. This is a provider bug — the provider crashes reading that format.
+
+**Step 1: Identify the problem group**
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3001/api/session \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<admin_email>","password":"<password>"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+curl -s http://localhost:3001/api/permissions/graph \
+  -H "X-Metabase-Session: $TOKEN" | python3 -m json.tool | grep -A3 "create-queries"
+```
+
+Look for a `create-queries` value that is an object `{}` rather than a plain string like `"query-builder"`.
+
+**Step 2: Fix it in the Metabase UI**
+
+Go to Admin → Permissions, find the group, and change its database query permission from schema-level to a top-level value (e.g. "Query builder only").
+
+> **Note:** The codebase includes a workaround that prevents this crash during initial `terraform apply`. However, `terraform import` still hits the provider bug directly — fixing the permissions in the UI (Step 2) is always required before running imports.
+
+**Step 3: Re-import and apply**
+
+```bash
+terraform state rm metabase_permissions_graph.graph
+terraform import metabase_permissions_graph.graph 1
+
+terraform state rm metabase_collection_graph.graph
+terraform import metabase_collection_graph.graph 1
+
+terraform apply
+```
+
+**Notes:** 
+- If you see a 400 `nil view-data` error during `terraform apply` after a manually created group exists in Metabase, delete that group from the Metabase UI and re-run apply. This is a provider bug where `ignored_groups` does not correctly preserve unmanaged group permissions during write operations.
+- **Never use `terraform destroy` in staging or production.** It deletes all dashboards, cards, collections, and groups — breaking existing user bookmarks, saved URLs, and any manual UI configuration not managed by Terraform. For staging/production, always use the surgical approach: fix the issue in the Metabase UI, re-import affected resources, and run `terraform apply`.
 
 ### Switching Branches
 
