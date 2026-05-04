@@ -8,7 +8,7 @@
 
 SELECT
     pe.name AS benefit,
-    count(*) AS count,
+    COUNT(DISTINCT msd.id) AS count,
     msd.white_label_id,
     msd.partner,
     msd.county

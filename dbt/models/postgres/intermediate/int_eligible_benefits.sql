@@ -5,7 +5,7 @@
 
 SELECT
     pe.name AS benefit,
-    count(*) AS count,
+    COUNT(DISTINCT msd.id) AS count,
     msd.white_label_id,
     msd.partner
 FROM {{ ref('int_complete_screener_data') }} AS msd
