@@ -1,8 +1,8 @@
 version: 2
 
 models:
-  - name: mart_current_benefits
-    description: "Mart table for current benefits, unpivoted for dashboard use. Contains benefit counts by white_label_id and partner with row-level security."
+  - name: mart_eligible_benefits
+    description: "Mart table of per-program eligibility counts by white_label_id and partner. Tracks programs users qualify for — distinct from mart_previous_benefits which tracks programs users report already having. Row-level security restricts each tenant to their own data."
     columns:
       - name: white_label_id
         description: "White label organization ID used for row-level security"
