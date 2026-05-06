@@ -934,6 +934,4 @@ WHERE
     completed = TRUE
     AND is_test = FALSE
     AND is_test_data = FALSE
-    AND partner IS DISTINCT
-    FROM
-    'Test' -- and white_label_id=4
+    AND partner IS DISTINCT FROM 'Test' -- and white_label_id=4
