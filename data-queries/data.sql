@@ -666,8 +666,12 @@ base_table_1 AS NOT MATERIALIZED (
             ELSE '(blank)'
         END AS request_language_code
     FROM screener_screen AS ss
-    LEFT JOIN data_referrer_codes AS drc1 ON ss.referrer_code = drc1.referrer_code AND ss.white_label_id = drc1.white_label_id
-    LEFT JOIN data_referrer_codes AS drc2 ON ss.referral_source = drc2.referrer_code AND ss.white_label_id = drc2.white_label_id
+    LEFT JOIN
+        data_referrer_codes AS drc1
+        ON ss.referrer_code = drc1.referrer_code AND ss.white_label_id = drc1.white_label_id
+    LEFT JOIN
+        data_referrer_codes AS drc2
+        ON ss.referral_source = drc2.referrer_code AND ss.white_label_id = drc2.white_label_id
     LEFT JOIN latest_eligibility_snapshot_by_screen_id AS lesbsi ON ss.id = lesbsi.screen_id
     LEFT JOIN latest_program_eligibility AS lpe ON lesbsi.latest_snapshot_id = lpe.eligibility_snapshot_id
     LEFT JOIN monthly_income_by_screener_id AS mibsi ON ss.id = mibsi.screen_id
