@@ -1,10 +1,12 @@
 WITH filtered_screeners AS (
     SELECT id FROM analytics.mart_screener_data
-    WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]][[AND {{county}}]][[AND {{utm_campaign}}]][[AND {{utm_medium}}]][[AND {{utm_source}}]]
 ),
+
 total AS (
     SELECT count(*) AS total_screeners FROM filtered_screeners
 ),
+
 monthly_expenses AS (
     SELECT
         e.type AS expense_type,
@@ -21,14 +23,16 @@ monthly_expenses AS (
     INNER JOIN filtered_screeners f ON e.screener_id = f.id
     WHERE e.amount > 0
 ),
+
 expense_data AS (
     SELECT
         expense_type,
         count(DISTINCT screener_id) AS screener_count,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_amount) AS median_amount
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_amount) AS median_amount
     FROM monthly_expenses
     GROUP BY expense_type
 )
+
 SELECT
     CASE expense_type
         WHEN 'rent' THEN 'Rent'
@@ -41,7 +45,7 @@ SELECT
         WHEN 'telephone' THEN 'Telephone'
         ELSE expense_type
     END AS "Type",
-    screener_count::float / NULLIF(t.total_screeners, 0) AS "% of Screeners",
+    screener_count::FLOAT / nullif(t.total_screeners, 0) AS "% of Screeners",
     median_amount AS "Median Amount"
 FROM expense_data, total t
 ORDER BY screener_count DESC

@@ -117,7 +117,7 @@ data "external" "filter_field_ids" {
     database_ids = jsonencode({
       for k, v in var.tenants : k => metabase_database.tenant_postgres[k].id
     })
-    field_names = jsonencode(["partner", "county"])
+    field_names = jsonencode(["partner", "county", "utm_campaign", "utm_medium", "utm_source"])
   }
 }
 
@@ -252,7 +252,7 @@ resource "metabase_card" "tenant_median_annual_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -274,7 +274,7 @@ resource "metabase_card" "tenant_median_monthly_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual / 12.0) AS median FROM analytics.mart_screener_data WHERE non_tax_credit_benefits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -296,7 +296,7 @@ resource "metabase_card" "tenant_median_annual_tax_credits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY tax_credits_annual) AS median FROM analytics.mart_screener_data WHERE tax_credits_annual > 0 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -318,7 +318,7 @@ resource "metabase_card" "tenant_total_individuals" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT COALESCE(SUM(household_size), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT COALESCE(SUM(household_size), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -337,7 +337,7 @@ resource "metabase_card" "tenant_total_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) + COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) + COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -359,7 +359,7 @@ resource "metabase_card" "tenant_total_non_tax_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -381,7 +381,7 @@ resource "metabase_card" "tenant_total_tax_benefits" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = "SELECT COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -404,7 +404,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] GROUP BY submission_date ORDER BY submission_date"
+        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]] GROUP BY submission_date ORDER BY submission_date"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -504,6 +504,52 @@ resource "metabase_card" "tenant_county_values" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native   = { query = "SELECT DISTINCT county FROM analytics.mart_screener_data WHERE county IS NOT NULL AND county <> '' ORDER BY county" }
+    }
+  }))
+}
+
+# Helper cards for UTM filter dropdown values (NC only)
+resource "metabase_card" "tenant_utm_campaign_values" {
+  for_each = { for k, v in var.tenants : k => v if local.tenant_features[k].has_utm_filters }
+
+  json = jsonencode(merge(local.tenant_card_base_config, {
+    name          = "UTM Campaign Values (Filter Helper)"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    display       = "table"
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT DISTINCT utm_campaign FROM analytics.mart_screener_data WHERE utm_campaign IS NOT NULL AND utm_campaign <> '' ORDER BY utm_campaign" }
+    }
+  }))
+}
+
+resource "metabase_card" "tenant_utm_medium_values" {
+  for_each = { for k, v in var.tenants : k => v if local.tenant_features[k].has_utm_filters }
+
+  json = jsonencode(merge(local.tenant_card_base_config, {
+    name          = "UTM Medium Values (Filter Helper)"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    display       = "table"
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT DISTINCT utm_medium FROM analytics.mart_screener_data WHERE utm_medium IS NOT NULL AND utm_medium <> '' ORDER BY utm_medium" }
+    }
+  }))
+}
+
+resource "metabase_card" "tenant_utm_source_values" {
+  for_each = { for k, v in var.tenants : k => v if local.tenant_features[k].has_utm_filters }
+
+  json = jsonencode(merge(local.tenant_card_base_config, {
+    name          = "UTM Source Values (Filter Helper)"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    display       = "table"
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native   = { query = "SELECT DISTINCT utm_source FROM analytics.mart_screener_data WHERE utm_source IS NOT NULL AND utm_source <> '' ORDER BY utm_source" }
     }
   }))
 }
@@ -986,6 +1032,49 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
+    # UTM filters — NC only
+    local.tenant_features[each.key].has_utm_filters ? [
+      {
+        id                 = "utm_campaign_filter"
+        name               = "UTM Campaign"
+        slug               = "utm_campaign"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "card"
+        values_source_config = {
+          card_id     = tonumber(metabase_card.tenant_utm_campaign_values[each.key].id)
+          value_field = ["field", "utm_campaign", { "base-type" = "type/Text" }]
+        }
+      },
+      {
+        id                 = "utm_medium_filter"
+        name               = "UTM Medium"
+        slug               = "utm_medium"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "card"
+        values_source_config = {
+          card_id     = tonumber(metabase_card.tenant_utm_medium_values[each.key].id)
+          value_field = ["field", "utm_medium", { "base-type" = "type/Text" }]
+        }
+      },
+      {
+        id                 = "utm_source_filter"
+        name               = "UTM Source"
+        slug               = "utm_source"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "card"
+        values_source_config = {
+          card_id     = tonumber(metabase_card.tenant_utm_source_values[each.key].id)
+          value_field = ["field", "utm_source", { "base-type" = "type/Text" }]
+        }
+      }
+    ] : [],
+
     # Start/End date filters — shown for tenants with a Google Analytics tab.
     # Using plain date variables instead of field filters to avoid the Metabase BigQuery
     # driver bug that generates `schema.table`.column references BigQuery can't parse.
@@ -1026,23 +1115,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 0
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1053,23 +1149,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key] * 1
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_qualified_for_benefits_pct[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1080,23 +1183,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key] * 2
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_annual_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1107,23 +1217,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key] * 3
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_monthly_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1137,23 +1254,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key] * 4
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1166,23 +1290,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key] * 5
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1197,23 +1328,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 0
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_total_individuals[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_total_individuals[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_total_individuals[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1224,23 +1362,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.alltime_scorecard_width[each.key]
           size_x           = local.alltime_scorecard_width[each.key]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1253,23 +1398,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 8
           size_x           = 4
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1282,23 +1434,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 12
           size_x           = 8
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_total_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_total_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_total_benefits[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1332,23 +1491,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 0
           size_x           = 24
           size_y           = 6
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1362,23 +1528,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = 0
           size_x           = 12
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_top_partners[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_top_partners[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_top_partners[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_top_partners[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -1391,23 +1564,30 @@ resource "metabase_dashboard" "tenant_analytics" {
           col              = local.tenant_features[each.key].has_partners ? 12 : 0
           size_x           = local.tenant_features[each.key].has_partners ? 12 : 24
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_top_counties[each.key].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_top_counties[each.key].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_top_counties[each.key].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_top_counties[each.key].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },

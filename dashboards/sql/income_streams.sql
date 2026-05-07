@@ -1,10 +1,12 @@
 WITH filtered_screeners AS (
     SELECT id FROM analytics.mart_screener_data
-    WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]][[AND {{county}}]][[AND {{utm_campaign}}]][[AND {{utm_medium}}]][[AND {{utm_source}}]]
 ),
+
 total AS (
     SELECT count(*) AS total_screeners FROM filtered_screeners
 ),
+
 monthly_income AS (
     SELECT
         i.type AS income_type,
@@ -15,21 +17,23 @@ monthly_income AS (
             WHEN 'biweekly' THEN i.amount * 2.175
             WHEN 'semimonthly' THEN i.amount * 2
             WHEN 'yearly' THEN i.amount / 12.0
-            WHEN 'hourly' THEN i.amount * COALESCE(i.hours_worked, 0) * 4.35
+            WHEN 'hourly' THEN i.amount * coalesce(i.hours_worked, 0) * 4.35
             ELSE i.amount
         END AS monthly_amount
     FROM analytics.mart_income i
     INNER JOIN filtered_screeners f ON i.screener_id = f.id
     WHERE i.amount > 0
 ),
+
 income_data AS (
     SELECT
         income_type,
         count(DISTINCT screener_id) AS screener_count,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_amount) AS median_amount
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_amount) AS median_amount
     FROM monthly_income
     GROUP BY income_type
 )
+
 SELECT
     CASE income_type
         WHEN 'wages' THEN 'Wages'
@@ -52,7 +56,7 @@ SELECT
         WHEN 'cOWorks' THEN 'CO Works'
         ELSE income_type
     END AS "Type",
-    screener_count::float / NULLIF(t.total_screeners, 0) AS "% of Screeners",
+    screener_count::FLOAT / nullif(t.total_screeners, 0) AS "% of Screeners",
     median_amount AS "Median Amount"
 FROM income_data, total t
 ORDER BY screener_count DESC
