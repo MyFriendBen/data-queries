@@ -36,10 +36,7 @@ WITH base_table_1 AS (
         ss.is_13_or_older,
         ss.last_tax_filing_year,
         ss.zipcode,
-        CASE
-            WHEN REPLACE(LOWER(TRIM(ss.county)), ' ', '') = 'newhanovercounty' THEN 'New Hanover County'
-            ELSE ss.county
-        END AS county,
+        ss.county,
         ss.household_assets,
         -- Language code mapping - matches data.sql exactly
         ss.housing_situation,
