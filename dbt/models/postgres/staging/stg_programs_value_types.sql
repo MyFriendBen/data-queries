@@ -36,4 +36,4 @@ SELECT
 FROM translations_t AS tt
 INNER JOIN translations_tt AS ttt ON tt.translation_id = ttt.master_id
 INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
-    ON tt.label LIKE 'program.' || pp.name_abbreviated || '\_%-%' ESCAPE '\'
+    ON (regexp_match(tt.label, '_([0-9]+)-'))[1]::int = pp.id

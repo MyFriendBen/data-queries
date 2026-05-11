@@ -18,5 +18,6 @@ INNER JOIN {{ source('django_apps', 'screener_screen') }} AS scr
 INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
     ON
         pe.name_abbreviated = pp.name_abbreviated
+        AND scr.white_label_id = pp.white_label_id
 WHERE pe.eligible = TRUE
 GROUP BY pe.eligibility_snapshot_id, pe.name_abbreviated, pe.name, pe.value_type, scr.white_label_id
