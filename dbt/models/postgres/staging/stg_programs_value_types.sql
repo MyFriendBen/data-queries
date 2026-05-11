@@ -35,5 +35,4 @@ SELECT
     pp.white_label_id
 FROM translations_t AS tt
 INNER JOIN translations_tt AS ttt ON tt.translation_id = ttt.master_id
-INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
-    ON (regexp_match(tt.label, '_([0-9]+)-'))[1]::int = pp.id
+INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp ON tt.translation_id = pp.value_type_id
