@@ -117,7 +117,7 @@ resource "metabase_collection_graph" "graph" {
 #
 # Rules:
 #   - All Users (1)       → no query access to any database (baseline deny for everyone)
-#   - Global group        → full query access (query-builder-and-native) to all databases
+#   - Global group        → full query access (query-builder-and-native) to all managed databases; no access to unmanaged databases
 #   - Tenant viewer group → query-builder access to their own tenant DB only; no access elsewhere
 #   - Tenant editor group → same as viewer group (write collection access ≠ elevated DB access)
 #
