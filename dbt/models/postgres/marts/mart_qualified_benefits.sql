@@ -7,7 +7,8 @@
 }}
 
 SELECT
-    pe.name AS benefit,
+    MAX(pe.name) AS benefit,
+    pe.name_abbreviated,
     COUNT(DISTINCT msd.id) AS count,
     msd.white_label_id,
     msd.partner,
@@ -19,7 +20,7 @@ INNER JOIN {{ ref('stg_program_eligibility') }} AS pe
         AND pe.annual_value > 0
         AND msd.white_label_id = pe.white_label_id
 GROUP BY
-    pe.name,
+    pe.name_abbreviated,
     msd.white_label_id,
     msd.partner,
     msd.county

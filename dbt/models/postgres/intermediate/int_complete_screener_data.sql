@@ -287,7 +287,7 @@ benefit_aggregates AS (
         ) AS tax_credits_annual,
         sum(
             CASE
-                WHEN pe.value_type <> 'tax_credit' AND pe.value_type IS NOT NULL
+                WHEN pe.value_type IS DISTINCT FROM 'tax_credit'
                     THEN pe.annual_value
                 ELSE 0
             END
@@ -315,4 +315,3 @@ WHERE
     AND is_test = FALSE
     AND is_test_data = FALSE
     AND partner IS DISTINCT FROM 'Test'
-    -- and white_label_id=4

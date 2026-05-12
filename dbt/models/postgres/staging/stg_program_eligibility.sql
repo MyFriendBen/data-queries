@@ -1,6 +1,6 @@
 {{ config(
     materialized='view',
-    description='Program eligibility aggregated by snapshot — one row per eligibility_snapshot_id × name_abbreviated, filtered to only programs configured for the screen white label. Prevents cross-WL contamination for programs with shared name_abbreviated values (e.g. ctc, lifeline).'
+    description='Program eligibility aggregated by snapshot — one row per eligibility_snapshot_id × name_abbreviated. white_label_id is sourced from screener_screen via the eligibility snapshot chain. No join to programs_program: the snapshot rows are already correctly scoped per-screen at eligibility run time, so cross-WL contamination is not possible, and joining to programs_program would silently drop historical rows whenever a program is renamed, deleted, or reassigned.'
 ) }}
 
 SELECT
@@ -15,9 +15,5 @@ INNER JOIN {{ source('django_apps', 'screener_eligibilitysnapshot') }} AS es
     ON pe.eligibility_snapshot_id = es.id
 INNER JOIN {{ source('django_apps', 'screener_screen') }} AS scr
     ON es.screen_id = scr.id
-INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
-    ON
-        pe.name_abbreviated = pp.name_abbreviated
-        AND scr.white_label_id = pp.white_label_id
 WHERE pe.eligible = TRUE
 GROUP BY pe.eligibility_snapshot_id, pe.name_abbreviated, pe.name, pe.value_type, scr.white_label_id
