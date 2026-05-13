@@ -98,7 +98,7 @@ Work through this checklist with the person taking over the project **before the
 - [ ] **Metabase admin email/password** (production) — stored in 1Password
 - [ ] **`metabase-bigquery-key.json`** — service account key for Metabase BigQuery access (stored as `BIGQUERY_SA_KEY` GitHub secret)
 - [ ] **Terraform Cloud API token** — stored as `TF_API_TOKEN` GitHub secret
-- [ ] **Heroku team/account ownership** — ensure new owner is a collaborator or team member on all three Heroku apps
+- [ ] **Heroku team/account ownership** — ensure new owner is a collaborator or team member on both Heroku apps
 
 ---
 
@@ -108,7 +108,7 @@ Work through this checklist with the person taking over the project **before the
 |------|-------------|
 | **GA4 property admin** | MFB team (`caton@myfriendben.org`) |
 | **`mfb-data` GCP project owner** | MFB team |
-| **Heroku apps** | `mfb-metabase-production` |
+| **Heroku apps** | `mfb-metabase-production` (dashboards), `cobenefits-api` (Django DB — RLS user management) |
 | **Terraform Cloud org** | `MyFriendBen`, workspace `mfb-dashboards-production` |
 | **GitHub repo** | `MyFriendBen/data-queries` |
 
