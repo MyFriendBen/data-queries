@@ -72,16 +72,19 @@ locals {
     "show_mini_bar" = true
   }
 
+  # Hierarchy note rendered next to the summary metric cards.
+  summary_metrics_note = "**Total Benefits** equals the sum of **Tax Benefits** and **Non-Tax Benefits**."
+
   # Per-tenant feature flags — controls which cards appear on shared dashboard tabs.
   # Add a new tenant here instead of scattering tenant-key conditionals across layout files.
   tenant_features = {
-    nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
-    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
-    tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
-    il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
-    ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
-    cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false }
-    co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true }
+    nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = true }
+    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
+    tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
+    il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
+    ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
+    cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false, has_summary_metrics = false }
+    co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
   }
 
   # All available dashboard tabs with fixed IDs — per tenant so names can vary
@@ -89,8 +92,7 @@ locals {
   all_tabs = {
     for k, v in var.tenants : k => {
       google_analytics           = { id = 1, name = "Google Analytics" }
-      all_time                   = { id = 2, name = "All-Time Performance" }
-      last_30_days               = { id = 3, name = "Last 30 Days Performance" }
+      all_time                   = { id = 2, name = "Overall Performance" }
       households                 = { id = 4, name = "Households" }
       benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "Benefits & Immediate Needs" : "Benefits" }
       cesn_homeowners_vs_renters = { id = 6, name = "Homeowners vs Renters" }
@@ -99,13 +101,13 @@ locals {
 
   # Per-tenant tab selection — order determines tab display order
   tenant_tabs = {
-    nc                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    co                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    tx                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    il                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    ma                = ["all_time", "last_30_days", "households", "benefits_needs", "google_analytics"]
-    cesn              = ["all_time", "last_30_days", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics"]
-    co_tax_calculator = ["all_time", "last_30_days", "households", "benefits_needs"]
+    nc                = ["all_time", "households", "benefits_needs", "google_analytics"]
+    co                = ["all_time", "households", "benefits_needs", "google_analytics"]
+    tx                = ["all_time", "households", "benefits_needs", "google_analytics"]
+    il                = ["all_time", "households", "benefits_needs", "google_analytics"]
+    ma                = ["all_time", "households", "benefits_needs", "google_analytics"]
+    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics"]
+    co_tax_calculator = ["all_time", "households", "benefits_needs"]
   }
 
   # Helper: quick lookup — local.tenant_has_tab["co"]["households"] → true

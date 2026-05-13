@@ -130,7 +130,51 @@ SELECT
     sum(CASE WHEN name_abbreviated = 'cesn_poipp' THEN estimated_value ELSE 0 END) AS cesn_poipp_annual,
     sum(CASE WHEN name_abbreviated = 'cesn_ubp' THEN estimated_value ELSE 0 END) AS cesn_ubp_annual,
     sum(CASE WHEN name_abbreviated = 'cesn_xceleap' THEN estimated_value ELSE 0 END) AS cesn_xceleap_annual,
-    sum(CASE WHEN name_abbreviated = 'cesn_xcelgap' THEN estimated_value ELSE 0 END) AS cesn_xcelgap_annual
+    sum(CASE WHEN name_abbreviated = 'cesn_xcelgap' THEN estimated_value ELSE 0 END) AS cesn_xcelgap_annual,
+    -- Texas programs
+    sum(CASE WHEN name_abbreviated = 'tx_aca' THEN estimated_value ELSE 0 END) AS tx_aca_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_ccad' THEN estimated_value ELSE 0 END) AS tx_ccad_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_ccs' THEN estimated_value ELSE 0 END) AS tx_ccs_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_chip' THEN estimated_value ELSE 0 END) AS tx_chip_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_csfp' THEN estimated_value ELSE 0 END) AS tx_csfp_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_ctc' THEN estimated_value ELSE 0 END) AS tx_ctc_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_dart' THEN estimated_value ELSE 0 END) AS tx_dart_annual,
+    sum(
+        CASE WHEN name_abbreviated = 'tx_early_head_start' THEN estimated_value ELSE 0 END
+    ) AS tx_early_head_start_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_eitc' THEN estimated_value ELSE 0 END) AS tx_eitc_annual,
+    sum(
+        CASE WHEN name_abbreviated = 'tx_emergency_medicaid' THEN estimated_value ELSE 0 END
+    ) AS tx_emergency_medicaid_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_fpp' THEN estimated_value ELSE 0 END) AS tx_fpp_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_harris_rides' THEN estimated_value ELSE 0 END) AS tx_harris_rides_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_head_start' THEN estimated_value ELSE 0 END) AS tx_head_start_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_hse' THEN estimated_value ELSE 0 END) AS tx_hse_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_lifeline' THEN estimated_value ELSE 0 END) AS tx_lifeline_annual,
+    sum(
+        CASE WHEN name_abbreviated = 'tx_medicaid_for_children' THEN estimated_value ELSE 0 END
+    ) AS tx_medicaid_for_children_annual,
+    sum(
+        CASE
+            WHEN name_abbreviated = 'tx_medicaid_for_parents_and_caretakers'
+                THEN estimated_value
+            ELSE 0
+        END
+    ) AS tx_medicaid_for_parents_and_caretakers_annual,
+    sum(
+        CASE WHEN name_abbreviated = 'tx_medicaid_for_pregnant_women' THEN estimated_value ELSE 0 END
+    ) AS tx_medicaid_for_pregnant_women_annual,
+    sum(
+        CASE WHEN name_abbreviated = 'tx_medicare_savings_program' THEN estimated_value ELSE 0 END
+    ) AS tx_medicare_savings_program_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_nslp' THEN estimated_value ELSE 0 END) AS tx_nslp_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_snap' THEN estimated_value ELSE 0 END) AS tx_snap_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_ssi' THEN estimated_value ELSE 0 END) AS tx_ssi_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_ssdi' THEN estimated_value ELSE 0 END) AS tx_ssdi_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_tanf' THEN estimated_value ELSE 0 END) AS tx_tanf_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_wap' THEN estimated_value ELSE 0 END) AS tx_wap_annual,
+    sum(CASE WHEN name_abbreviated = 'tx_wic' THEN estimated_value ELSE 0 END) AS tx_wic_annual,
+    sum(CASE WHEN name_abbreviated = 'trump_account' THEN estimated_value ELSE 0 END) AS trump_account_annual
 FROM {{ source('django_apps', 'screener_programeligibilitysnapshot') }}
 WHERE eligible = TRUE
 GROUP BY eligibility_snapshot_id

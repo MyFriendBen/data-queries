@@ -190,7 +190,7 @@ locals {
     co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
 
-  # Scorecard counts for All-Time / Last 30 Days top row:
+  # Scorecard counts for Overall Performance top row:
   # with tax credits: Completed Screeners, Qualified for Benefits %, Median Annual Benefits,
   #                   Median Monthly Benefits, Qualified for Tax Credits %, Median Annual Tax Credits = 6
   # without tax credits: first 4 only
@@ -307,6 +307,91 @@ resource "metabase_card" "tenant_median_annual_tax_credits" {
   }))
 }
 
+# Tenant-specific summary metric: Total Individuals (sum of household_size)
+resource "metabase_card" "tenant_total_individuals" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Total Individuals"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = "SELECT COALESCE(SUM(household_size), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = { "scalar.field" = "total" }
+  }))
+}
+
+# Tenant-specific summary metric: Total Benefits (non-tax + tax annual)
+resource "metabase_card" "tenant_total_benefits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Total Benefits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) + COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = {
+      "scalar.field"    = "total"
+      "column_settings" = { "[\"name\",\"total\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
+# Tenant-specific summary metric: Non-Tax Benefits (sum of non_tax_credit_benefits_annual)
+resource "metabase_card" "tenant_total_non_tax_benefits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Non-Tax Benefits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = "SELECT COALESCE(SUM(non_tax_credit_benefits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = {
+      "scalar.field"    = "total"
+      "column_settings" = { "[\"name\",\"total\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
+# Tenant-specific summary metric: Tax Benefits (sum of tax_credits_annual)
+resource "metabase_card" "tenant_total_tax_benefits" {
+  for_each = var.tenants
+
+  json = jsonencode(merge(local.tenant_scorecard_config, {
+    name          = "Tax Benefits"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = "SELECT COALESCE(SUM(tax_credits_annual), 0) AS total FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = {
+      "scalar.field"    = "total"
+      "column_settings" = { "[\"name\",\"total\"]" = local.currency_format_0 }
+    }
+  }))
+}
+
 # Tenant-specific daily screeners bar chart (last 7 days)
 resource "metabase_card" "tenant_daily_screeners_7d" {
   for_each = var.tenants
@@ -319,7 +404,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE submission_date >= CURRENT_DATE - INTERVAL '6 days' [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] GROUP BY submission_date ORDER BY submission_date"
+        query           = "SELECT submission_date, count(*) AS screeners FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] GROUP BY submission_date ORDER BY submission_date"
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -431,15 +516,14 @@ resource "metabase_dashboard" "analytics" {
   collection_position = 1
 
   tabs_json = jsonencode([
-    { id = 1, name = "All-Time Performance" },
-    { id = 2, name = "Last 30 Days Performance" },
-    { id = 3, name = "Households" },
-    { id = 4, name = "Benefits & Immediate Needs" },
+    { id = 1, name = "Overall Performance" },
+    { id = 2, name = "Households" },
+    { id = 3, name = "Benefits & Immediate Needs" },
   ])
 
   cards_json = jsonencode(concat(
     # -------------------------------------------------------------------------
-    # Tab 1: All-Time Performance
+    # Tab 1: Overall Performance
     # -------------------------------------------------------------------------
     [
       # Row 0: 6 scorecards (4 cols each = 24 total)
@@ -546,120 +630,13 @@ resource "metabase_dashboard" "analytics" {
       },
     ],
     # -------------------------------------------------------------------------
-    # Tab 2: Last 30 Days Performance
-    # -------------------------------------------------------------------------
-    [
-      # Row 0: 6 scorecards
-      {
-        card_id                = tonumber(metabase_card.global_completed_screeners_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 0
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_qualified_for_benefits_pct_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 4
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_median_annual_benefits_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 8
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_median_monthly_benefits_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 12
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_qualified_for_tax_creds_pct_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 16
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_median_annual_tax_credits_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 0
-        col                    = 20
-        size_x                 = 4
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # Row 4: Bar chart
-      {
-        card_id                = tonumber(metabase_card.global_daily_screeners_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 4
-        col                    = 0
-        size_x                 = 24
-        size_y                 = 6
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # Row 10: Two tables side-by-side
-      {
-        card_id                = tonumber(metabase_card.global_top_partners_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 10
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_top_counties_30d.id)
-        dashboard_tab_id       = 2
-        row                    = 10
-        col                    = 12
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-    ],
-    # -------------------------------------------------------------------------
-    # Tab 3: Households
+    # Tab 2: Households
     # -------------------------------------------------------------------------
     [
       # Row 0: 6 scorecards
       {
         card_id                = tonumber(metabase_card.global_completed_screeners.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 0
         size_x                 = 4
@@ -670,7 +647,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_median_household_size.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 4
         size_x                 = 4
@@ -681,7 +658,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_median_household_assets.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 8
         size_x                 = 4
@@ -692,7 +669,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_median_annual_income.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 12
         size_x                 = 4
@@ -703,7 +680,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_median_monthly_income.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 16
         size_x                 = 4
@@ -714,7 +691,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_median_monthly_expenses.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 0
         col                    = 20
         size_x                 = 4
@@ -726,7 +703,7 @@ resource "metabase_dashboard" "analytics" {
       # Row 4: Text block + age distribution charts
       {
         card_id            = null
-        dashboard_tab_id   = 3
+        dashboard_tab_id   = 2
         row                = 4
         col                = 0
         size_x             = 6
@@ -745,7 +722,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_head_of_household_ages.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 4
         col                    = 6
         size_x                 = 9
@@ -756,7 +733,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_household_member_ages.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 4
         col                    = 15
         size_x                 = 9
@@ -768,7 +745,7 @@ resource "metabase_dashboard" "analytics" {
       # Row 12: Household sizes + languages
       {
         card_id                = tonumber(metabase_card.global_household_sizes.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 12
         col                    = 0
         size_x                 = 12
@@ -779,7 +756,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_household_languages.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 12
         col                    = 12
         size_x                 = 12
@@ -791,7 +768,7 @@ resource "metabase_dashboard" "analytics" {
       # Row 20: Text block + income/assets distributions
       {
         card_id            = null
-        dashboard_tab_id   = 3
+        dashboard_tab_id   = 2
         row                = 20
         col                = 0
         size_x             = 6
@@ -810,7 +787,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_household_income_distribution.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 20
         col                    = 6
         size_x                 = 9
@@ -821,7 +798,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_household_assets_distribution.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 20
         col                    = 15
         size_x                 = 9
@@ -833,7 +810,7 @@ resource "metabase_dashboard" "analytics" {
       # Row 28: Income streams + expenses tables
       {
         card_id                = tonumber(metabase_card.global_income_streams.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 28
         col                    = 0
         size_x                 = 12
@@ -844,7 +821,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_common_expenses.id)
-        dashboard_tab_id       = 3
+        dashboard_tab_id       = 2
         row                    = 28
         col                    = 12
         size_x                 = 12
@@ -855,12 +832,12 @@ resource "metabase_dashboard" "analytics" {
       },
     ],
     # -------------------------------------------------------------------------
-    # Tab 4: Benefits & Immediate Needs
+    # Tab 3: Benefits & Immediate Needs
     # -------------------------------------------------------------------------
     [
       {
         card_id            = null
-        dashboard_tab_id   = 4
+        dashboard_tab_id   = 3
         row                = 0
         col                = 0
         size_x             = 24
@@ -879,7 +856,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_completed_screeners.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 2
         col                    = 0
         size_x                 = 6
@@ -890,7 +867,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_already_had_benefits_pct.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 2
         col                    = 6
         size_x                 = 6
@@ -901,7 +878,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_qualified_for_benefits_pct.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 2
         col                    = 12
         size_x                 = 6
@@ -912,7 +889,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_qualified_for_tax_creds_pct.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 2
         col                    = 18
         size_x                 = 6
@@ -923,7 +900,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_current_benefits_table.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 6
         col                    = 0
         size_x                 = 12
@@ -934,7 +911,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_qualified_benefits_table.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 6
         col                    = 12
         size_x                 = 12
@@ -945,7 +922,7 @@ resource "metabase_dashboard" "analytics" {
       },
       {
         card_id                = tonumber(metabase_card.global_immediate_needs_table.id)
-        dashboard_tab_id       = 4
+        dashboard_tab_id       = 3
         row                    = 14
         col                    = 0
         size_x                 = 12
@@ -970,7 +947,6 @@ resource "metabase_dashboard" "tenant_analytics" {
   parameters_json = jsonencode(concat(
     (
       local.tenant_has_tab[each.key]["households"] ||
-      local.tenant_has_tab[each.key]["last_30_days"] ||
       local.tenant_has_tab[each.key]["benefits_needs"]
       ) ? [
       {
@@ -1038,10 +1014,10 @@ resource "metabase_dashboard" "tenant_analytics" {
   cards_json = jsonencode(concat(
     # Tab 1: Google Analytics
     local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
-    # Tab 2: All-Time Performance (full layout with partner filter, or simple screen count)
-    # Tab 2: All-Time Performance
-    # flatten(concat(...)) lets us conditionally include CESN-excluded cards
-    local.tenant_has_tab[each.key]["households"] ? flatten(concat(
+    # Tab 2: Overall Performance
+    # Two for-loop flattens avoid Terraform's static ternary type-check
+    flatten([for k in [each.key] : flatten(concat(
+      # Row 0: Performance scorecards
       [
         {
           card_id          = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
@@ -1211,11 +1187,148 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ] : [],
+      # Row 4: Summary metrics — TI (col 0) | Non-Tax (col 4) | Tax (col 8) | Total Benefits (col 12, 8×4) | Note (col 20).
+      # Keep cards ordered by (row, col) — terraform apply errors with "Provider produced inconsistent result" otherwise.
+      local.tenant_features[each.key].has_summary_metrics ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+          dashboard_tab_id = 2
+          row              = 4
+          col              = 0
+          size_x           = local.alltime_scorecard_width[each.key]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_total_individuals[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 4
+          col              = local.alltime_scorecard_width[each.key]
+          size_x           = local.alltime_scorecard_width[each.key]
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      local.tenant_features[each.key].has_summary_metrics && local.tenant_features[each.key].has_tax_credits ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 4
+          col              = 8
+          size_x           = 4
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_total_tax_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      local.tenant_features[each.key].has_summary_metrics && local.tenant_features[each.key].has_tax_credits ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+          dashboard_tab_id = 2
+          row              = 4
+          col              = 12
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_total_benefits[each.key].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      local.tenant_features[each.key].has_summary_metrics && local.tenant_features[each.key].has_tax_credits ? [
+        {
+          card_id            = null
+          dashboard_tab_id   = 2
+          row                = 4
+          col                = 20
+          size_x             = 4
+          size_y             = 4
+          parameter_mappings = []
+          series             = []
+          visualization_settings = {
+            virtual_card = {
+              name                   = null
+              dataset_query          = {}
+              display                = "text"
+              visualization_settings = {}
+            }
+            text = local.summary_metrics_note
+          }
+        },
+      ] : [],
       [
         {
           card_id          = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
           dashboard_tab_id = 2
-          row              = 4
+          row              = local.tenant_features[each.key].has_summary_metrics ? 8 : 4
           col              = 0
           size_x           = 24
           size_y           = 6
@@ -1245,7 +1358,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         {
           card_id          = tonumber(metabase_card.tenant_top_partners[each.key].id)
           dashboard_tab_id = 2
-          row              = 10
+          row              = local.tenant_features[each.key].has_summary_metrics ? 14 : 10
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1274,7 +1387,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         {
           card_id          = tonumber(metabase_card.tenant_top_counties[each.key].id)
           dashboard_tab_id = 2
-          row              = 10
+          row              = local.tenant_features[each.key].has_summary_metrics ? 14 : 10
           col              = local.tenant_features[each.key].has_partners ? 12 : 0
           size_x           = local.tenant_features[each.key].has_partners ? 12 : 24
           size_y           = 8
@@ -1299,9 +1412,11 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ],
-      )) : [
+    )) if local.tenant_has_tab[k]["households"]]),
+    # Tab 2: fallback for tenants without the households tab
+    flatten([for k in [each.key] : [
       {
-        card_id                = tonumber(metabase_card.tenant_screen_count[each.key].id)
+        card_id                = tonumber(metabase_card.tenant_screen_count[k].id)
         dashboard_tab_id       = 2
         row                    = 0
         col                    = 0
@@ -1311,10 +1426,8 @@ resource "metabase_dashboard" "tenant_analytics" {
         series                 = []
         visualization_settings = {}
       }
-    ],
-    # Tab 3: Last 30 Days Performance
-    local.tenant_has_tab[each.key]["last_30_days"] ? local.tenant_dashboard_last_30_days_layout[each.key] : [],
-    # Tab 4: Households (flatten+for avoids the conditional type mismatch
+    ] if !local.tenant_has_tab[k]["households"]]),
+    # Tab 3: Households (flatten+for avoids the conditional type mismatch
     # between the mixed text/data tuple and an empty list)
     flatten([for k in [each.key] : local.tenant_dashboard_households_data_layout[k] if local.tenant_has_tab[k]["households"]]),
     # Tab 5: Benefits & Immediate Needs (all tenants)
