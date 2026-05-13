@@ -123,6 +123,7 @@ jobs:
           echo "safe=true" >> "$GITHUB_OUTPUT"
 
       - name: Upload destroy plan as artifact
+        if: always() && hashFiles('dashboards/destroy-preview.txt') != ''
         uses: actions/upload-artifact@v4
         with:
           name: destroy-plan
