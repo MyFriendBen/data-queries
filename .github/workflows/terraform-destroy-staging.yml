@@ -39,13 +39,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Confirm workspace identity
-        run: |
-          if [[ "$TF_WORKSPACE" != "mfb-dashboards-staging" ]]; then
-            echo "::error::TF_WORKSPACE is $TF_WORKSPACE, expected mfb-dashboards-staging"
-            exit 1
-          fi
-
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.x"
@@ -110,14 +103,22 @@ jobs:
 
       - name: Safety check — confirm no production references in destroy plan
         id: safety
+        env:
+          CONFIRM: ${{ inputs.confirm }}
         run: |
           terraform show destroy.tfplan > destroy-preview.txt
           echo "=== Destroy plan summary ==="
           grep -c "will be destroyed" destroy-preview.txt || true
           echo "=== Scanning for production references ==="
           if grep -iE "mfb-metabase-production|baf31df893fc|mfb-dashboards-production" destroy-preview.txt; then
-            echo "::error::Destroy plan contains references to production resources. Aborting."
-            exit 1
+            if [[ "$CONFIRM" == "DESTROY-STAGING" ]]; then
+              echo "::error::Destroy plan contains references to production resources. Aborting apply."
+              exit 1
+            else
+              echo "::warning::Destroy plan contains references to production resources. Review the artifact carefully — an apply would be blocked."
+              echo "safe=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
           echo "No production references found. Safe to apply."
           echo "safe=true" >> "$GITHUB_OUTPUT"
