@@ -15,6 +15,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: read
+
 jobs:
   destroy:
     runs-on: ubuntu-latest
@@ -36,11 +39,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Confirm workspace identity
+        run: |
+          if [[ "$TF_WORKSPACE" != "mfb-dashboards-staging" ]]; then
+            echo "::error::TF_WORKSPACE is $TF_WORKSPACE, expected mfb-dashboards-staging"
+            exit 1
+          fi
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.x"
           terraform_wrapper: false
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Authenticate to Google Cloud
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: |
+          echo '${{ secrets.BIGQUERY_SA_KEY }}' > ${{ github.workspace }}/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/gcp-key.json" >> "$GITHUB_ENV"
 
       - name: Build Terraform credential JSON variables
         run: |
@@ -93,6 +109,7 @@ jobs:
         run: terraform plan -destroy -out=destroy.tfplan
 
       - name: Safety check — confirm no production references in destroy plan
+        id: safety
         run: |
           terraform show destroy.tfplan > destroy-preview.txt
           echo "=== Destroy plan summary ==="
@@ -103,6 +120,7 @@ jobs:
             exit 1
           fi
           echo "No production references found. Safe to apply."
+          echo "safe=true" >> "$GITHUB_OUTPUT"
 
       - name: Upload destroy plan as artifact
         uses: actions/upload-artifact@v4
@@ -112,7 +130,7 @@ jobs:
           retention-days: 30
 
       - name: Terraform Apply (destroy)
-        if: ${{ inputs.confirm == 'DESTROY-STAGING' }}
+        if: ${{ inputs.confirm == 'DESTROY-STAGING' && steps.safety.outputs.safe == 'true' }}
         run: terraform apply destroy.tfplan
 
       - name: Plan-only notice
