@@ -1,5 +1,7 @@
 # Deployment Plan: dbt + Metabase to Production
 
+> **Historical document** — the staging environment was removed in [MFB-962](https://linear.app/myfriendben/issue/MFB-962). References to staging below reflect the original bring-up and are retained for context on why production looks the way it does.
+
 ## Overview
 
 Move from a fully local setup (Docker Compose Metabase, local dbt runs, Terraform against localhost) to a production environment where stakeholders can access dashboards and data refreshes automatically.

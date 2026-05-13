@@ -6,13 +6,6 @@ on:
     - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Target environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
       full_refresh:
         description: "Run dbt build with --full-refresh"
         required: false
@@ -20,35 +13,13 @@ on:
         default: false
 
 jobs:
-  set-environments:
-    runs-on: ubuntu-latest
-    outputs:
-      environments: ${{ steps.envs.outputs.environments }}
-    steps:
-      - id: envs
-        run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            echo 'environments=["staging","production"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'environments=["${{ github.event.inputs.environment }}"]' >> "$GITHUB_OUTPUT"
-          fi
-
   dbt-build:
-    needs: set-environments
-    # Production runs only allowed from main branch
-    if: >-
-      github.event_name != 'workflow_dispatch'
-      || github.event.inputs.environment != 'production'
-      || github.ref == 'refs/heads/main'
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: ${{ fromJSON(needs.set-environments.outputs.environments) }}
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment }}
+    environment: production
     defaults:
       run:
         working-directory: dbt
@@ -163,7 +134,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dbt-artifacts-${{ matrix.environment }}
+          name: dbt-artifacts-production
           path: |
             dbt/target/manifest.json
             dbt/target/run_results.json
