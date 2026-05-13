@@ -379,7 +379,7 @@ terraform apply
 
 **Notes:** 
 - If you see a 400 `nil view-data` error during `terraform apply` after a manually created group exists in Metabase, delete that group from the Metabase UI and re-run apply. This is a provider bug where `ignored_groups` does not correctly preserve unmanaged group permissions during write operations.
-- **Never use `terraform destroy` in staging or production.** It deletes all dashboards, cards, collections, and groups — breaking existing user bookmarks, saved URLs, and any manual UI configuration not managed by Terraform. For staging/production, always use the surgical approach: fix the issue in the Metabase UI, re-import affected resources, and run `terraform apply`.
+- **Never use `terraform destroy` in production.** It deletes all dashboards, cards, collections, and groups — breaking existing user bookmarks, saved URLs, and any manual UI configuration not managed by Terraform. In production, always use the surgical approach: fix the issue in the Metabase UI, re-import affected resources, and run `terraform apply`.
 
 ### Switching Branches
 
