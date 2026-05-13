@@ -39,6 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Assert workspace is staging
+        run: |
+          if [[ "$TF_WORKSPACE" != *staging* ]]; then
+            echo "::error::TF_WORKSPACE does not look like a staging workspace: $TF_WORKSPACE"
+            exit 1
+          fi
+
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.x"
