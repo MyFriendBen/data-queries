@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type DESTROY-STAGING to apply. Leave blank for plan-only.'
+        description: "Type DESTROY-STAGING to apply. Leave blank for plan-only."
         required: false
-        default: ''
+        default: ""
 
 permissions:
   contents: read
