@@ -15,7 +15,7 @@ models:
           - not_null
 
       - name: benefit
-        description: "Canonical display name for the benefit program (global MAX across all snapshots, language-independent)"
+        description: "English (en-us) display name for the benefit program, scoped to the white label. Falls back to name_abbreviated if no English translation exists."
         tests:
           - not_null
 
