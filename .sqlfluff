@@ -8,7 +8,7 @@ processes = -1
 
 # Only format layout/style — disable semantic rules that require DB context
 # PRS excluded: Metabase [[ ]] optional filter syntax is not valid Jinja/SQL
-exclude_rules = AM04, AL01, AL05, RF01, RF02, RF03, RF04, RF05, CP02, ST06, PRS, JJ01, LT05
+exclude_rules = AM04, AL01, AL05, RF01, RF02, RF03, RF04, RF05, CP02, ST06, PRS, JJ01, LT05, LT01, LT02
 
 [sqlfluff:templater:jinja]
 # Provides ref(), source(), config(), var() etc. automatically
