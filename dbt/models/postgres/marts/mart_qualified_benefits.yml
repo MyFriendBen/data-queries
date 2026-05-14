@@ -15,11 +15,16 @@ models:
           - not_null
 
       - name: benefit
-        description: "Benefit category name"
+        description: "English (en-us) display name for the benefit program, scoped to the white label. Falls back to name_abbreviated if no English translation exists."
+        tests:
+          - not_null
+
+      - name: name_abbreviated
+        description: "Language-agnostic program identifier (e.g. 'snap', 'wic'). Use this for grouping instead of benefit to avoid translation duplicates."
         tests:
           - not_null
 
       - name: count
-        description: "Value indicating if a user qualified for the corresponding benefit (1 for true, 0 for false in the source mart, here summed up)"
+        description: "Number of distinct screeners that qualified for this benefit in the given partner/county group"
         tests:
           - not_null
