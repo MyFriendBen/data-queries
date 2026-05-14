@@ -16,12 +16,12 @@ permissions:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     defaults:
       run:
         working-directory: dashboards
     env:
-      TF_WORKSPACE: mfb-dashboards-staging
+      TF_WORKSPACE: mfb-dashboards-production
       TF_VAR_metabase_url: ${{ vars.METABASE_URL }}
       TF_VAR_metabase_admin_email: ${{ vars.METABASE_ADMIN_EMAIL }}
       TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
@@ -129,7 +129,7 @@ jobs:
 
             </details>
 
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Environment: \`staging\`*`;
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Environment: \`production\`*`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,

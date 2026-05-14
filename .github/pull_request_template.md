@@ -24,11 +24,10 @@
 ## Deployment
 
 <!--
-Merging to main automatically applies Terraform changes to Staging.
-Production Terraform and Metabase container deployments require manual steps — note them here.
+Merging to main automatically applies Terraform changes to production.
+Metabase container rebuilds and out-of-band dbt runs require manual steps — note them here.
 -->
 
-- [ ] Production Terraform apply needed: yes / no
 - [ ] Metabase container rebuild/redeploy needed: yes / no
 - [ ] dbt production run needed (outside nightly cron): yes / no
 - [ ] Other post-deployment steps:

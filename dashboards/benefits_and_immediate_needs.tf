@@ -294,9 +294,43 @@ locals {
         visualization_settings = {}
       }] : [],
       [{
-        card_id          = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+        card_id          = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
         dashboard_tab_id = 5
         row              = 4
+        col              = 0
+        size_x           = 24
+        size_y           = 10
+        parameter_mappings = concat(
+          [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ],
+          local.tenant_features[k].has_utm_filters ? [
+            { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+            { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+            { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+          ] : []
+        )
+        series                 = []
+        visualization_settings = {}
+      }],
+      [{
+        card_id          = tonumber(metabase_card.tenant_current_benefits_table[k].id)
+        dashboard_tab_id = 5
+        row              = 15
         col              = 0
         size_x           = 12
         size_y           = 10
@@ -327,45 +361,11 @@ locals {
         series                 = []
         visualization_settings = {}
       }],
-      [{
-        card_id          = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-        dashboard_tab_id = 5
-        row              = 4
-        col              = 12
-        size_x           = 12
-        size_y           = 10
-        parameter_mappings = concat(
-          [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_qualified_benefits_table[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ],
-          local.tenant_features[k].has_utm_filters ? [
-            { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
-            { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
-            { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_qualified_benefits_table[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
-          ] : []
-        )
-        series                 = []
-        visualization_settings = {}
-      }],
       local.tenant_features[k].has_immediate_needs ? [{
         card_id          = tonumber(metabase_card.tenant_immediate_needs_table[k].id)
         dashboard_tab_id = 5
-        row              = 12
-        col              = 0
+        row              = 15
+        col              = 12
         size_x           = 12
         size_y           = 10
         parameter_mappings = concat(
