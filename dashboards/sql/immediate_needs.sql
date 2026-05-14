@@ -1,11 +1,26 @@
-WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]),
-filter_keys AS (SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]])
+-- Immediate needs table: tie aggregated need rows to the same screener population as totals.
+-- Uses EXISTS instead of DISTINCT + INNER JOIN so (partner, county) pairs with NULL county
+-- still match Metabase filters and never drop rows when county is unset (MFB-998).
+WITH totals AS (
+    SELECT count(*) AS total_count
+    FROM analytics.mart_screener_data
+    WHERE 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+)
 SELECT
-    n.benefit as "Need Category",
-    SUM(n.count) as "# of Screeners",
-    SUM(n.count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
-FROM analytics.mart_immediate_needs n
-INNER JOIN filter_keys fk ON n.partner IS NOT DISTINCT FROM fk.partner AND n.county IS NOT DISTINCT FROM fk.county
-CROSS JOIN totals t
+    n.benefit AS "Need Category",
+    SUM(n.count) AS "# of Screeners",
+    SUM(n.count)::float / NULLIF(MAX(t.total_count), 0) AS "% of Screeners"
+FROM analytics.mart_immediate_needs AS n
+CROSS JOIN totals AS t
+WHERE EXISTS (
+    SELECT 1
+    FROM analytics.mart_screener_data AS s
+    WHERE s.partner IS NOT DISTINCT FROM n.partner
+      AND s.county IS NOT DISTINCT FROM n.county
+      AND 1 = 1
+      [[AND {{submission_date}}]]
+      [[AND {{partner}}]]
+      [[AND {{county}}]]
+)
 GROUP BY n.benefit
 ORDER BY SUM(n.count) DESC, n.benefit ASC
