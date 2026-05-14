@@ -153,9 +153,9 @@ locals {
     }
   }
 
-  # Per-tenant template-tags for UTM filters (NC only; empty map for all other tenants)
+  # Per-tenant template-tags for UTM filters (defined for all tenants to avoid Metabase validation errors on shared SQL)
   utm_template_tags = {
-    for k, v in var.tenants : k => local.tenant_features[k].has_utm_filters ? {
+    for k, v in var.tenants : k => {
       utm_campaign = {
         id             = "utm_campaign_filter"
         name           = "utm_campaign"
@@ -180,10 +180,10 @@ locals {
         dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__utm_source"]), null]
         "widget-type"  = "string/="
       }
-    } : {}
+    }
   }
 
-  # Merged template-tags: partner + county + UTM (UTM is empty {} for non-NC tenants)
+  # Merged template-tags: partner + county + UTM
   filter_template_tags = {
     for k, v in var.tenants : k => merge(
       local.partner_template_tags[k],

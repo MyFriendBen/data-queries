@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT household_assets
     FROM analytics.mart_screener_data
-    WHERE household_assets IS NOT NULL AND 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]][[AND {{county}}]][[AND {{utm_campaign}}]][[AND {{utm_medium}}]][[AND {{utm_source}}]]
+    WHERE household_assets IS NOT NULL AND 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 ),
 
 total AS (

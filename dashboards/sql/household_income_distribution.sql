@@ -1,7 +1,7 @@
 WITH filtered AS (
     SELECT monthly_income * 12 AS annual_income
     FROM analytics.mart_screener_data
-    WHERE monthly_income IS NOT NULL AND 1 = 1[[AND {{submission_date}}]][[AND {{partner}}]][[AND {{county}}]][[AND {{utm_campaign}}]][[AND {{utm_medium}}]][[AND {{utm_source}}]]
+    WHERE monthly_income IS NOT NULL AND 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 ),
 
 total AS (
