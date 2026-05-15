@@ -216,29 +216,27 @@ Metabase's BigQuery driver expects a service account JSON key. The `mfb-data` pr
 
 ## Environment Variables Summary
 
-When BigQuery is enabled, these are needed. All variables and secrets are set **per GitHub environment** (`staging` and `production`). Values are the same for both environments.
+When BigQuery is enabled, these are needed. All variables and secrets are set on the `production` GitHub environment.
 
 ### GitHub Environment Variables (non-sensitive)
-| Variable | Value | Staging | Production |
-|----------|-------|---------|------------|
-| `BIGQUERY_ENABLED` | `true` | **Set** | **Set** |
-| `GCP_PROJECT_ID` | `mfb-data` | **Set** | **Set** |
-| `GCP_ANALYTICS_TABLE` | `analytics_335669714` | **Set** | **Set** |
-| `WIF_PROVIDER` | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` | **Set** | **Set** |
-| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` | **Set** | **Set** |
+| Variable | Value |
+|----------|-------|
+| `BIGQUERY_ENABLED` | `true` |
+| `GCP_PROJECT_ID` | `mfb-data` |
+| `GCP_ANALYTICS_TABLE` | `analytics_335669714` |
+| `WIF_PROVIDER` | `projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github` |
+| `WIF_SERVICE_ACCOUNT` | `github-actions-dbt@mfb-data.iam.gserviceaccount.com` |
 
 ### GitHub Environment Secrets
-| Secret | Value | Staging | Production |
-|--------|-------|---------|------------|
-| `BIGQUERY_SA_KEY` | Full JSON content of `metabase-bigquery-key.json` | **Set** | **Set** |
+| Secret | Value |
+|--------|-------|
+| `BIGQUERY_SA_KEY` | Full JSON content of `metabase-bigquery-key.json` |
 
 ### Workload Identity Federation (GitHub Actions — no secrets needed)
 
 The `google-github-actions/auth@v2` action exchanges a GitHub OIDC token for short-lived GCP credentials. It reads `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` from GitHub Environment variables and automatically sets `GOOGLE_APPLICATION_CREDENTIALS` for subsequent steps (dbt, Terraform).
 
 ### Setup commands for production
-
-Once staging is validated, run these to set up production (same values):
 
 ```bash
 # Variables
@@ -248,11 +246,11 @@ gh variable set GCP_ANALYTICS_TABLE --env production --repo MyFriendBen/data-que
 gh variable set WIF_PROVIDER --env production --repo MyFriendBen/data-queries --body "projects/38721872277/locations/global/workloadIdentityPools/github-actions/providers/github"
 gh variable set WIF_SERVICE_ACCOUNT --env production --repo MyFriendBen/data-queries --body "github-actions-dbt@mfb-data.iam.gserviceaccount.com"
 
-# Secret (same key file used for both environments)
+# Secret
 gh secret set BIGQUERY_SA_KEY --env production --repo MyFriendBen/data-queries < metabase-bigquery-key.json
 ```
 
-**Note:** Production also needs the non-BigQuery variables (`DATABASE_NAME`, `METABASE_URL`, `METABASE_ADMIN_EMAIL`) and secrets (`DATABASE_HOST`, `GLOBAL_DB_USER`, `GLOBAL_DB_PASS`, `METABASE_ADMIN_PASSWORD`, tenant DB credentials) that staging already has. These should be set with production-specific values before running the production workflow.
+**Note:** Production also needs the non-BigQuery variables (`DATABASE_NAME`, `METABASE_URL`, `METABASE_ADMIN_EMAIL`) and secrets (`DATABASE_HOST`, `GLOBAL_DB_USER`, `GLOBAL_DB_PASS`, `METABASE_ADMIN_PASSWORD`, tenant DB credentials) set with production values before running the workflow.
 
 ## Prerequisite: Migrate GA4 Data to New GCP Project
 
@@ -366,13 +364,13 @@ Steps 1, 2, and 3 can be done in parallel. **Copy data ASAP** — the sandbox is
 2. [x] **Create dataset + copy historical data to `mfb-data`** — 60 tables copied (2026-01-18 to 2026-03-18). See `scripts/ga4-migration/ga4_copy_manifest.log`.
 3. [x] **Set up Workload Identity Federation** — Pool `github-actions`, provider `github` with attribute condition restricting to `MyFriendBen/data-queries`. SA `github-actions-dbt` bound with `workloadIdentityUser`.
 4. [x] **Create Metabase service account + key** — SA `metabase-bigquery` (pre-existing with correct roles). Key created after temporarily overriding org policy. **Remember to re-enable the org policy** (step 2 below).
-5. [x] **Add GitHub Environment variables and secrets** — Set for staging. See [Environment Variables Summary](#environment-variables-summary). Production pending.
+5. [x] **Add GitHub Environment variables and secrets** — Set for production. See [Environment Variables Summary](#environment-variables-summary).
 
 ### Phase 2: Code Changes + Dashboard Build (against copied historical data)
 
 6. [x] **Update `dbt-nightly.yml`** — add OIDC auth step + BigQuery target (conditional on `BIGQUERY_ENABLED`). Merged in PR #46.
-7. [x] **Test dbt BigQuery build** — triggered workflow on staging, `mart_screener_conversion_funnel` and `referrer_codes` created in BigQuery.
-8. [x] **Enable `bigquery_enabled = true` in Terraform** — set the GitHub Environment variable, ran `terraform apply` on staging. Created BigQuery data source, conversion funnel card, and dashboard widget in Metabase. Note: first apply fails because Metabase needs time to sync new BigQuery tables; second apply succeeds (see comment in `metabase.tf`).
+7. [x] **Test dbt BigQuery build** — triggered workflow, `mart_screener_conversion_funnel` and `referrer_codes` created in BigQuery.
+8. [x] **Enable `bigquery_enabled = true` in Terraform** — set the GitHub Environment variable, ran `terraform apply`. Created BigQuery data source, conversion funnel card, and dashboard widget in Metabase. Note: first apply fails because Metabase needs time to sync new BigQuery tables; second apply succeeds (see comment in `metabase.tf`).
 9. **Add GA tab cards to tenant dashboards** — build conversion funnel charts for the "Google Analytics" tab
 
 ### Phase 3: Cutover (after new dashboards are validated)
