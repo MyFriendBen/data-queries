@@ -27,6 +27,8 @@ models:
 
       - name: county
         description: "County of the head of household."
+        tests:
+          - not_null
 
       - name: screen_id
         description: "ID of the screener same as screener_id."

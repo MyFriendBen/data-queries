@@ -37,7 +37,7 @@ WITH base_table_1 AS (
         ss.is_13_or_older,
         ss.last_tax_filing_year,
         ss.zipcode,
-        ss.county,
+        COALESCE(NULLIF(TRIM(ss.county), ''), 'Unspecified') AS county,
         ss.household_assets,
 
         -- Language code mapping - matches data.sql exactly
