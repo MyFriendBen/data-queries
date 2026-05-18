@@ -1,11 +1,13 @@
 WITH filtered AS (
     SELECT monthly_income * 12 AS annual_income
     FROM analytics.mart_screener_data
-    WHERE monthly_income IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE monthly_income IS NOT NULL AND 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 ),
+
 total AS (
-    SELECT count(*) AS n FROM filtered
+    SELECT COUNT(*) AS n FROM filtered
 ),
+
 income_bins AS (
     SELECT
         CASE
@@ -28,8 +30,10 @@ income_bins AS (
         END AS sort_order
     FROM filtered
 )
-SELECT income_range AS "Income Range",
-       count(*)::float / NULLIF(max(t.n), 0) AS "% of Total"
-FROM income_bins, total t
+
+SELECT
+    income_range AS "Income Range",
+    COUNT(*)::FLOAT / NULLIF(MAX(t.n), 0) AS "% of Total"
+FROM income_bins, total AS t
 GROUP BY income_range, sort_order
 ORDER BY sort_order

@@ -78,13 +78,13 @@ locals {
   # Per-tenant feature flags — controls which cards appear on shared dashboard tabs.
   # Add a new tenant here instead of scattering tenant-key conditionals across layout files.
   tenant_features = {
-    nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = true }
-    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
-    tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
-    il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
-    ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
-    cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false, has_summary_metrics = false }
-    co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false }
+    nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = true, has_utm_filters = true }
+    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
+    tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
+    il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
+    ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
+    cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false, has_summary_metrics = false, has_utm_filters = false }
+    co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
   }
 
   # All available dashboard tabs with fixed IDs — per tenant so names can vary
@@ -153,11 +153,42 @@ locals {
     }
   }
 
-  # Merged template-tags: partner + county (used by all cards that support both filters)
+  # Per-tenant template-tags for UTM filters (defined for all tenants to avoid Metabase validation errors on shared SQL)
+  utm_template_tags = {
+    for k, v in var.tenants : k => {
+      utm_campaign = {
+        id             = "utm_campaign_filter"
+        name           = "utm_campaign"
+        "display-name" = "UTM Campaign"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__utm_campaign"]), null]
+        "widget-type"  = "string/="
+      }
+      utm_medium = {
+        id             = "utm_medium_filter"
+        name           = "utm_medium"
+        "display-name" = "UTM Medium"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__utm_medium"]), null]
+        "widget-type"  = "string/="
+      }
+      utm_source = {
+        id             = "utm_source_filter"
+        name           = "utm_source"
+        "display-name" = "UTM Source"
+        type           = "dimension"
+        dimension      = ["field", tonumber(data.external.filter_field_ids.result["${k}__utm_source"]), null]
+        "widget-type"  = "string/="
+      }
+    }
+  }
+
+  # Merged template-tags: partner + county + UTM
   filter_template_tags = {
     for k, v in var.tenants : k => merge(
       local.partner_template_tags[k],
       local.county_template_tags[k],
+      local.utm_template_tags[k],
     )
   }
 }

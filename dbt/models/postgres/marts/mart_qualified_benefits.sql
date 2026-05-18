@@ -12,7 +12,10 @@ SELECT
     COUNT(DISTINCT msd.id) AS count,
     msd.white_label_id,
     msd.partner,
-    msd.county
+    msd.county,
+    msd.utm_campaign,
+    msd.utm_medium,
+    msd.utm_source
 FROM {{ ref('mart_screener_data') }} AS msd
 INNER JOIN {{ ref('stg_program_eligibility') }} AS pe
     ON
@@ -31,4 +34,7 @@ GROUP BY
     pe.name_abbreviated,
     msd.white_label_id,
     msd.partner,
-    msd.county
+    msd.county,
+    msd.utm_campaign,
+    msd.utm_medium,
+    msd.utm_source

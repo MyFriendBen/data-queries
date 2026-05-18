@@ -8,7 +8,10 @@ SELECT
     t.count,
     inb.white_label_id,
     inb.partner,
-    inb.county
+    inb.county,
+    inb.utm_campaign,
+    inb.utm_medium,
+    inb.utm_source
 FROM {{ ref('int_immediate_needs') }} AS inb
 CROSS JOIN LATERAL unnest(
     ARRAY[

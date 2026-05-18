@@ -1,14 +1,19 @@
 WITH filter_keys AS (
-    SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1
-    [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+    SELECT id
+    FROM analytics.mart_screener_data
+    WHERE 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 ),
+
 filtered AS (
     SELECT hm.age FROM analytics.mart_householdmembers hm
-    INNER JOIN filter_keys fk ON hm.partner IS NOT DISTINCT FROM fk.partner AND hm.county IS NOT DISTINCT FROM fk.county
+    INNER JOIN filter_keys fk ON hm.screener_id = fk.id
 ),
+
 total AS (
-    SELECT count(*) AS n FROM filtered WHERE age IS NOT NULL
+    SELECT count(*) AS n FROM filtered
+    WHERE age IS NOT NULL
 ),
+
 age_bins AS (
     SELECT
         CASE
@@ -30,8 +35,10 @@ age_bins AS (
     FROM filtered
     WHERE age IS NOT NULL
 )
-SELECT age_group AS "Age Group",
-       count(*)::float / NULLIF(max(t.n), 0) AS "% of Total"
+
+SELECT
+    age_group AS "Age Group",
+    count(*)::FLOAT / nullif(max(t.n), 0) AS "% of Total"
 FROM age_bins, total t
 GROUP BY age_group, sort_order
 ORDER BY sort_order

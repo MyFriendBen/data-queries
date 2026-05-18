@@ -1,11 +1,31 @@
-WITH totals AS (SELECT count(*) as total_count FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]),
-filter_keys AS (SELECT DISTINCT partner, county FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]])
+WITH totals AS (
+    SELECT count(*) AS total_count FROM analytics.mart_screener_data
+    WHERE 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
+),
+
+filter_keys AS (
+    SELECT DISTINCT
+        partner,
+        county,
+        utm_campaign,
+        utm_medium,
+        utm_source
+    FROM analytics.mart_screener_data
+    WHERE 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
+)
+
 SELECT
-    n.benefit as "Need Category",
-    SUM(n.count) as "# of Screeners",
-    SUM(n.count)::float / NULLIF(MAX(t.total_count), 0) as "% of Screeners"
+    n.benefit AS "Need Category",
+    sum(n.count) AS "# of Screeners",
+    sum(n.count)::FLOAT / nullif(max(t.total_count), 0) AS "% of Screeners"
 FROM analytics.mart_immediate_needs n
-INNER JOIN filter_keys fk ON n.partner IS NOT DISTINCT FROM fk.partner AND n.county IS NOT DISTINCT FROM fk.county
+INNER JOIN filter_keys fk
+    ON
+        n.partner IS NOT DISTINCT FROM fk.partner
+        AND n.county IS NOT DISTINCT FROM fk.county
+        AND n.utm_campaign IS NOT DISTINCT FROM fk.utm_campaign
+        AND n.utm_medium IS NOT DISTINCT FROM fk.utm_medium
+        AND n.utm_source IS NOT DISTINCT FROM fk.utm_source
 CROSS JOIN totals t
 GROUP BY n.benefit
-ORDER BY SUM(n.count) DESC, n.benefit ASC
+ORDER BY sum(n.count) DESC, n.benefit ASC
