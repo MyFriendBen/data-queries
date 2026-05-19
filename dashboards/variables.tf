@@ -32,6 +32,17 @@ variable "tenants" {
     display_name   = string
     white_label_id = number
   }))
+
+  validation {
+    condition     = alltrue([for t in var.tenants : t.white_label_id > 0 && floor(t.white_label_id) == t.white_label_id])
+    error_message = "Each tenant white_label_id must be a positive integer."
+  }
+
+  validation {
+    condition     = length(distinct([for t in var.tenants : t.white_label_id])) == length(var.tenants)
+    error_message = "Each tenant must have a unique white_label_id."
+  }
+
   default = {
     nc = {
       name           = "nc"
