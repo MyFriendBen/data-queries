@@ -4,7 +4,13 @@ profile: benefits
 require-dbt-version: ">=1.7.0,<2.0.0"
 
 on-run-start:
+  - "{{ ensure_mfb_current_white_label_id_function() }}"
   - "{{ enforce_rls_on_marts() }}"
+
+vars:
+  # RLS on postgres marts: session_guc (app.white_label_id — index-friendly, MFB-975)
+  # Previously regex_user (role name); switched to session_guc to enable index scans.
+  mfb_rls_policy_mode: session_guc
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
