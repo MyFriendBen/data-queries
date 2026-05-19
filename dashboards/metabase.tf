@@ -41,6 +41,9 @@ resource "metabase_database" "postgres" {
 }
 
 # Tenant-specific PostgreSQL data sources (RLS filtered access)
+# Each connection sets app.white_label_id via JDBC options so the STABLE
+# mfb_current_white_label_id() function returns the tenant's ID, enabling
+# Postgres to use the white_label_id index instead of seq-scanning (MFB-975).
 resource "metabase_database" "tenant_postgres" {
   for_each = var.tenants
 
@@ -50,14 +53,15 @@ resource "metabase_database" "tenant_postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host             = var.database_host
-      port             = var.database_port
-      dbname           = var.database_name
-      user             = local.tenant_credentials[each.key].username
-      password         = local.tenant_credentials[each.key].password
-      ssl              = var.database_ssl
-      tunnel-enabled   = false
-      advanced-options = false
+      host               = var.database_host
+      port               = var.database_port
+      dbname             = var.database_name
+      user               = local.tenant_credentials[each.key].username
+      password           = local.tenant_credentials[each.key].password
+      ssl                = var.database_ssl
+      tunnel-enabled     = false
+      advanced-options   = true
+      additional-options = "options=-c app.white_label_id=${each.value.white_label_id}"
     })
 
     redacted_attributes = [

@@ -28,37 +28,56 @@ variable "global_db_credentials" {
 variable "tenants" {
   description = "Map of tenant configurations (non-sensitive)"
   type = map(object({
-    name         = string
-    display_name = string
+    name           = string
+    display_name   = string
+    white_label_id = number
   }))
+
+  validation {
+    condition     = alltrue([for t in var.tenants : t.white_label_id > 0 && floor(t.white_label_id) == t.white_label_id])
+    error_message = "Each tenant white_label_id must be a positive integer."
+  }
+
+  validation {
+    condition     = length(distinct([for t in var.tenants : t.white_label_id])) == length(var.tenants)
+    error_message = "Each tenant must have a unique white_label_id."
+  }
+
   default = {
     nc = {
-      name         = "nc"
-      display_name = "North Carolina"
+      name           = "nc"
+      display_name   = "North Carolina"
+      white_label_id = 5
     }
     co = {
-      name         = "co"
-      display_name = "Colorado"
+      name           = "co"
+      display_name   = "Colorado"
+      white_label_id = 1
     }
     tx = {
-      name         = "tx"
-      display_name = "Texas"
+      name           = "tx"
+      display_name   = "Texas"
+      white_label_id = 40
     }
     il = {
-      name         = "il"
-      display_name = "Illinois"
+      name           = "il"
+      display_name   = "Illinois"
+      white_label_id = 39
     }
     ma = {
-      name         = "ma"
-      display_name = "Massachusetts"
+      name           = "ma"
+      display_name   = "Massachusetts"
+      white_label_id = 38
     }
     cesn = {
-      name         = "cesn"
-      display_name = "CESN"
+      name           = "cesn"
+      display_name   = "CESN"
+      white_label_id = 4
     }
     co_tax_calculator = {
-      name         = "co_tax_calculator"
-      display_name = "CO Tax Calculator"
+      name           = "co_tax_calculator"
+      display_name   = "CO Tax Calculator"
+      white_label_id = 3
     }
   }
 }
