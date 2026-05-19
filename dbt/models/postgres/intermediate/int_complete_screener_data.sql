@@ -37,7 +37,7 @@ WITH base_table_1 AS (
         ss.is_13_or_older,
         ss.last_tax_filing_year,
         ss.zipcode,
-        ss.county,
+        COALESCE(NULLIF(TRIM(ss.county), ''), 'Unspecified') AS county,
         ss.household_assets,
 
         -- Language code mapping - matches data.sql exactly
@@ -153,16 +153,16 @@ WITH base_table_1 AS (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN ss.referrer_code IS NOT NULL AND trim(ss.referrer_code) <> ''
-                THEN coalesce(drc1.partner, 'Other')
-            WHEN ss.referral_source IS NOT NULL AND trim(ss.referral_source) <> ''
-                THEN coalesce(drc2.partner, 'Other')
+            WHEN ss.referrer_code IS NOT NULL AND TRIM(ss.referrer_code) <> ''
+                THEN COALESCE(drc1.partner, 'Other')
+            WHEN ss.referral_source IS NOT NULL AND TRIM(ss.referral_source) <> ''
+                THEN COALESCE(drc2.partner, 'Other')
             ELSE 'No Partner'
         END AS partner,
-        to_char(ss.start_date, 'ID') AS start_day,
-        to_char(ss.start_date, 'HH24') AS start_hour,
-        to_char(ss.submission_date, 'ID') AS submission_day,
-        to_char(ss.submission_date, 'HH24') AS submission_hour,
+        TO_CHAR(ss.start_date, 'ID') AS start_day,
+        TO_CHAR(ss.start_date, 'HH24') AS start_hour,
+        TO_CHAR(ss.submission_date, 'ID') AS submission_day,
+        TO_CHAR(ss.submission_date, 'HH24') AS submission_hour,
         CASE
             WHEN ss.request_language_code = 'af' THEN 'Afrikaans'
             WHEN ss.request_language_code = 'ar' THEN 'Arabic'
@@ -282,10 +282,10 @@ WITH base_table_1 AS (
 benefit_aggregates AS (
     SELECT
         pe.eligibility_snapshot_id,
-        sum(
+        SUM(
             CASE WHEN pe.value_type = 'tax_credit' THEN pe.annual_value ELSE 0 END
         ) AS tax_credits_annual,
-        sum(
+        SUM(
             CASE
                 WHEN pe.value_type IS DISTINCT FROM 'tax_credit'
                     THEN pe.annual_value
@@ -299,8 +299,8 @@ benefit_aggregates AS (
 base_table_2 AS (
     SELECT
         bt1.*,
-        coalesce(ba.non_tax_credit_benefits_annual, 0) AS non_tax_credit_benefits_annual,
-        coalesce(ba.tax_credits_annual, 0) AS tax_credits_annual
+        COALESCE(ba.non_tax_credit_benefits_annual, 0) AS non_tax_credit_benefits_annual,
+        COALESCE(ba.tax_credits_annual, 0) AS tax_credits_annual
     FROM base_table_1 AS bt1
     LEFT JOIN benefit_aggregates AS ba ON bt1.latest_snapshot_id = ba.eligibility_snapshot_id
 )
