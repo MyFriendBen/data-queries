@@ -105,3 +105,37 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+
+      - name: Get commit info
+        id: commit_info
+        if: always()
+        run: |
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B | head -n 1)" >> $GITHUB_OUTPUT
+
+      - name: Notify Slack (success)
+        if: success()
+        uses: ./.github/actions/analytics-slack-notify
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          status: success
+          environment: ${{ github.event.inputs.environment || 'staging' }}
+          workflow-name: Terraform Apply
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          commit-sha: ${{ steps.commit_info.outputs.sha }}
+          commit-author: ${{ steps.commit_info.outputs.author }}
+          commit-message: ${{ steps.commit_info.outputs.message }}
+
+      - name: Notify Slack (failure)
+        if: failure()
+        uses: ./.github/actions/analytics-slack-notify
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          status: failure
+          environment: ${{ github.event.inputs.environment || 'staging' }}
+          workflow-name: Terraform Apply
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          commit-sha: ${{ steps.commit_info.outputs.sha }}
+          commit-author: ${{ steps.commit_info.outputs.author }}
+          commit-message: ${{ steps.commit_info.outputs.message }}
