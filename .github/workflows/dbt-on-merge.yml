@@ -11,7 +11,7 @@ on:
 jobs:
   dbt-build:
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     permissions:
       contents: read
       id-token: write

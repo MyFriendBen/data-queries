@@ -19,9 +19,17 @@ output "global_group_id" {
 }
 
 output "tenant_group_ids" {
-  description = "Metabase group IDs for each per-tenant group (keyed by tenant key)"
+  description = "Metabase group IDs for each per-tenant viewer group (keyed by tenant key)"
   value = {
     for k, g in metabase_permissions_group.tenant :
+    k => g.id
+  }
+}
+
+output "tenant_editor_group_ids" {
+  description = "Metabase group IDs for each per-tenant editor group (keyed by tenant key)"
+  value = {
+    for k, g in metabase_permissions_group.tenant_editor :
     k => g.id
   }
 }

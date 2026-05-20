@@ -8,6 +8,9 @@ SELECT
     white_label_id,
     partner,
     county,
+    utm_campaign,
+    utm_medium,
+    utm_source,
     sum(CASE WHEN has_acp = TRUE THEN 1 ELSE 0 END) AS acp,
     sum(CASE WHEN has_andcs = TRUE THEN 1 ELSE 0 END) AS andcs,
     sum(CASE WHEN has_ccb = TRUE THEN 1 ELSE 0 END) AS ccb,
@@ -57,4 +60,4 @@ SELECT
     sum(CASE WHEN has_va = TRUE THEN 1 ELSE 0 END) AS va,
     sum(CASE WHEN has_wic = TRUE THEN 1 ELSE 0 END) AS wic
 FROM {{ ref('int_complete_screener_data') }}
-GROUP BY white_label_id, partner, county
+GROUP BY white_label_id, partner, county, utm_campaign, utm_medium, utm_source

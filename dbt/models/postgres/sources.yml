@@ -102,6 +102,8 @@ sources:
             description: "Primary key"
           - name: name_abbreviated
             description: "Abbreviated program name (slug)"
+          - name: name_id
+            description: "Foreign key to translations_translation for the program display name"
           - name: value_type_id
             description: "Foreign key to translations_translation for the value type"
           - name: white_label_id

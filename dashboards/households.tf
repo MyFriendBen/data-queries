@@ -314,23 +314,30 @@ locals {
           col              = 0
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_completed_screeners[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_completed_screeners[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -341,23 +348,30 @@ locals {
           col              = local.households_scorecard_width[k] * 1
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_size[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_household_size[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_household_size[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_household_size[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -371,23 +385,30 @@ locals {
           col              = local.households_scorecard_width[k] * 2
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_household_assets[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_household_assets[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_household_assets[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_household_assets[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -400,23 +421,30 @@ locals {
           col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 3 : 2)
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_annual_income[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_annual_income[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_annual_income[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_annual_income[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -427,23 +455,30 @@ locals {
           col              = local.households_scorecard_width[k] * (local.tenant_features[k].has_assets ? 4 : 3)
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_income[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_monthly_income[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_monthly_income[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_monthly_income[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -457,23 +492,30 @@ locals {
           col              = local.households_scorecard_width[k] * 5
           size_x           = local.households_scorecard_width[k]
           size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_median_monthly_expenses[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_median_monthly_expenses[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_median_monthly_expenses[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_median_monthly_expenses[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -505,23 +547,30 @@ locals {
           col              = 6
           size_x           = 9
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_head_of_household_ages[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_head_of_household_ages[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_head_of_household_ages[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_head_of_household_ages[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -532,23 +581,30 @@ locals {
           col              = 15
           size_x           = 9
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_household_member_ages[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_household_member_ages[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_household_member_ages[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_household_member_ages[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -560,23 +616,30 @@ locals {
           col              = 0
           size_x           = 12
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_household_sizes[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_household_sizes[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_household_sizes[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_household_sizes[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -587,23 +650,30 @@ locals {
           col              = 12
           size_x           = 12
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_household_languages[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_household_languages[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_household_languages[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_household_languages[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
       }],
@@ -639,23 +709,30 @@ locals {
           col              = 6
           size_x           = 9
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_household_income_distribution[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_household_income_distribution[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_household_income_distribution[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_household_income_distribution[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -669,23 +746,30 @@ locals {
           col              = 15
           size_x           = 9
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_household_assets_distribution[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_household_assets_distribution[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_household_assets_distribution[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_household_assets_distribution[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -699,23 +783,30 @@ locals {
           col              = 0
           size_x           = local.tenant_features[k].has_expenses ? 12 : 24
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_income_streams[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_income_streams[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_income_streams[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_income_streams[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },
@@ -728,23 +819,30 @@ locals {
           col              = 12
           size_x           = 12
           size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = "date_range_filter"
-              card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-              target       = ["dimension", ["template-tag", "submission_date"]]
-            },
-            {
-              parameter_id = "partner_filter"
-              card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-              target       = ["dimension", ["template-tag", "partner"]]
-            },
-            {
-              parameter_id = "county_filter"
-              card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
-              target       = ["dimension", ["template-tag", "county"]]
-            }
-          ]
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_common_expenses[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
           series                 = []
           visualization_settings = {}
         },

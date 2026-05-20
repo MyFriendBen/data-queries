@@ -12,25 +12,17 @@ on:
       - "!dashboards/heroku-entrypoint.sh"
       - ".github/workflows/terraform-apply.yml"
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 jobs:
   apply:
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.environment != 'production' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: production
     defaults:
       run:
         working-directory: dashboards
     env:
-      TF_WORKSPACE: mfb-dashboards-${{ github.event.inputs.environment || 'staging' }}
+      TF_WORKSPACE: mfb-dashboards-production
       TF_VAR_metabase_url: ${{ vars.METABASE_URL }}
       TF_VAR_metabase_admin_email: ${{ vars.METABASE_ADMIN_EMAIL }}
       TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}

@@ -1,10 +1,9 @@
 {{ config(
-    materialized = 'view',
-    description = 'Complete screener data with eligibility calculations, broken into base tables for clarity'
+    materialized='view',
+    description='Complete screener data with eligibility calculations, broken into base tables for clarity'
 ) }}
 
 WITH base_table_1 AS (
-
     SELECT
         ss.id,
         les.latest_snapshot_id,
@@ -15,15 +14,17 @@ WITH base_table_1 AS (
         ss.path,
         ss.alternate_path,
         les.snapshots,
+
         -- Partner inference logic
         ss.is_test,
+
         ss.is_test_data,
         ss.is_verified,
         ss.completed,
         ss.start_date AS start_timestamp,
-        ss.start_date::DATE AS start_date,
+        ss.start_date::date AS start_date,
         ss.submission_date AS submission_timestamp,
-        ss.submission_date::DATE AS submission_date,
+        ss.submission_date::date AS submission_date,
         ss.agree_to_tos,
         ss.referrer_code,
         ss.referral_source,
@@ -38,8 +39,10 @@ WITH base_table_1 AS (
         ss.zipcode,
         ss.county,
         ss.household_assets,
+
         -- Language code mapping - matches data.sql exactly
         ss.housing_situation,
+
         ss.household_size,
         hd."<18 (#)",
         hd."<18 (%)",
@@ -47,6 +50,7 @@ WITH base_table_1 AS (
         hd."18-24 (%)",
         hd."25-34 (#)",
         hd."25-34 (%)",
+
         -- Household demographics
         hd."35-49 (#)",
         hd."35-49 (%)",
@@ -64,6 +68,7 @@ WITH base_table_1 AS (
         ss.has_medicaid_hi,
         ss.has_medicare_hi,
         ss.has_no_hi,
+
         -- Health Insurance
         ss.has_private_hi,
         ss.has_benefits,
@@ -72,6 +77,7 @@ WITH base_table_1 AS (
         ss.has_ccb,
         ss.has_ccap,
         ss.has_ccdf,
+
         -- Benefits
         ss.has_cdhcs,
         ss.has_chp,
@@ -122,6 +128,7 @@ WITH base_table_1 AS (
         ss.needs_funeral_help,
         ss.needs_housing_help,
         ss.needs_mental_health_help,
+
         -- Immediate Needs
         ss.needs_family_planning_help,
         ss.needs_dental_care,
@@ -129,156 +136,6 @@ WITH base_table_1 AS (
         ss.needs_legal_services,
         ss.needs_college_savings,
         ss.needs_veteran_services,
-        pe.acp_annual,
-        pe.andcs_annual,
-        pe.awd_medicaid_annual,
-        pe.bca_annual,
-        pe.ccap_annual,
-        pe.cdhcs_annual,
-        -- Program eligibility annual values
-        pe.cfhc_annual,
-        pe.chp_annual,
-        pe.co_head_start_annual,
-        pe.cocb_annual,
-        pe.coctc_annual,
-        pe.coeitc_annual,
-        pe.co_medicaid_annual,
-        pe.co_snap_annual,
-        pe.co_tanf_annual,
-        pe.co_wic_annual,
-        pe._dev_ineligible_annual,
-        pe.cowap_annual,
-        pe.cpcr_annual,
-        pe.ctc_annual,
-        pe.cwd_medicaid_annual,
-        pe.dpp_annual,
-        pe.dptr_annual,
-        pe.dsr_annual,
-        pe.dtr_annual,
-        pe.ede_annual,
-        pe.eitc_annual,
-        pe.emergency_medicaid_annual,
-        pe.erap_annual,
-        pe.erc_annual,
-        pe.fatc_annual,
-        pe.fps_annual,
-        pe.leap_annual,
-        pe.lifeline_annual,
-        pe.lwcr_annual,
-        pe.ma_aca_annual,
-        pe.ma_ccdf_annual,
-        pe.ma_cfc_annual,
-        pe.ma_eaedc_annual,
-        pe.ma_maeitc_annual,
-        pe.ma_mass_health_annual,
-        pe.ma_mass_health_limited_annual,
-        pe.ma_mbta_annual,
-        pe.ma_snap_annual,
-        pe.ma_ssp_annual,
-        pe.ma_tafdc_annual,
-        pe.ma_wic_annual,
-        pe.medicaid_annual,
-        pe.medicare_savings_annual,
-        pe.mydenver_annual,
-        pe.myspark_annual,
-        pe.nc_aca_annual,
-        pe.nccip_annual,
-        pe.nc_emergency_medicaid_annual,
-        pe.nc_lieap_annual,
-        pe.nc_medicaid_annual,
-        pe.nc_scca_annual,
-        pe.nc_snap_annual,
-        pe.nc_tanf_annual,
-        pe.ncwap_annual,
-        pe.nc_wic_annual,
-        pe.il_aabd_annual,
-        pe.il_aca_annual,
-        pe.il_aca_adults_annual,
-        pe.il_all_kids_annual,
-        pe.il_bap_annual,
-        pe.il_ctc_annual,
-        pe.il_eitc_annual,
-        pe.il_family_care_annual,
-        pe.il_liheap_annual,
-        pe.il_medicaid_annual,
-        pe.il_moms_and_babies_annual,
-        pe.il_nslp_annual,
-        pe.il_snap_annual,
-        pe.il_tanf_annual,
-        pe.il_transit_reduced_fare_annual,
-        pe.il_wic_annual,
-        pe.nf_annual,
-        pe.nfp_annual,
-        pe.nslp_annual,
-        pe.oap_annual,
-        pe.omnisalud_annual,
-        pe.pell_grant_annual,
-        pe.rag_annual,
-        pe.rhc_annual,
-        pe.rtdlive_annual,
-        pe.shitc_annual,
-        pe.sunbucks_annual,
-        pe.snap_annual,
-        pe.ssdi_annual,
-        pe.ssi_annual,
-        pe.tabor_annual,
-        pe.tanf_annual,
-        pe.trua_annual,
-        pe.ubp_annual,
-        pe.upk_annual,
-        pe.wic_annual,
-        -- CESN energy assistance programs (see MFB-950 for long-term fix)
-        pe.cesn_bheap_annual,
-        pe.cesn_bhgap_annual,
-        pe.cesn_care_annual,
-        pe.cesn_cngba_annual,
-        pe.cesn_cope_annual,
-        pe.cesn_cowap_annual,
-        pe.cesn_cpcr_annual,
-        pe.cesn_ea_annual,
-        pe.cesn_energy_ebt_annual,
-        pe.cesn_energy_mep_annual,
-        pe.cesn_energy_vec_annual,
-        pe.cesn_eoc_annual,
-        pe.cesn_eoccip_annual,
-        pe.cesn_eocs_annual,
-        pe.cesn_heap_annual,
-        pe.cesn_ilp_annual,
-        pe.cesn_lccc_annual,
-        pe.cesn_leap_annual,
-        pe.cesn_mcp_annual,
-        pe.cesn_poipp_annual,
-        pe.cesn_ubp_annual,
-        pe.cesn_xceleap_annual,
-        pe.cesn_xcelgap_annual,
-        -- Texas programs
-        pe.tx_aca_annual,
-        pe.tx_ccad_annual,
-        pe.tx_ccs_annual,
-        pe.tx_chip_annual,
-        pe.tx_csfp_annual,
-        pe.tx_ctc_annual,
-        pe.tx_dart_annual,
-        pe.tx_early_head_start_annual,
-        pe.tx_eitc_annual,
-        pe.tx_emergency_medicaid_annual,
-        pe.tx_fpp_annual,
-        pe.tx_harris_rides_annual,
-        pe.tx_head_start_annual,
-        pe.tx_hse_annual,
-        pe.tx_lifeline_annual,
-        pe.tx_medicaid_for_children_annual,
-        pe.tx_medicaid_for_parents_and_caretakers_annual,
-        pe.tx_medicaid_for_pregnant_women_annual,
-        pe.tx_medicare_savings_program_annual,
-        pe.tx_nslp_annual,
-        pe.tx_snap_annual,
-        pe.tx_ssi_annual,
-        pe.tx_ssdi_annual,
-        pe.tx_tanf_annual,
-        pe.tx_wap_annual,
-        pe.tx_wic_annual,
-        pe.trump_account_annual,
         secs.is_home_owner,
         secs.is_renter,
         secs.electric_provider,
@@ -287,6 +144,7 @@ WITH base_table_1 AS (
         secs.gas_provider_name AS gas_heat_provider_name,
         secs.electricity_is_disconnected,
         secs.has_past_due_energy_bills,
+
         -- Energy calculator fields
         secs.has_old_car,
         secs.needs_dryer,
@@ -295,42 +153,16 @@ WITH base_table_1 AS (
         secs.needs_water_heater,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
-            WHEN
-                ss.referrer_code IS NOT NULL
-                AND TRIM(
-                    ss.referrer_code
-                ) <> ''
-                THEN COALESCE(
-                    drc1.partner,
-                    'Other'
-                )
-            WHEN
-                ss.referral_source IS NOT NULL
-                AND TRIM(
-                    ss.referral_source
-                ) <> ''
-                THEN COALESCE(
-                    drc2.partner,
-                    'Other'
-                )
+            WHEN ss.referrer_code IS NOT NULL AND trim(ss.referrer_code) <> ''
+                THEN coalesce(drc1.partner, 'Other')
+            WHEN ss.referral_source IS NOT NULL AND trim(ss.referral_source) <> ''
+                THEN coalesce(drc2.partner, 'Other')
             ELSE 'No Partner'
         END AS partner,
-        TO_CHAR(
-            ss.start_date,
-            'ID'
-        ) AS start_day,
-        TO_CHAR(
-            ss.start_date,
-            'HH24'
-        ) AS start_hour,
-        TO_CHAR(
-            ss.submission_date,
-            'ID'
-        ) AS submission_day,
-        TO_CHAR(
-            ss.submission_date,
-            'HH24'
-        ) AS submission_hour,
+        to_char(ss.start_date, 'ID') AS start_day,
+        to_char(ss.start_date, 'HH24') AS start_hour,
+        to_char(ss.submission_date, 'ID') AS submission_day,
+        to_char(ss.submission_date, 'HH24') AS submission_hour,
         CASE
             WHEN ss.request_language_code = 'af' THEN 'Afrikaans'
             WHEN ss.request_language_code = 'ar' THEN 'Arabic'
@@ -434,501 +266,52 @@ WITH base_table_1 AS (
             WHEN ss.request_language_code = 'zh-hant' THEN 'Traditional Chinese'
             ELSE '(blank)'
         END AS request_language_code
-    FROM
-        {{ source(
-            'django_apps',
-            'screener_screen'
-        ) }} AS ss
+
+    FROM {{ source('django_apps', 'screener_screen') }} AS ss
     LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc1
-        ON
-            ss.referrer_code = drc1.referrer_code
-            AND ss.white_label_id = drc1.white_label_id
+        ON ss.referrer_code = drc1.referrer_code AND ss.white_label_id = drc1.white_label_id
     LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc2
-        ON
-            ss.referral_source = drc2.referrer_code
-            AND ss.white_label_id = drc2.white_label_id
-    LEFT JOIN {{ ref('stg_latest_eligibility_snapshot') }} AS les
-        ON ss.id = les.screen_id
-    LEFT JOIN {{ ref('stg_program_eligibility') }} AS pe
-        ON les.latest_snapshot_id = pe.eligibility_snapshot_id
-    LEFT JOIN {{ ref('stg_monthly_income') }} AS mi
-        ON ss.id = mi.screen_id
-    LEFT JOIN {{ ref('stg_monthly_expenses') }} AS me
-        ON ss.id = me.screen_id
-    LEFT JOIN {{ ref('stg_household_demographics') }} AS hd
-        ON ss.id = hd.screen_id
-    LEFT JOIN {{ source(
-            'django_apps',
-            'screener_energycalculatorscreen'
-        ) }} AS secs
-        ON ss.id = secs.screen_id
+        ON ss.referral_source = drc2.referrer_code AND ss.white_label_id = drc2.white_label_id
+    LEFT JOIN {{ ref('stg_latest_eligibility_snapshot') }} AS les ON ss.id = les.screen_id
+    LEFT JOIN {{ ref('stg_monthly_income') }} AS mi ON ss.id = mi.screen_id
+    LEFT JOIN {{ ref('stg_monthly_expenses') }} AS me ON ss.id = me.screen_id
+    LEFT JOIN {{ ref('stg_household_demographics') }} AS hd ON ss.id = hd.screen_id
+    LEFT JOIN {{ source('django_apps', 'screener_energycalculatorscreen') }} AS secs ON ss.id = secs.screen_id
+),
+
+benefit_aggregates AS (
+    SELECT
+        pe.eligibility_snapshot_id,
+        sum(
+            CASE WHEN pe.value_type = 'tax_credit' THEN pe.annual_value ELSE 0 END
+        ) AS tax_credits_annual,
+        sum(
+            CASE
+                WHEN pe.value_type IS DISTINCT FROM 'tax_credit'
+                    THEN pe.annual_value
+                ELSE 0
+            END
+        ) AS non_tax_credit_benefits_annual
+    FROM {{ ref('stg_program_eligibility') }} AS pe
+    GROUP BY pe.eligibility_snapshot_id
 ),
 
 base_table_2 AS (
     SELECT
-        *,
-        -- Calculate non-tax credit benefits total
-        COALESCE(
-            acp_annual,
-            0
-        ) + COALESCE(
-            andcs_annual,
-            0
-        ) + COALESCE(
-            awd_medicaid_annual,
-            0
-        ) + COALESCE(
-            bca_annual,
-            0
-        ) + COALESCE(
-            ccap_annual,
-            0
-        ) + COALESCE(
-            cdhcs_annual,
-            0
-        ) + COALESCE(
-            cfhc_annual,
-            0
-        ) + COALESCE(
-            chp_annual,
-            0
-        ) + COALESCE(
-            co_head_start_annual,
-            0
-        ) + COALESCE(
-            cocb_annual,
-            0
-        ) -- + coalesce(coctc_annual, 0) -- tax credit
-        -- + coalesce(coeitc_annual, 0) -- tax credit
-        + COALESCE(
-            co_medicaid_annual,
-            0
-        ) + COALESCE(
-            co_snap_annual,
-            0
-        ) + COALESCE(
-            co_tanf_annual,
-            0
-        ) + COALESCE(
-            co_wic_annual,
-            0
-        ) + COALESCE(
-            _dev_ineligible_annual,
-            0
-        ) + COALESCE(
-            cowap_annual,
-            0
-        ) + COALESCE(
-            cpcr_annual,
-            0
-        ) + COALESCE(
-            cwd_medicaid_annual,
-            0
-        ) + COALESCE(
-            dpp_annual,
-            0
-        ) + COALESCE(
-            dptr_annual,
-            0
-        ) + COALESCE(
-            dsr_annual,
-            0
-        ) + COALESCE(
-            dtr_annual,
-            0
-        ) + COALESCE(
-            ede_annual,
-            0
-        ) + COALESCE(
-            emergency_medicaid_annual,
-            0
-        ) + COALESCE(
-            erap_annual,
-            0
-        ) + COALESCE(
-            erc_annual,
-            0
-        ) + COALESCE(
-            fps_annual,
-            0
-        ) + COALESCE(
-            leap_annual,
-            0
-        ) + COALESCE(
-            lifeline_annual,
-            0
-        ) + COALESCE(
-            lwcr_annual,
-            0
-        ) + COALESCE(
-            ma_aca_annual,
-            0
-        ) + COALESCE(
-            ma_ccdf_annual,
-            0
-        ) + COALESCE(
-            ma_cfc_annual,
-            0
-        ) + COALESCE(
-            ma_eaedc_annual,
-            0
-        ) + COALESCE(
-            ma_mass_health_annual,
-            0
-        ) + COALESCE(
-            ma_mass_health_limited_annual,
-            0
-        ) + COALESCE(
-            ma_mbta_annual,
-            0
-        ) + COALESCE(
-            ma_snap_annual,
-            0
-        ) + COALESCE(
-            ma_ssp_annual,
-            0
-        ) + COALESCE(
-            ma_tafdc_annual,
-            0
-        ) + COALESCE(
-            ma_wic_annual,
-            0
-        ) + COALESCE(
-            medicaid_annual,
-            0
-        ) + COALESCE(
-            medicare_savings_annual,
-            0
-        ) + COALESCE(
-            mydenver_annual,
-            0
-        ) + COALESCE(
-            myspark_annual,
-            0
-        ) + COALESCE(
-            nc_aca_annual,
-            0
-        ) + COALESCE(
-            nccip_annual,
-            0
-        ) + COALESCE(
-            nc_emergency_medicaid_annual,
-            0
-        ) + COALESCE(
-            nc_lieap_annual,
-            0
-        ) + COALESCE(
-            nc_medicaid_annual,
-            0
-        ) + COALESCE(
-            nc_scca_annual,
-            0
-        ) + COALESCE(
-            nc_snap_annual,
-            0
-        ) + COALESCE(
-            nc_tanf_annual,
-            0
-        ) + COALESCE(
-            ncwap_annual,
-            0
-        ) + COALESCE(
-            nc_wic_annual,
-            0
-        ) + COALESCE(
-            il_aabd_annual,
-            0
-        ) + COALESCE(
-            il_aca_annual,
-            0
-        ) + COALESCE(
-            il_aca_adults_annual,
-            0
-        ) + COALESCE(
-            il_all_kids_annual,
-            0
-        ) + COALESCE(
-            il_bap_annual,
-            0
-        ) + COALESCE(
-            il_family_care_annual,
-            0
-        ) + COALESCE(
-            il_liheap_annual,
-            0
-        ) + COALESCE(
-            il_medicaid_annual,
-            0
-        ) + COALESCE(
-            il_moms_and_babies_annual,
-            0
-        ) + COALESCE(
-            il_nslp_annual,
-            0
-        ) + COALESCE(
-            il_snap_annual,
-            0
-        ) + COALESCE(
-            il_tanf_annual,
-            0
-        ) + COALESCE(
-            il_transit_reduced_fare_annual,
-            0
-        ) + COALESCE(
-            il_wic_annual,
-            0
-        ) + COALESCE(
-            nf_annual,
-            0
-        ) + COALESCE(
-            nfp_annual,
-            0
-        ) + COALESCE(
-            nslp_annual,
-            0
-        ) + COALESCE(
-            oap_annual,
-            0
-        ) + COALESCE(
-            omnisalud_annual,
-            0
-        ) + COALESCE(
-            pell_grant_annual,
-            0
-        ) + COALESCE(
-            rag_annual,
-            0
-        ) + COALESCE(
-            rhc_annual,
-            0
-        ) + COALESCE(
-            rtdlive_annual,
-            0
-        ) + COALESCE(
-            sunbucks_annual,
-            0
-        ) + COALESCE(
-            snap_annual,
-            0
-        ) + COALESCE(
-            ssdi_annual,
-            0
-        ) + COALESCE(
-            ssi_annual,
-            0
-        ) + COALESCE(
-            tabor_annual,
-            0
-        ) + COALESCE(
-            tanf_annual,
-            0
-        ) + COALESCE(
-            trua_annual,
-            0
-        ) + COALESCE(
-            ubp_annual,
-            0
-        ) + COALESCE(
-            upk_annual,
-            0
-        ) + COALESCE(
-            wic_annual,
-            0
-        ) -- CESN energy assistance programs (see MFB-950 for long-term fix)
-        + COALESCE(
-            cesn_bheap_annual,
-            0
-        ) + COALESCE(
-            cesn_bhgap_annual,
-            0
-        ) + COALESCE(
-            cesn_care_annual,
-            0
-        ) + COALESCE(
-            cesn_cngba_annual,
-            0
-        ) + COALESCE(
-            cesn_cope_annual,
-            0
-        ) + COALESCE(
-            cesn_cowap_annual,
-            0
-        ) + COALESCE(
-            cesn_cpcr_annual,
-            0
-        ) + COALESCE(
-            cesn_ea_annual,
-            0
-        ) + COALESCE(
-            cesn_energy_ebt_annual,
-            0
-        ) + COALESCE(
-            cesn_energy_mep_annual,
-            0
-        ) + COALESCE(
-            cesn_energy_vec_annual,
-            0
-        ) + COALESCE(
-            cesn_eoc_annual,
-            0
-        ) + COALESCE(
-            cesn_eoccip_annual,
-            0
-        ) + COALESCE(
-            cesn_eocs_annual,
-            0
-        ) + COALESCE(
-            cesn_heap_annual,
-            0
-        ) + COALESCE(
-            cesn_ilp_annual,
-            0
-        ) + COALESCE(
-            cesn_lccc_annual,
-            0
-        ) + COALESCE(
-            cesn_leap_annual,
-            0
-        ) + COALESCE(
-            cesn_mcp_annual,
-            0
-        ) + COALESCE(
-            cesn_poipp_annual,
-            0
-        ) + COALESCE(
-            cesn_ubp_annual,
-            0
-        ) + COALESCE(
-            cesn_xceleap_annual,
-            0
-        ) + COALESCE(
-            cesn_xcelgap_annual,
-            0
-        ) -- Texas programs
-        + COALESCE(
-            tx_aca_annual,
-            0
-        ) + COALESCE(
-            tx_ccad_annual,
-            0
-        ) + COALESCE(
-            tx_ccs_annual,
-            0
-        ) + COALESCE(
-            tx_chip_annual,
-            0
-        ) + COALESCE(
-            tx_csfp_annual,
-            0
-        ) + COALESCE(
-            tx_dart_annual,
-            0
-        ) + COALESCE(
-            tx_early_head_start_annual,
-            0
-        ) + COALESCE(
-            tx_emergency_medicaid_annual,
-            0
-        ) + COALESCE(
-            tx_fpp_annual,
-            0
-        ) + COALESCE(
-            tx_harris_rides_annual,
-            0
-        ) + COALESCE(
-            tx_head_start_annual,
-            0
-        ) + COALESCE(
-            tx_hse_annual,
-            0
-        ) + COALESCE(
-            tx_lifeline_annual,
-            0
-        ) + COALESCE(
-            tx_medicaid_for_children_annual,
-            0
-        ) + COALESCE(
-            tx_medicaid_for_parents_and_caretakers_annual,
-            0
-        ) + COALESCE(
-            tx_medicaid_for_pregnant_women_annual,
-            0
-        ) + COALESCE(
-            tx_medicare_savings_program_annual,
-            0
-        ) + COALESCE(
-            tx_nslp_annual,
-            0
-        ) + COALESCE(
-            tx_snap_annual,
-            0
-        ) + COALESCE(
-            tx_ssi_annual,
-            0
-        ) + COALESCE(
-            tx_ssdi_annual,
-            0
-        ) + COALESCE(
-            tx_tanf_annual,
-            0
-        ) + COALESCE(
-            tx_wap_annual,
-            0
-        ) + COALESCE(
-            tx_wic_annual,
-            0
-        ) + COALESCE(
-            trump_account_annual,
-            0
-        ) AS non_tax_credit_benefits_annual,
-        -- Calculate tax credits total
-        COALESCE(
-            coctc_annual,
-            0
-        ) + COALESCE(
-            ctc_annual,
-            0
-        ) + COALESCE(
-            coeitc_annual,
-            0
-        ) + COALESCE(
-            eitc_annual,
-            0
-        ) + COALESCE(
-            fatc_annual,
-            0
-        ) + COALESCE(
-            il_ctc_annual,
-            0
-        ) + COALESCE(
-            il_eitc_annual,
-            0
-        ) + COALESCE(
-            ma_maeitc_annual,
-            0
-        ) + COALESCE(
-            shitc_annual,
-            0
-        ) -- Texas tax credits
-        + COALESCE(
-            tx_ctc_annual,
-            0
-        ) + COALESCE(
-            tx_eitc_annual,
-            0
-        ) AS tax_credits_annual
-    FROM
-        base_table_1
+        bt1.*,
+        coalesce(ba.non_tax_credit_benefits_annual, 0) AS non_tax_credit_benefits_annual,
+        coalesce(ba.tax_credits_annual, 0) AS tax_credits_annual
+    FROM base_table_1 AS bt1
+    LEFT JOIN benefit_aggregates AS ba ON bt1.latest_snapshot_id = ba.eligibility_snapshot_id
 )
 
 SELECT
     *,
     non_tax_credit_benefits_annual / 12 AS non_tax_credit_benefits_monthly,
     tax_credits_annual / 12 AS tax_credits_monthly
-FROM
-    base_table_2
+FROM base_table_2
 WHERE
     completed = TRUE
     AND is_test = FALSE
     AND is_test_data = FALSE
-    AND partner IS DISTINCT FROM 'Test' -- and white_label_id=4
+    AND partner IS DISTINCT FROM 'Test'

@@ -35,6 +35,17 @@ resource "metabase_permissions_group" "tenant" {
   name = "${each.value.display_name} Viewers"
 }
 
+# --- Per-tenant editor groups ------------------------------------------------
+#
+# Parallel to viewer groups but with write collection access. Data permissions
+# remain identical to viewer groups.
+
+resource "metabase_permissions_group" "tenant_editor" {
+  for_each = var.tenants
+
+  name = "${each.value.display_name} Editors"
+}
+
 # =============================================================================
 # Collection Permissions Graph
 # =============================================================================
@@ -42,9 +53,10 @@ resource "metabase_permissions_group" "tenant" {
 # Controls which groups can see which collections (dashboards).
 #
 # Rules:
-#   - Global group  → read on Global collection AND all tenant collections
-#   - Tenant group  → read-only on their own tenant collection only
-#   - All Users (1) → no access to any collection (default deny)
+#   - Global group        → read on Global collection AND all tenant collections
+#   - Tenant viewer group → read-only on their own tenant collection only
+#   - Tenant editor group → write on their own tenant collection only
+#   - All Users (1)       → no access to any collection (default deny)
 #
 # The collection_graph is a singleton in Metabase. It must be imported on first
 # use rather than created from scratch:
@@ -84,6 +96,15 @@ resource "metabase_collection_graph" "graph" {
         collection = local.tenant_collection_map[key].id
         permission = "read"
       } if contains(keys(local.tenant_collection_map), key)
+    ],
+
+    # --- Per-tenant editor group: write access to their own collection --------
+    [
+      for key, tenant in var.tenants : {
+        group      = metabase_permissions_group.tenant_editor[key].id
+        collection = local.tenant_collection_map[key].id
+        permission = "write"
+      } if contains(keys(local.tenant_collection_map), key)
     ]
   )
 }
@@ -95,10 +116,10 @@ resource "metabase_collection_graph" "graph" {
 # Controls which groups can query which databases in the Metabase query builder.
 #
 # Rules:
-#   - All Users (1)  → no query access to any database (baseline deny for everyone)
-#   - Global group   → full query access (query-builder-and-native) to all databases
-#   - Tenant group   → query-builder access to their own tenant DB only;
-#                      no access to all other DBs
+#   - All Users (1)       → no query access to any database (baseline deny for everyone)
+#   - Global group        → full query access (query-builder-and-native) to all managed databases; no access to unmanaged databases
+#   - Tenant viewer group → query-builder access to their own tenant DB only; no access elsewhere
+#   - Tenant editor group → same as viewer group (write collection access ≠ elevated DB access)
 #
 # This closes the gap that collection permissions alone cannot address: without
 # this, a user scoped to the NC group can still browse the CO database directly
@@ -158,7 +179,8 @@ locals {
   all_managed_group_ids = concat(
     [1], # All Users group
     [metabase_permissions_group.global.id],
-    [for k, g in metabase_permissions_group.tenant : g.id]
+    [for k, g in metabase_permissions_group.tenant : g.id],
+    [for k, g in metabase_permissions_group.tenant_editor : g.id]
   )
 
   # Groups that exist in Metabase but are NOT managed by Terraform.
@@ -256,6 +278,47 @@ resource "metabase_permissions_graph" "graph" {
         [
           for db_id in local.unmanaged_db_ids : {
             group          = metabase_permissions_group.tenant[tenant_key].id
+            database       = tonumber(db_id)
+            view_data      = "unrestricted"
+            create_queries = "no"
+            download       = { schemas = "full" }
+            data_model     = null
+          }
+        ]
+      )
+    ]),
+
+    # --- Per-tenant editor groups: query-builder on own DB only ---------------
+    # Identical to viewer data perms — write collection access ≠ elevated DB access.
+    flatten([
+      for tenant_key, tenant in var.tenants : concat(
+        # Own database: allow query builder
+        [
+          {
+            group          = metabase_permissions_group.tenant_editor[tenant_key].id
+            database       = tonumber(metabase_database.tenant_postgres[tenant_key].id)
+            view_data      = "unrestricted"
+            create_queries = "query-builder"
+            download       = { schemas = "full" }
+            data_model     = null
+          }
+        ],
+        # All other managed databases: no access
+        [
+          for db_id in local.all_db_ids : {
+            group          = metabase_permissions_group.tenant_editor[tenant_key].id
+            database       = tonumber(db_id)
+            view_data      = "unrestricted"
+            create_queries = "no"
+            download       = { schemas = "full" }
+            data_model     = null
+          }
+          if tonumber(db_id) != tonumber(metabase_database.tenant_postgres[tenant_key].id)
+        ],
+        # Unmanaged databases: no access
+        [
+          for db_id in local.unmanaged_db_ids : {
+            group          = metabase_permissions_group.tenant_editor[tenant_key].id
             database       = tonumber(db_id)
             view_data      = "unrestricted"
             create_queries = "no"
