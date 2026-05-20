@@ -61,7 +61,7 @@ resource "metabase_database" "tenant_postgres" {
       ssl                = var.database_ssl
       tunnel-enabled     = false
       advanced-options   = true
-      additional-options = "options=-c app.white_label_id=${each.value.white_label_id}"
+      additional-options = "options=-c%20app.white_label_id=${each.value.white_label_id}"
     })
 
     redacted_attributes = [
