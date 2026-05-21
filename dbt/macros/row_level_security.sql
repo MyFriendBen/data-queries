@@ -1,11 +1,8 @@
 /*
-  Row Level Security (RLS) macro for white label filtering
+  Row Level Security (RLS) macro for white label filtering.
 
-  Performance / planner interaction with Metabase native SQL (Benefits tab, etc.):
-  see dashboards/sql/BENEFITS_TAB_PLAN_AND_RLS.md
-
-  This macro creates database policies that restrict users to only see data
-  for their associated white label.
+  Creates database policies that restrict users to only see data for their
+  associated white label.
 
   Usage:
     setup_white_label_rls('table_name', 'white_label_id_column')
@@ -18,9 +15,15 @@
   Var (dbt_project.yml):
     mfb_rls_policy_mode: regex_user | session_guc
 
-    session_guc: policy uses mfb_current_white_label_id() in the target schema (STABLE, reads
-    app.white_label_id). Connections must set it once per session, e.g.:
-      SELECT set_config('app.white_label_id', '<white_label_id>', false);
+    session_guc (current, MFB-975): policy uses mfb_current_white_label_id() —
+    a STABLE function that reads the `app.white_label_id` session GUC. Metabase
+    sets the GUC at JDBC connect time via `options=-c app.white_label_id=<id>`.
+    Index-friendly: Postgres can fold the function to a constant and use the
+    white_label_id btree index.
+
+    regex_user (legacy): policy extracts the ID from `current_user` via regex
+    (`wl_<state>_<id>_ro`). Not index-friendly — forces seq scans. Kept as
+    fallback in case the GUC setup needs to be rolled back.
 */
 
 {% macro setup_white_label_rls(table_name, white_label_column='white_label_id', schema_name=none) %}
@@ -47,12 +50,9 @@
   -- Drop existing policy if it exists
   DROP POLICY IF EXISTS {{ policy_name }} ON {{ full_table_name }};
 
-  -- Create RLS policy that extracts white_label_id from the username
-  -- Convention: credential names follow wl_<state>_<id>_ro (e.g. wl_nc_5_ro → 5)
-  -- Table owners (dbt build user) bypass RLS automatically in PostgreSQL
-  -- Non-conforming role names yield NULL → no rows (safe denial)
-  --
-  -- Mode session_guc: see ensure_mfb_current_white_label_id_function() + var mfb_rls_policy_mode
+  -- Table owners (dbt build user) bypass RLS automatically in PostgreSQL.
+  -- Non-conforming role names (regex_user mode) or missing GUC (session_guc
+  -- mode) yield NULL → no rows (safe denial).
   CREATE POLICY {{ policy_name }}
     ON {{ full_table_name }}
     FOR ALL
