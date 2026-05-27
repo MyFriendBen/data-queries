@@ -22,7 +22,7 @@ INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
     ON cb.program_id = pp.id
 INNER JOIN {{ ref('mart_screener_data') }} AS msd
     ON cb.screen_id = msd.id
-    AND msd.white_label_id = pp.white_label_id
+    AND pp.white_label_id = msd.white_label_id
 LEFT JOIN {{ source('django_apps', 'translations_translation_translation') }} AS pn
     ON pp.name_id = pn.master_id
     AND pn.language_code = 'en-us'
