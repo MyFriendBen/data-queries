@@ -3,6 +3,11 @@ version: 2
 models:
   - name: mart_current_benefits
     description: "One row per screen × benefit sourced from the screener_current_benefits join table. Replaces the old has_* column approach."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - screen_id
+            - benefit_name
     columns:
       - name: screen_id
         description: "Foreign key to screener_screen"
@@ -15,22 +20,22 @@ models:
           - not_null
 
       - name: partner
-        description: "Referral partner associated with the screener"
+        description: "Referral partner associated with the screener. Passed through from mart_screener_data."
 
       - name: county
-        description: "County associated with the screener"
+        description: "County associated with the screener. Passed through from mart_screener_data."
 
       - name: submission_date
-        description: "Date the screener was submitted"
+        description: "Date the screener was submitted. Passed through from mart_screener_data."
 
       - name: utm_campaign
-        description: "UTM campaign parameter from the screener"
+        description: "UTM campaign parameter from the screener. Passed through from mart_screener_data."
 
       - name: utm_medium
-        description: "UTM medium parameter from the screener"
+        description: "UTM medium parameter from the screener. Passed through from mart_screener_data."
 
       - name: utm_source
-        description: "UTM source parameter from the screener"
+        description: "UTM source parameter from the screener. Passed through from mart_screener_data."
 
       - name: benefit_name
         description: "Language-agnostic program slug (e.g. 'snap', 'wic'). Use for grouping to avoid translation duplicates."
