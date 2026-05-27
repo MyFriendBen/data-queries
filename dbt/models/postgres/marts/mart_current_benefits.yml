@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: mart_current_benefits
-    description: "One row per screen × benefit sourced from the screener_current_benefits join table. Replaces the old has_* column approach."
+    description: "One row per screen × benefit, sourced from the screener_current_benefits join table (replaces the legacy screener_screen.has_* columns dropped in MFB-720)."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
@@ -43,6 +43,6 @@ models:
           - not_null
 
       - name: benefit_display_name
-        description: "English (en-us) display name for the benefit program. Falls back to benefit_name if no translation exists."
+        description: "English (en-us) display name for the benefit program from this row's white label. Falls back to benefit_name if no translation exists. Under RLS (per-WL queries, the default), all rows for a given benefit_name share the same display name. In any cross-WL query, display names may differ across white labels — pick a deterministic tiebreaker (e.g. MIN(white_label_id)) at the query site."
         tests:
           - not_null

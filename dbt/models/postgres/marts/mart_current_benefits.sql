@@ -22,6 +22,10 @@ INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
     ON cb.program_id = pp.id
 INNER JOIN {{ ref('mart_screener_data') }} AS msd
     ON cb.screen_id = msd.id
+    -- Defensive: also require the program's white_label to match the screen's.
+    -- Silently drops any anomalous join-table rows that point at a program from
+    -- a different white_label than the screen (should never happen, but safer
+    -- to drop than to leak across WL boundaries).
     AND pp.white_label_id = msd.white_label_id
 LEFT JOIN {{ source('django_apps', 'translations_translation_translation') }} AS pn
     ON pp.name_id = pn.master_id
