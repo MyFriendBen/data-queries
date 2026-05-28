@@ -15,18 +15,18 @@ filter_keys AS (
 )
 
 SELECT
-    pb.benefit AS "Benefit Name",
-    sum(pb.count) AS "# of Screeners",
-    sum(pb.count)::FLOAT / nullif(max(t.total_count), 0) AS "% of Screeners"
-FROM analytics.mart_previous_benefits pb
+    max(cb.benefit_display_name) AS "Benefit Name",
+    count(DISTINCT cb.screen_id) AS "# of Screeners",
+    count(DISTINCT cb.screen_id)::FLOAT / nullif(max(t.total_count), 0) AS "% of Screeners"
+FROM analytics.mart_current_benefits cb
 INNER JOIN filter_keys fk
     ON
-        pb.partner IS NOT DISTINCT FROM fk.partner
-        AND pb.county IS NOT DISTINCT FROM fk.county
-        AND pb.utm_campaign IS NOT DISTINCT FROM fk.utm_campaign
-        AND pb.utm_medium IS NOT DISTINCT FROM fk.utm_medium
-        AND pb.utm_source IS NOT DISTINCT FROM fk.utm_source
+        cb.partner IS NOT DISTINCT FROM fk.partner
+        AND cb.county IS NOT DISTINCT FROM fk.county
+        AND cb.utm_campaign IS NOT DISTINCT FROM fk.utm_campaign
+        AND cb.utm_medium IS NOT DISTINCT FROM fk.utm_medium
+        AND cb.utm_source IS NOT DISTINCT FROM fk.utm_source
 CROSS JOIN totals t
-GROUP BY pb.benefit
-HAVING sum(pb.count) > 0
-ORDER BY sum(pb.count) DESC, pb.benefit ASC
+GROUP BY cb.benefit_name
+HAVING count(DISTINCT cb.screen_id) > 0
+ORDER BY count(DISTINCT cb.screen_id) DESC, max(cb.benefit_display_name) ASC
