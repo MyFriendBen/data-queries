@@ -1,8 +1,7 @@
 {{
   config(
     materialized='table',
-    post_hook="{{ setup_white_label_rls(this.name) }}",
-    description='One row per screen × benefit sourced from the screener_current_benefits join table. Replaces the old has_* column approach.'
+    post_hook="{{ setup_white_label_rls(this.name) }}"
   )
 }}
 
