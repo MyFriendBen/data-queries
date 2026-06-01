@@ -23,14 +23,23 @@
     {{ return('') }}
   {% endif %}
 
+  -- NOTE (MFB-867 perf): no `SET search_path` clause here on purpose. A SQL
+  -- function with a SET clause CANNOT be inlined by the planner, so it is
+  -- executed as an opaque function call — and under RLS that means a per-row
+  -- call (one current_setting() lookup per scanned row), which made the
+  -- qualified_benefits / immediate_needs dashboard cards time out. Without the
+  -- SET clause, this STABLE function inlines and folds to a single constant
+  -- per query, so the RLS predicate becomes `white_label_id = <const>` and
+  -- uses the btree index once. Search-path safety is preserved by fully
+  -- schema-qualifying every built-in (pg_catalog.*), so behavior does not
+  -- depend on the caller's search_path.
   CREATE OR REPLACE FUNCTION {{ target.schema }}.mfb_current_white_label_id()
   RETURNS integer
   LANGUAGE sql
   STABLE
   PARALLEL SAFE
-  SET search_path = ''
   AS $fn$
-    SELECT (NULLIF(TRIM(BOTH FROM current_setting('app.white_label_id', true)), ''))::integer
+    SELECT NULLIF(pg_catalog.btrim(pg_catalog.current_setting('app.white_label_id', true)), '')::integer
   $fn$;
 
   GRANT EXECUTE ON FUNCTION {{ target.schema }}.mfb_current_white_label_id() TO PUBLIC;
