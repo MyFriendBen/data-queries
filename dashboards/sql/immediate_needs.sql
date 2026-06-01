@@ -5,11 +5,11 @@ WITH totals AS (
 
 filter_keys AS (
     SELECT DISTINCT
-        partner,
-        county,
-        utm_campaign,
-        utm_medium,
-        utm_source
+        coalesce(partner, '__NULL__') AS partner,
+        coalesce(county, '__NULL__') AS county,
+        coalesce(utm_campaign, '__NULL__') AS utm_campaign,
+        coalesce(utm_medium, '__NULL__') AS utm_medium,
+        coalesce(utm_source, '__NULL__') AS utm_source
     FROM analytics.mart_screener_data
     WHERE 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 )
@@ -21,11 +21,11 @@ SELECT
 FROM analytics.mart_immediate_needs n
 INNER JOIN filter_keys fk
     ON
-        n.partner IS NOT DISTINCT FROM fk.partner
-        AND n.county IS NOT DISTINCT FROM fk.county
-        AND n.utm_campaign IS NOT DISTINCT FROM fk.utm_campaign
-        AND n.utm_medium IS NOT DISTINCT FROM fk.utm_medium
-        AND n.utm_source IS NOT DISTINCT FROM fk.utm_source
+        coalesce(n.partner, '__NULL__') = fk.partner
+        AND coalesce(n.county, '__NULL__') = fk.county
+        AND coalesce(n.utm_campaign, '__NULL__') = fk.utm_campaign
+        AND coalesce(n.utm_medium, '__NULL__') = fk.utm_medium
+        AND coalesce(n.utm_source, '__NULL__') = fk.utm_source
 CROSS JOIN totals t
 GROUP BY n.benefit
 ORDER BY sum(n.count) DESC, n.benefit ASC
