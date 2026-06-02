@@ -59,6 +59,11 @@ variable "tenants" {
       display_name   = "Texas"
       white_label_id = 40
     }
+    wa = {
+      name           = "wa"
+      display_name   = "Washington"
+      white_label_id = 41
+    }
     il = {
       name           = "il"
       display_name   = "Illinois"
