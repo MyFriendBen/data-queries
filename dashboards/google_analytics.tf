@@ -22,7 +22,6 @@ locals {
     nc   = ["nc"]
     co   = ["co"]
     tx   = ["tx"]
-    wa   = ["wa"]
     il   = ["il"]
     ma   = ["ma"]
     cesn = ["cesn"]

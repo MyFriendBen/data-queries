@@ -81,7 +81,6 @@ locals {
     nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = true, has_utm_filters = true }
     co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
     tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
-    wa                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
     il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
     ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false }
     cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false, has_summary_metrics = false, has_utm_filters = false }
@@ -105,7 +104,6 @@ locals {
     nc                = ["all_time", "households", "benefits_needs", "google_analytics"]
     co                = ["all_time", "households", "benefits_needs", "google_analytics"]
     tx                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    wa                = ["all_time", "households", "benefits_needs", "google_analytics"]
     il                = ["all_time", "households", "benefits_needs", "google_analytics"]
     ma                = ["all_time", "households", "benefits_needs", "google_analytics"]
     cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics"]
