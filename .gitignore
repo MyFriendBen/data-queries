@@ -28,3 +28,6 @@ tfplan
 
 # dashboards scripts
 dashboards/scripts/generated/
+
+# macOS
+.DS_Store
