@@ -162,14 +162,9 @@ resource "metabase_collection" "tenant_collection_tx" {
   depends_on = [metabase_collection.tenant_collection_co]
 }
 
-resource "metabase_collection" "tenant_collection_wa" {
-  name       = "Washington"
-  depends_on = [metabase_collection.tenant_collection_tx]
-}
-
 resource "metabase_collection" "tenant_collection_il" {
   name       = "Illinois"
-  depends_on = [metabase_collection.tenant_collection_wa]
+  depends_on = [metabase_collection.tenant_collection_tx]
 }
 
 resource "metabase_collection" "tenant_collection_ma" {
@@ -193,7 +188,6 @@ locals {
     nc                = metabase_collection.tenant_collection_nc
     co                = metabase_collection.tenant_collection_co
     tx                = metabase_collection.tenant_collection_tx
-    wa                = metabase_collection.tenant_collection_wa
     il                = metabase_collection.tenant_collection_il
     ma                = metabase_collection.tenant_collection_ma
     cesn              = metabase_collection.tenant_collection_cesn

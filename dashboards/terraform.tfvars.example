@@ -28,10 +28,6 @@ tenant_db_credentials = {
     username = "wl_tx_40_ro"
     password = "your_password"
   }
-  wa = {
-    username = "wl_wa_41_ro"
-    password = "your_password"
-  }
   il = {
     username = "wl_il_39_ro"
     password = "your_password"
@@ -69,11 +65,6 @@ tenants = {
     name           = "tx"
     display_name   = "Texas"
     white_label_id = 40
-  }
-  wa = {
-    name           = "wa"
-    display_name   = "Washington"
-    white_label_id = 41
   }
   il = {
     name           = "il"
