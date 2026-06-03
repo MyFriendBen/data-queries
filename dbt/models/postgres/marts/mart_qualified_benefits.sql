@@ -1,8 +1,7 @@
 {{
   config(
     materialized='table',
-    post_hook="{{ setup_white_label_rls(this.name) }}",
-    description='Materialized mart of per-program eligibility counts by partner and county. Dynamic: joins stg_program_eligibility directly, so new programs are included automatically without code changes.'
+    post_hook="{{ setup_white_label_rls(this.name) }}"
   )
 }}
 

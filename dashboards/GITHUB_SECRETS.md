@@ -119,6 +119,7 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 | `NC_DB_USER/PASS` | `wl_nc_5_ro` | NC tenant Metabase (white_label_id=5) |
 | `CO_DB_USER/PASS` | `wl_co_1_ro` | CO tenant Metabase (white_label_id=1) |
 | `TX_DB_USER/PASS` | `wl_tx_40_ro` | TX tenant Metabase (white_label_id=40) |
+| `WA_DB_USER/PASS` | `wl_wa_41_ro` | WA tenant Metabase (white_label_id=41) |
 | `IL_DB_USER/PASS` | `wl_il_39_ro` | IL tenant Metabase (white_label_id=39) |
 | `MA_DB_USER/PASS` | `wl_ma_38_ro` | MA tenant Metabase (white_label_id=38) |
 | `CESN_DB_USER/PASS` | `wl_cesn_4_ro` | CESN tenant Metabase (white_label_id=4) |
@@ -151,6 +152,8 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 | `CO_DB_PASS` | CO tenant credential password | Same as above |
 | `TX_DB_USER` | TX tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_tx_40_ro` |
 | `TX_DB_PASS` | TX tenant credential password | Same as above |
+| `WA_DB_USER` | WA tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_wa_41_ro` |
+| `WA_DB_PASS` | WA tenant credential password | Same as above |
 | `IL_DB_USER` | IL tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_il_39_ro` |
 | `IL_DB_PASS` | IL tenant credential password | Same as above |
 | `MA_DB_USER` | MA tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_ma_38_ro` |

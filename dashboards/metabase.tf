@@ -41,6 +41,9 @@ resource "metabase_database" "postgres" {
 }
 
 # Tenant-specific PostgreSQL data sources (RLS filtered access)
+# Each connection sets app.white_label_id via JDBC options so the STABLE
+# mfb_current_white_label_id() function returns the tenant's ID, enabling
+# Postgres to use the white_label_id index instead of seq-scanning (MFB-975).
 resource "metabase_database" "tenant_postgres" {
   for_each = var.tenants
 
@@ -50,14 +53,15 @@ resource "metabase_database" "tenant_postgres" {
     engine = "postgres"
 
     details_json = jsonencode({
-      host             = var.database_host
-      port             = var.database_port
-      dbname           = var.database_name
-      user             = local.tenant_credentials[each.key].username
-      password         = local.tenant_credentials[each.key].password
-      ssl              = var.database_ssl
-      tunnel-enabled   = false
-      advanced-options = false
+      host               = var.database_host
+      port               = var.database_port
+      dbname             = var.database_name
+      user               = local.tenant_credentials[each.key].username
+      password           = local.tenant_credentials[each.key].password
+      ssl                = var.database_ssl
+      tunnel-enabled     = false
+      advanced-options   = true
+      additional-options = "options=-c%20app.white_label_id=${each.value.white_label_id}"
     })
 
     redacted_attributes = [
@@ -158,9 +162,14 @@ resource "metabase_collection" "tenant_collection_tx" {
   depends_on = [metabase_collection.tenant_collection_co]
 }
 
+resource "metabase_collection" "tenant_collection_wa" {
+  name       = "Washington"
+  depends_on = [metabase_collection.tenant_collection_tx]
+}
+
 resource "metabase_collection" "tenant_collection_il" {
   name       = "Illinois"
-  depends_on = [metabase_collection.tenant_collection_tx]
+  depends_on = [metabase_collection.tenant_collection_wa]
 }
 
 resource "metabase_collection" "tenant_collection_ma" {
@@ -184,6 +193,7 @@ locals {
     nc                = metabase_collection.tenant_collection_nc
     co                = metabase_collection.tenant_collection_co
     tx                = metabase_collection.tenant_collection_tx
+    wa                = metabase_collection.tenant_collection_wa
     il                = metabase_collection.tenant_collection_il
     ma                = metabase_collection.tenant_collection_ma
     cesn              = metabase_collection.tenant_collection_cesn
