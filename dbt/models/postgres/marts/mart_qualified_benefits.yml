@@ -2,8 +2,29 @@ version: 2
 
 models:
   - name: mart_qualified_benefits
-    description: "Materialized mart that unpivots benefit eligibility data into rows for easier dashboarding. Contains counts of people who qualified for each benefit category by white_label_id and partner. Dynamic: joins stg_program_eligibility directly, so new programs are included automatically without code changes."
+    description: >
+      One row per screen × benefit for screens where the screener qualified for that
+      benefit (annual_value > 0).  Grain mirrors mart_current_benefits.
+
+      Previously this mart was pre-aggregated (COUNT + GROUP BY tuple), which caused
+      a date-filter semi-join leak in dashboard queries.  It now exposes screen_id so
+      dashboard SQL can safely filter with
+        WHERE screen_id IN (SELECT id FROM mart_screener_data WHERE <date/partner filters>)
+      instead of a tuple semi-join.
+
+      Dynamic: joins stg_program_eligibility directly, so new programs are included
+      automatically without code changes.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - screen_id
+            - benefit_name
     columns:
+      - name: screen_id
+        description: "Foreign key to screener_screen (mart_screener_data.id)"
+        tests:
+          - not_null
+
       - name: white_label_id
         description: "White label organization ID used for row-level security"
         tests:
@@ -11,20 +32,34 @@ models:
 
       - name: partner
         description: "Referral partner associated with the screener"
+
+      - name: county
+        description: "County associated with the screener"
+
+      - name: submission_date
+        description: "Date the screener was submitted"
+
+      - name: utm_campaign
+        description: "UTM campaign parameter from the screener"
+
+      - name: utm_medium
+        description: "UTM medium parameter from the screener"
+
+      - name: utm_source
+        description: "UTM source parameter from the screener"
+
+      - name: benefit_display_name
+        description: >
+          English (en-us) display name for the benefit program, scoped to the white
+          label. Falls back to benefit_name if no English translation exists.
+          Under RLS (per-WL queries), all rows for a given benefit_name share the same
+          display name.
         tests:
           - not_null
 
-      - name: benefit
-        description: "English (en-us) display name for the benefit program, scoped to the white label. Falls back to name_abbreviated if no English translation exists."
-        tests:
-          - not_null
-
-      - name: name_abbreviated
-        description: "Language-agnostic program identifier (e.g. 'snap', 'wic'). Use this for grouping instead of benefit to avoid translation duplicates."
-        tests:
-          - not_null
-
-      - name: count
-        description: "Number of distinct screeners that qualified for this benefit in the given partner/county group"
+      - name: benefit_name
+        description: >
+          Language-agnostic program slug (e.g. 'snap', 'wic'). Use this for grouping
+          instead of benefit_display_name to avoid translation duplicates.
         tests:
           - not_null
