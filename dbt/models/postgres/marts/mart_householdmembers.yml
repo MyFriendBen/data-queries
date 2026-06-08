@@ -26,7 +26,9 @@ models:
           - not_null
 
       - name: county
-        description: "County of the head of household."
+        description: "County of the head of household. Null/blank source values are normalized to 'Unspecified'."
+        tests:
+          - not_null
 
       - name: screen_id
         description: "ID of the screener same as screener_id."
