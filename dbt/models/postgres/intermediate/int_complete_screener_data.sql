@@ -283,16 +283,21 @@ benefit_aggregates AS (
     SELECT
         pe.eligibility_snapshot_id,
         SUM(
-            CASE WHEN pe.value_type = 'tax_credit' THEN pe.annual_value ELSE 0 END
+            CASE WHEN COALESCE(pc.tax_category, FALSE) = TRUE THEN pe.annual_value ELSE 0 END
         ) AS tax_credits_annual,
         SUM(
             CASE
-                WHEN pe.value_type IS DISTINCT FROM 'tax_credit'
+                WHEN COALESCE(pc.tax_category, FALSE) IS DISTINCT FROM TRUE
                     THEN pe.annual_value
                 ELSE 0
             END
         ) AS non_tax_credit_benefits_annual
     FROM {{ ref('stg_program_eligibility') }} AS pe
+    LEFT JOIN {{ source('django_apps', 'programs_program') }} AS pp
+        ON pe.name_abbreviated = pp.name_abbreviated
+        AND pe.white_label_id = pp.white_label_id
+    LEFT JOIN {{ source('django_apps', 'programs_programcategory') }} AS pc
+        ON pp.category_id = pc.id
     GROUP BY pe.eligibility_snapshot_id
 ),
 
