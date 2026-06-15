@@ -124,7 +124,7 @@ jobs:
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           status: success
-          environment: ${{ github.event.inputs.environment || 'staging' }}
+          environment: production
           workflow-name: Terraform Apply
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           commit-sha: ${{ steps.commit_info.outputs.sha }}
@@ -137,7 +137,7 @@ jobs:
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           status: failure
-          environment: ${{ github.event.inputs.environment || 'staging' }}
+          environment: production
           workflow-name: Terraform Apply
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           commit-sha: ${{ steps.commit_info.outputs.sha }}
