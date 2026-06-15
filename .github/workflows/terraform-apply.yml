@@ -12,25 +12,17 @@ on:
       - "!dashboards/heroku-entrypoint.sh"
       - ".github/workflows/terraform-apply.yml"
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 jobs:
   apply:
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.environment != 'production' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'staging' }}
+    environment: production
     defaults:
       run:
         working-directory: dashboards
     env:
-      TF_WORKSPACE: mfb-dashboards-${{ github.event.inputs.environment || 'staging' }}
+      TF_WORKSPACE: mfb-dashboards-production
       TF_VAR_metabase_url: ${{ vars.METABASE_URL }}
       TF_VAR_metabase_admin_email: ${{ vars.METABASE_ADMIN_EMAIL }}
       TF_VAR_metabase_admin_password: ${{ secrets.METABASE_ADMIN_PASSWORD }}
@@ -65,6 +57,7 @@ jobs:
             --arg nc_user "$NC_DB_USER" --arg nc_pass "$NC_DB_PASS" \
             --arg co_user "$CO_DB_USER" --arg co_pass "$CO_DB_PASS" \
             --arg tx_user "$TX_DB_USER" --arg tx_pass "$TX_DB_PASS" \
+            --arg wa_user "$WA_DB_USER" --arg wa_pass "$WA_DB_PASS" \
             --arg il_user "$IL_DB_USER" --arg il_pass "$IL_DB_PASS" \
             --arg ma_user "$MA_DB_USER" --arg ma_pass "$MA_DB_PASS" \
             --arg cesn_user "$CESN_DB_USER" --arg cesn_pass "$CESN_DB_PASS" \
@@ -74,6 +67,7 @@ jobs:
               + (if $nc_user != "" and $nc_pass != "" then {nc: {username: $nc_user, password: $nc_pass}} else {} end)
               + (if $co_user != "" and $co_pass != "" then {co: {username: $co_user, password: $co_pass}} else {} end)
               + (if $tx_user != "" and $tx_pass != "" then {tx: {username: $tx_user, password: $tx_pass}} else {} end)
+              + (if $wa_user != "" and $wa_pass != "" then {wa: {username: $wa_user, password: $wa_pass}} else {} end)
               + (if $il_user != "" and $il_pass != "" then {il: {username: $il_user, password: $il_pass}} else {} end)
               + (if $ma_user != "" and $ma_pass != "" then {ma: {username: $ma_user, password: $ma_pass}} else {} end)
               + (if $cesn_user != "" and $cesn_pass != "" then {cesn: {username: $cesn_user, password: $cesn_pass}} else {} end)
@@ -90,6 +84,8 @@ jobs:
           CO_DB_PASS: ${{ secrets.CO_DB_PASS }}
           TX_DB_USER: ${{ secrets.TX_DB_USER }}
           TX_DB_PASS: ${{ secrets.TX_DB_PASS }}
+          WA_DB_USER: ${{ secrets.WA_DB_USER }}
+          WA_DB_PASS: ${{ secrets.WA_DB_PASS }}
           IL_DB_USER: ${{ secrets.IL_DB_USER }}
           IL_DB_PASS: ${{ secrets.IL_DB_PASS }}
           MA_DB_USER: ${{ secrets.MA_DB_USER }}

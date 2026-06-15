@@ -11,7 +11,10 @@ SELECT
     t.count,
     pb.white_label_id,
     pb.partner,
-    pb.county
+    pb.county,
+    pb.utm_campaign,
+    pb.utm_medium,
+    pb.utm_source
 FROM {{ ref('int_previous_benefits') }} AS pb
 CROSS JOIN LATERAL unnest(
     ARRAY[

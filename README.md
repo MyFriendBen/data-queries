@@ -76,18 +76,17 @@ The first two change regularly. The third changes only when upgrading Metabase v
 
 **When:** You've added or modified SQL models in `dbt/models/`.
 
-**Both staging and production** run automatically every night at 6 AM UTC. To trigger manually:
+Production runs automatically every night at 6 AM UTC. To trigger manually:
 ```bash
-gh workflow run dbt-nightly.yml -f environment=staging --repo MyFriendBen/data-queries
-gh workflow run dbt-nightly.yml -f environment=production --repo MyFriendBen/data-queries
+gh workflow run dbt-nightly.yml --repo MyFriendBen/data-queries
 ```
 
 To do a full refresh (rebuilds tables from scratch instead of incrementally):
 ```bash
-gh workflow run dbt-nightly.yml -f environment=production -f full_refresh=true --repo MyFriendBen/data-queries
+gh workflow run dbt-nightly.yml -f full_refresh=true --repo MyFriendBen/data-queries
 ```
 
-Production runs are restricted to the `main` branch.
+Manual dispatches are restricted to the `main` branch.
 
 ### 2. Metabase Configuration Changes (dashboards, cards, data sources)
 
@@ -98,22 +97,16 @@ These are **Metabase configuration** changes, not container changes. Terraform t
 **Workflow:**
 
 1. Open a PR that modifies `dashboards/*.tf`
-2. `terraform-plan.yml` runs automatically against staging and posts the plan as a PR comment
-3. Merge to `main` → `terraform-apply.yml` auto-applies to **staging**
-4. When ready, manually apply to **production**:
-   ```bash
-   gh workflow run terraform-apply.yml -f environment=production --repo MyFriendBen/data-queries
-   ```
+2. `terraform-plan.yml` runs automatically against production and posts the plan as a PR comment
+3. Merge to `main` → `terraform-apply.yml` auto-applies to **production**
 
-Production applies are restricted to the `main` branch.
+Applies are restricted to the `main` branch.
 
 **Note:** The Terraform workflow ignores changes to `dashboards/Dockerfile.heroku`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, and `dashboards/README.md` — those don't affect Metabase configuration.
 
 ### 3. Metabase Container Updates (version upgrades)
 
 **When:** You're upgrading the Metabase version (changing the `FROM` tag in `Dockerfile.heroku`) or modifying the entrypoint script. This is rare.
-
-**Why this is separate:** Heroku Pipeline promotion (`heroku pipelines:promote`) does not work with Container Registry apps. The container must be built and pushed to each environment individually.
 
 **Steps:**
 
@@ -128,29 +121,16 @@ Production applies are restricted to the `main` branch.
    heroku container:login
    docker build --platform linux/amd64 --provenance=false \
      -f Dockerfile.heroku \
-     -t registry.heroku.com/mfb-metabase-staging/web .
+     -t registry.heroku.com/mfb-metabase-production/web .
    ```
 
-3. Deploy to **staging** first:
+3. Deploy to **production**:
    ```bash
-   docker push registry.heroku.com/mfb-metabase-staging/web
-   heroku container:release web -a mfb-metabase-staging
-   ```
-
-4. Verify staging is healthy:
-   ```bash
-   curl https://mfb-metabase-staging-0805953c70da.herokuapp.com/api/health
-   ```
-
-5. Deploy to **production**:
-   ```bash
-   docker tag registry.heroku.com/mfb-metabase-staging/web \
-     registry.heroku.com/mfb-metabase-production/web
    docker push registry.heroku.com/mfb-metabase-production/web
    heroku container:release web -a mfb-metabase-production
    ```
 
-6. Verify production:
+4. Verify production is healthy:
    ```bash
    curl https://mfb-metabase-production-baf31df893fc.herokuapp.com/api/health
    ```
@@ -161,7 +141,6 @@ Production applies are restricted to the `main` branch.
 
 | Environment | Metabase URL | Django DB App |
 |-------------|-------------|---------------|
-| Staging | `mfb-metabase-staging-0805953c70da.herokuapp.com` | `cobenefits-api-staging` |
 | Production | `mfb-metabase-production-baf31df893fc.herokuapp.com` | `cobenefits-api` |
 
 For secrets/variables setup, see `dashboards/GITHUB_SECRETS.md`.

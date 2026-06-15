@@ -23,3 +23,8 @@ models:
         description: "Count of people in the corresponding benefit category."
         tests:
           - not_null
+
+      - name: county
+        description: "County grouping dimension. Null/blank source values are normalized to 'Unspecified'."
+        tests:
+          - not_null

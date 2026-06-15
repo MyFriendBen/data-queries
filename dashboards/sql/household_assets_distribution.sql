@@ -1,11 +1,13 @@
 WITH filtered AS (
     SELECT household_assets
     FROM analytics.mart_screener_data
-    WHERE household_assets IS NOT NULL [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]
+    WHERE household_assets IS NOT NULL AND 1 = 1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]
 ),
+
 total AS (
-    SELECT count(*) AS n FROM filtered
+    SELECT COUNT(*) AS n FROM filtered
 ),
+
 asset_bins AS (
     SELECT
         CASE
@@ -26,8 +28,10 @@ asset_bins AS (
         END AS sort_order
     FROM filtered
 )
-SELECT asset_range AS "Asset Range",
-       count(*)::float / NULLIF(max(t.n), 0) AS "% of Total"
-FROM asset_bins, total t
+
+SELECT
+    asset_range AS "Asset Range",
+    COUNT(*)::FLOAT / NULLIF(MAX(t.n), 0) AS "% of Total"
+FROM asset_bins, total AS t
 GROUP BY asset_range, sort_order
 ORDER BY sort_order

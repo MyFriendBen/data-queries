@@ -2,24 +2,50 @@ version: 2
 
 models:
   - name: mart_current_benefits
-    description: "Mart table for current benefits, unpivoted for dashboard use. Contains benefit counts by white_label_id and partner with row-level security."
+    description: "One row per screen × benefit, sourced from the screener_current_benefits join table (replaces the legacy screener_screen.has_* columns dropped in MFB-720)."
+    tests:
+      # Grain depends on the `pp.white_label_id = msd.white_label_id` filter in the
+      # model: without it, a single screen could pull in two programs_program rows
+      # sharing the same name_abbreviated across white labels and break uniqueness.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - screen_id
+            - benefit_name
     columns:
+      - name: screen_id
+        description: "Foreign key to screener_screen"
+        tests:
+          - not_null
+
       - name: white_label_id
         description: "White label organization ID used for row-level security"
         tests:
           - not_null
 
       - name: partner
-        description: "Referral partner associated with the screener"
+        description: "Referral partner associated with the screener. Passed through from mart_screener_data."
+
+      - name: county
+        description: "County associated with the screener. Passed through from mart_screener_data."
+
+      - name: submission_date
+        description: "Date the screener was submitted. Passed through from mart_screener_data."
+
+      - name: utm_campaign
+        description: "UTM campaign parameter from the screener. Passed through from mart_screener_data."
+
+      - name: utm_medium
+        description: "UTM medium parameter from the screener. Passed through from mart_screener_data."
+
+      - name: utm_source
+        description: "UTM source parameter from the screener. Passed through from mart_screener_data."
+
+      - name: benefit_name
+        description: "Language-agnostic program slug (e.g. 'snap', 'wic'). Use for grouping to avoid translation duplicates."
         tests:
           - not_null
 
-      - name: benefit
-        description: "Benefit category name"
-        tests:
-          - not_null
-
-      - name: count
-        description: "Count of people eligible for the corresponding benefit"
+      - name: benefit_display_name
+        description: "English (en-us) display name for the benefit program from this row's white label. Falls back to benefit_name if no translation exists. Under RLS (per-WL queries, the default), all rows for a given benefit_name share the same display name. In any cross-WL query, display names may differ across white labels — pick a deterministic tiebreaker (e.g. MIN(white_label_id)) at the query site."
         tests:
           - not_null

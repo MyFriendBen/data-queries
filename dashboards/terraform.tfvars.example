@@ -12,68 +12,88 @@ global_db_credentials = {
 }
 
 # Tenant-Specific Database Credentials (RLS Users)
-# Convention: wl_<state>_<white_label_id>_ro — the RLS policy extracts the
-# white_label_id from the username via regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')
+# Role names still follow wl_<state>_<id>_ro convention for GRANTs/audit, but
+# RLS now uses the session GUC app.white_label_id (set via JDBC options) instead
+# of extracting the ID from the role name.
 tenant_db_credentials = {
   nc = {
-    username = "wl_nc_5_ro"              # white_label_id = 5
+    username = "wl_nc_5_ro"
     password = "your_password"
   }
   co = {
-    username = "wl_co_1_ro"              # white_label_id = 1
+    username = "wl_co_1_ro"
     password = "your_password"
   }
   tx = {
-    username = "wl_tx_40_ro"             # white_label_id = 40
+    username = "wl_tx_40_ro"
+    password = "your_password"
+  }
+  wa = {
+    username = "wl_wa_41_ro"
     password = "your_password"
   }
   il = {
-    username = "wl_il_39_ro"             # white_label_id = 39
+    username = "wl_il_39_ro"
     password = "your_password"
   }
   ma = {
-    username = "wl_ma_38_ro"             # white_label_id = 38
+    username = "wl_ma_38_ro"
     password = "your_password"
   }
   cesn = {
-    username = "wl_cesn_4_ro"            # white_label_id = 4
+    username = "wl_cesn_4_ro"
     password = "your_password"
   }
   co_tax_calculator = {
-    username = "wl_co_tax_calculator_3_ro"  # white_label_id = 3
+    username = "wl_co_tax_calculator_3_ro"
     password = "your_password"
   }
 }
 
 # Tenant Configuration (Non-sensitive)
+# white_label_id must match the screener_whitelabel.id in the Django database.
+# It is passed to Metabase via JDBC options (-c app.white_label_id=<id>) so the
+# STABLE RLS function can use an index scan instead of a sequential scan.
 tenants = {
   nc = {
-    name         = "nc"
-    display_name = "North Carolina"
+    name           = "nc"
+    display_name   = "North Carolina"
+    white_label_id = 5
   }
   co = {
-    name         = "co"
-    display_name = "Colorado"
+    name           = "co"
+    display_name   = "Colorado"
+    white_label_id = 1
   }
   tx = {
-    name         = "tx"
-    display_name = "Texas"
+    name           = "tx"
+    display_name   = "Texas"
+    white_label_id = 40
+  }
+  wa = {
+    name           = "wa"
+    display_name   = "Washington"
+    white_label_id = 41
   }
   il = {
-    name         = "il"
-    display_name = "Illinois"
+    name           = "il"
+    display_name   = "Illinois"
+    white_label_id = 39
   }
   ma = {
-    name         = "ma"
-    display_name = "Massachusetts"
+    name           = "ma"
+    display_name   = "Massachusetts"
+    white_label_id = 38
   }
   cesn = {
-    name         = "cesn"
-    display_name = "CESN"
+    name           = "cesn"
+    display_name   = "CESN"
+    white_label_id = 4
   }
   co_tax_calculator = {
-    name         = "co_tax_calculator"
-    display_name = "CO Tax Calculator"
+    name           = "co_tax_calculator"
+    display_name   = "CO Tax Calculator"
+    white_label_id = 3
   }
 }
 
