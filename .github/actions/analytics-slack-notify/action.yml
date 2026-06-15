@@ -74,6 +74,9 @@ runs:
             ]
           }')
 
-        curl -X POST "$SLACK_WEBHOOK_URL" \
+        curl --fail --show-error --silent \
+          --connect-timeout 10 \
+          --max-time 30 \
+          -X POST "$SLACK_WEBHOOK_URL" \
           -H "Content-Type: application/json" \
           -d "$payload"
