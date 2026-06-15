@@ -1,0 +1,82 @@
+name: "Send Analytics Slack Notification"
+description: "Sends dbt/Terraform deployment status to Slack"
+
+inputs:
+  slack-webhook-url:
+    description: "Slack webhook URL"
+    required: true
+  status:
+    description: "success or failure"
+    required: true
+  environment:
+    description: "staging or production"
+    required: true
+  workflow-name:
+    description: "Human-readable name, e.g. 'dbt Build' or 'Terraform Apply'"
+    required: true
+  run-url:
+    description: "Direct URL to this workflow run"
+    required: true
+  commit-sha:
+    description: "Short commit SHA"
+    required: false
+  commit-message:
+    description: "Commit message"
+    required: false
+  commit-author:
+    description: "Commit author name"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Send Slack notification
+      shell: bash
+      env:
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+        STATUS: ${{ inputs.status }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        WORKFLOW_NAME: ${{ inputs.workflow-name }}
+        RUN_URL: ${{ inputs.run-url }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        COMMIT_AUTHOR: ${{ inputs.commit-author }}
+      run: |
+        if [ "$STATUS" = "success" ]; then
+          EMOJI="✅"
+          TITLE="${WORKFLOW_NAME} Succeeded"
+        else
+          EMOJI="❌"
+          TITLE="${WORKFLOW_NAME} Failed"
+        fi
+
+        ENV_LABEL=$(echo "$ENVIRONMENT" | tr '[:lower:]' '[:upper:]')
+
+        payload=$(jq -n \
+          --arg emoji "$EMOJI" \
+          --arg title "$TITLE" \
+          --arg env "$ENV_LABEL" \
+          --arg run_url "$RUN_URL" \
+          --arg sha "$COMMIT_SHA" \
+          --arg author "$COMMIT_AUTHOR" \
+          --arg message "$COMMIT_MESSAGE" \
+          '{
+            text: "\($emoji) \($title)",
+            blocks: [
+              {type: "header", text: {type: "plain_text", text: "\($emoji) \($title)"}},
+              {type: "section", fields: [
+                {type: "mrkdwn", text: "*Environment:*\n\($env)"},
+                {type: "mrkdwn", text: "*Workflow:*\n<\($run_url)|View Logs>"},
+                {type: "mrkdwn", text: "*Commit:*\n\($sha)"},
+                {type: "mrkdwn", text: "*Author:*\n\($author)"}
+              ]},
+              {type: "section", text: {type: "mrkdwn", text: "*Commit Message:*\n\($message)"}}
+            ]
+          }')
+
+        curl --fail --show-error --silent \
+          --connect-timeout 10 \
+          --max-time 30 \
+          -X POST "$SLACK_WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -d "$payload"
