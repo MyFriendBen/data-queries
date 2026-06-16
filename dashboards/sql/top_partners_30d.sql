@@ -10,7 +10,6 @@ ranked AS (
     FROM filtered
     GROUP BY partner
     ORDER BY screeners DESC
-    LIMIT 10
 ),
 
 total_screeners AS (
@@ -18,20 +17,20 @@ total_screeners AS (
 )
 
 SELECT
-    "Top 10 Partners",
+    "Partner",
     "#",
     "%"
 FROM (
     SELECT
         0 AS sort_order,
-        partner AS "Top 10 Partners",
+        partner AS "Partner",
         screeners AS "#",
         screeners::FLOAT / nullif(t.total, 0) AS "%"
     FROM ranked, total_screeners AS t
     UNION ALL
     SELECT
         1 AS sort_order,
-        'Total' AS "Top 10 Partners",
+        'Total' AS "Partner",
         t.total AS "#",
         CASE WHEN t.total = 0 THEN NULL ELSE 1::FLOAT END AS "%"
     FROM total_screeners AS t

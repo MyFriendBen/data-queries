@@ -190,9 +190,10 @@ resource "metabase_card" "global_top_partners" {
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )
@@ -218,9 +219,10 @@ resource "metabase_card" "global_top_counties" {
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )

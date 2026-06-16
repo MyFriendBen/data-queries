@@ -11,7 +11,6 @@ county_counts AS (
     WHERE county IS NOT NULL AND county <> ''
     GROUP BY county
     ORDER BY screeners DESC
-    LIMIT 10
 ),
 
 total_screeners AS (
@@ -19,20 +18,20 @@ total_screeners AS (
 )
 
 SELECT
-    "Top 10 Counties",
+    "County",
     "#",
     "%"
 FROM (
     SELECT
         0 AS sort_order,
-        county AS "Top 10 Counties",
+        county AS "County",
         screeners AS "#",
         screeners::FLOAT / nullif(t.total, 0) AS "%"
     FROM county_counts, total_screeners AS t
     UNION ALL
     SELECT
         1 AS sort_order,
-        'Total' AS "Top 10 Counties",
+        'Total' AS "County",
         t.total AS "#",
         CASE WHEN t.total = 0 THEN NULL ELSE 1::FLOAT END AS "%"
     FROM total_screeners AS t
