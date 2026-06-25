@@ -29,7 +29,6 @@ run_sql data.sql
 run_sql data_current_benefits.sql
 run_sql data_householdmembers.sql
 run_sql data_immediate_needs.sql
-run_sql data_previous_benefits.sql
 run_sql data_expenses.sql
 run_sql data_income.sql
 # run_sql data_tenant.sql
