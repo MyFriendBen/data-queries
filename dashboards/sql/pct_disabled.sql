@@ -1,3 +1,9 @@
+-- % of household members with a disability, among members who answered the
+-- disability question. screener_householdmember.disabled is a nullable boolean;
+-- NULL means the question was not recorded for that member (common for
+-- children/spouses, and for tenants whose flow doesn't capture it). We exclude
+-- NULLs so the rate reflects prevalence among respondents and isn't deflated by
+-- unanswered rows — matching how the age card excludes null ages.
 WITH filter_keys AS (
     SELECT id
     FROM analytics.mart_screener_data
@@ -9,3 +15,4 @@ SELECT
     / nullif(count(*), 0) AS pct
 FROM analytics.mart_householdmembers hm
 INNER JOIN filter_keys fk ON hm.screener_id = fk.id
+WHERE hm.disabled IS NOT NULL
