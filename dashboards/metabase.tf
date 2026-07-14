@@ -1087,10 +1087,11 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
-    # Start/End date filters — shown for tenants with a Google Analytics tab.
+    # Start/End date filters — shown for tenants with the screener Overview tab
+    # (these params are mapped onto every date-filtered screener analytics card).
     # Using plain date variables instead of field filters to avoid the Metabase BigQuery
     # driver bug that generates `schema.table`.column references BigQuery can't parse.
-    local.tenant_has_tab[each.key]["google_analytics"] && var.bigquery_enabled ? [
+    local.tenant_has_tab[each.key]["screener_overview"] && var.bigquery_enabled ? [
       {
         id        = "ga_start_date_filter"
         name      = "Start Date"
@@ -1113,10 +1114,8 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode(concat(
-    # Tab 1: Google Analytics
-    local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
-    # Tab 1 (Overview): screener macro funnel appended below the GA cards (row 35)
-    local.tenant_has_tab[each.key]["screener_form_journey"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
+    # Tab 10 (Overview): screener macro funnel + language distribution
+    local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
     # Tab 2: Overall Performance
     # Two for-loop flattens avoid Terraform's static ternary type-check
     flatten([for k in [each.key] : flatten(concat(

@@ -13,13 +13,13 @@
 #   - collection_id = local.tenant_collection_map[each.key].id
 #
 # Cards live across four dashboard areas:
-#   Tab 1 (Google Analytics, id 1) — macro funnel appended to the Overview tab
+#   Tab 10 (Overview)               — macro funnel + language distribution
 #   Tab 7 (Form Journey)            — step drop-off funnel, errors, back-nav
 #   Tab 8 (Results)                 — apply/more-info conversion, outcome KPIs
 #   Tab 9 (Sharing & Saving)        — share and save funnels
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Tab 1 (Overview) — Macro funnel
+# Tab 10 (Overview) — Macro funnel
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Macro funnel — 5 ordered stages assembled with UNION ALL across three marts,
@@ -823,7 +823,7 @@ resource "metabase_card" "screener_language_distribution" {
 # Dashboard layouts
 # ══════════════════════════════════════════════════════════════════════════════
 # Each layout local is a per-tenant list of dashcards keyed by dashboard_tab_id,
-# mirroring local.tenant_dashboard_ga_layout. They are concatenated into
+# mirroring the other screener layout locals. They are concatenated into
 # metabase_dashboard.tenant_analytics.cards_json in metabase.tf. All date-filtered
 # cards map the shared ga_start_date_filter / ga_end_date_filter parameters onto
 # their start_date / end_date template-tags, exactly like the GA layout.
@@ -832,18 +832,17 @@ resource "metabase_card" "screener_language_distribution" {
 # provider "inconsistent result" error on cards_json round-trip comparison.
 
 locals {
-  # Reuse the GA date param ids (defined in google_analytics.tf as
+  # Reuse the shared date param ids (defined in google_analytics.tf as
   # local._ga_start_date_param_id / _ga_end_date_param_id).
 
-  # Macro funnel appended to the Google Analytics / Overview tab (tab id 1),
-  # placed below the existing MAU chart (which ends at row 35).
+  # Overview tab (tab id 10): macro funnel at the top, language distribution below.
   tenant_dashboard_screener_overview_layout = {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
           card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
-          dashboard_tab_id = 1
-          row              = 35
+          dashboard_tab_id = 10
+          row              = 0
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -864,8 +863,8 @@ locals {
         },
         {
           card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
-          dashboard_tab_id = 1
-          row              = 43
+          dashboard_tab_id = 10
+          row              = 8
           col              = 0
           size_x           = 24
           size_y           = 8

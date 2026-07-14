@@ -92,7 +92,6 @@ locals {
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
     for k, v in var.tenants : k => {
-      google_analytics           = { id = 1, name = "Google Analytics" }
       all_time                   = { id = 2, name = "Overall Performance" }
       households                 = { id = 4, name = "Households" }
       benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "Benefits & Immediate Needs" : "Benefits" }
@@ -100,18 +99,19 @@ locals {
       screener_form_journey      = { id = 7, name = "Form Journey" }
       screener_results           = { id = 8, name = "Results" }
       screener_sharing_saving    = { id = 9, name = "Sharing & Saving" }
+      screener_overview          = { id = 10, name = "Overview" }
     }
   }
 
   # Per-tenant tab selection — order determines tab display order
   tenant_tabs = {
-    nc                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    co                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    tx                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    wa                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    il                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    ma                = ["all_time", "households", "benefits_needs", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
-    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    nc                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    co                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    tx                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    wa                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    il                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    ma                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
     co_tax_calculator = ["all_time", "households", "benefits_needs"]
   }
 
