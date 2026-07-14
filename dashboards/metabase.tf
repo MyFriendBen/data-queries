@@ -1115,6 +1115,8 @@ resource "metabase_dashboard" "tenant_analytics" {
   cards_json = jsonencode(concat(
     # Tab 1: Google Analytics
     local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
+    # Tab 1 (Overview): screener macro funnel appended below the GA cards (row 35)
+    local.tenant_has_tab[each.key]["screener_form_journey"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
     # Tab 2: Overall Performance
     # Two for-loop flattens avoid Terraform's static ternary type-check
     flatten([for k in [each.key] : flatten(concat(
@@ -1626,5 +1628,11 @@ resource "metabase_dashboard" "tenant_analytics" {
     local.tenant_dashboard_benefits_needs_layout[each.key],
     # Tab 6: Homeowners vs Renters (CESN only)
     flatten([for k in [each.key] : local.tenant_dashboard_cesn_hvr_layout if local.tenant_has_tab[k]["cesn_homeowners_vs_renters"]]),
+    # Tab 7: Form Journey (screener analytics)
+    local.tenant_has_tab[each.key]["screener_form_journey"] ? local.tenant_dashboard_screener_form_journey_layout[each.key] : [],
+    # Tab 8: Results (screener analytics)
+    local.tenant_has_tab[each.key]["screener_results"] ? local.tenant_dashboard_screener_results_layout[each.key] : [],
+    # Tab 9: Sharing & Saving (screener analytics)
+    local.tenant_has_tab[each.key]["screener_sharing_saving"] ? local.tenant_dashboard_screener_sharing_saving_layout[each.key] : [],
   ))
 }
