@@ -428,7 +428,7 @@ resource "metabase_card" "tenant_daily_screeners_7d" {
   }))
 }
 
-# Tenant-specific top 10 partners table
+# Tenant-specific top partners table
 resource "metabase_card" "tenant_top_partners" {
   for_each = var.tenants
 
@@ -444,9 +444,10 @@ resource "metabase_card" "tenant_top_partners" {
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )
@@ -455,7 +456,7 @@ resource "metabase_card" "tenant_top_partners" {
   }))
 }
 
-# Tenant-specific top 10 counties table
+# Tenant-specific top counties table
 resource "metabase_card" "tenant_top_counties" {
   for_each = var.tenants
 
@@ -471,9 +472,10 @@ resource "metabase_card" "tenant_top_counties" {
       }
     }
     visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )
