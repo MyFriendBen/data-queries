@@ -223,7 +223,7 @@ locals {
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
       WHERE __STATE_FILTER__
-        AND share_location = 'popup'
+        AND share_location = 'results_popup'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -371,16 +371,20 @@ locals {
   SQL
 
   # ── Tab 10 (Overview): language distribution ────────────────────────────────
+  # Header language SWITCHES — which languages sessions switch TO via the header
+  # language selector. This is header-selector engagement, NOT "language the
+  # household speaks" (that intake answer lives on the Households tab). Deduped
+  # per session.
   screener_sql_language_distribution = <<-SQL
     SELECT
-      language_name,
-      SUM(distinct_screenings) AS `Screenings`
+      language_name AS `Switched To`,
+      SUM(distinct_screenings) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_language`
     WHERE __STATE_FILTER__
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name
-    ORDER BY `Screenings` DESC
+    ORDER BY `Sessions` DESC
   SQL
 }

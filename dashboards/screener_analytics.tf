@@ -520,8 +520,8 @@ resource "metabase_card" "screener_language_distribution" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Language Distribution"
-    description         = "Distinct screenings by language (language changes)"
+    name                = "Header Language Switches"
+    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement — NOT the language the household speaks, which is on the Households tab). Deduped per session."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -536,8 +536,8 @@ resource "metabase_card" "screener_language_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["language_name"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.dimensions" = ["Switched To"]
+      "graph.metrics"    = ["Sessions"]
     }
     parameter_mappings = []
     parameters         = []

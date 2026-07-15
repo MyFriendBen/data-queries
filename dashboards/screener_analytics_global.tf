@@ -49,8 +49,8 @@ resource "metabase_card" "global_screener_language_distribution" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Language Distribution"
-    description         = "Distinct screenings by language (language changes)"
+    name                = "Header Language Switches"
+    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Deduped per session."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -65,8 +65,8 @@ resource "metabase_card" "global_screener_language_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["language_name"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.dimensions" = ["Switched To"]
+      "graph.metrics"    = ["Sessions"]
     }
     parameter_mappings = []
     parameters         = []
