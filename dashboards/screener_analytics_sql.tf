@@ -293,7 +293,7 @@ locals {
   # ── Tab 9 (Sharing & Saving): saves by channel ──────────────────────────────
   screener_sql_saves_by_channel = <<-SQL
     SELECT
-      COALESCE(save_channel, '(none)') AS save_channel,
+      save_channel,
       SUM(total_saves) AS total_saves
     FROM `${local.bq_dataset}.mart_screener_saves`
     WHERE __STATE_FILTER__

@@ -61,22 +61,47 @@ popup_summary as (
     group by event_date, event_date_parsed, screener_state
 )
 
+-- Save rows and popup-impression rows live at DIFFERENT grains: saves are per
+-- (date, state, channel, action); popup impressions are per (date, state). A
+-- join would repeat the single popup value across every channel/action save row,
+-- and the card's SUM(screenings_shown_popup) would then inflate by the number of
+-- channel/action combos that day. Instead we UNION them as disjoint rows —
+-- popup rows carry a synthetic save_action = '__popup_shown__' (null channel),
+-- mirroring the __form_start__ synthetic-row pattern in mart_screener_form_funnel.
+-- Each metric column is non-zero on only ONE row type, so SUM() over any filter
+-- counts each exactly once. The card reads Shown Popup from the popup rows and
+-- Saved from the save rows.
 select
-    coalesce(s.event_date, p.event_date) as event_date,
-    coalesce(s.event_date_parsed, p.event_date_parsed) as event_date_parsed,
-    coalesce(s.screener_state, p.screener_state) as screener_state,
-    s.save_channel,
-    s.save_action,
+    event_date,
+    event_date_parsed,
+    screener_state,
+    save_channel,
+    save_action,
 
-    coalesce(s.total_saves, 0) as total_saves,
-    coalesce(s.screenings_with_save, 0) as screenings_with_save,
-    coalesce(p.total_popup_impressions, 0) as total_popup_impressions,
-    coalesce(p.screenings_shown_popup, 0) as screenings_shown_popup,
+    total_saves,
+    screenings_with_save,
+    0 as total_popup_impressions,
+    0 as screenings_shown_popup,
 
     current_timestamp() as updated_at
 
-from save_summary s
-full outer join popup_summary p
-    on s.event_date = p.event_date
-    and s.screener_state = p.screener_state
+from save_summary
+
+union all
+
+select
+    event_date,
+    event_date_parsed,
+    screener_state,
+    cast(null as string) as save_channel,
+    '__popup_shown__' as save_action,
+
+    0 as total_saves,
+    0 as screenings_with_save,
+    total_popup_impressions,
+    screenings_shown_popup,
+
+    current_timestamp() as updated_at
+
+from popup_summary
 order by event_date desc, screener_state

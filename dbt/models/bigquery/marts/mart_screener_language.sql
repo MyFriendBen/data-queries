@@ -18,7 +18,11 @@ select
     language_name,
 
     count(*) as total_changes,
-    count(distinct screener_uid) as distinct_screenings,
+    -- Session-deduped, NOT screener_uid: screener_language_changed fires from
+    -- the global Header language selector, most often on the landing/language
+    -- page BEFORE a screening uuid exists (uid is null pre-step-3). Deduping on
+    -- screener_uid would collapse those to ~0 (same bug fixed in the funnel mart).
+    count(distinct to_json_string(struct(user_pseudo_id, ga_session_id))) as distinct_screenings,
 
     current_timestamp() as updated_at
 
