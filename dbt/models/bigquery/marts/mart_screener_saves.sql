@@ -9,9 +9,13 @@
 -- Powers the Sharing & Outbound dashboard tab's save funnel, tracked
 -- separately from mart_screener_shares since screener_results_save is a
 -- distinct user flow (save-for-later) from screener_share (active sharing).
--- screener_share_popup_shown is an impression event (ref-guarded per mount) —
--- dedupe by screener_uid for "distinct screenings shown the share popup"
--- (see analytics-dbt-notes.md).
+--
+-- Output shape: three DISJOINT row types (see the union block below) — raw
+-- per-(channel,action) save counts, a synthetic '__saved__' row for distinct
+-- savers, and a synthetic '__popup_shown__' row for popup impressions — so each
+-- metric sums exactly once with no fan-out. Distinct metrics (screenings_with_save,
+-- screenings_shown_popup) dedupe on screener_uid, which is valid here because both
+-- save and popup events fire post-step-3 (uid exists). (see analytics-dbt-notes.md)
 -- No save_action:'error' event exists yet, so send-failure is not
 -- distinguished from send-attempt in save_action values.
 
