@@ -52,55 +52,13 @@ resource "metabase_card" "screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH visitors AS (
-            SELECT SUM(total_sessions) AS n
-            FROM `${local.bq_dataset}.mart_ga_kpi_summary`
-            WHERE state_code IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        query = replace(
+          replace(
+            local.screener_sql_macro_funnel,
+            "__STATE_FILTER_KPI__", "state_code IN (${local.tenant_ga_state_filter[each.key]})"
           ),
-          started AS (
-            SELECT SUM(screenings_viewed_step) AS n
-            FROM `${local.bq_dataset}.mart_screener_form_funnel`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-              AND screener_step_name = '__form_start__'
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          ),
-          results AS (
-            SELECT SUM(screenings_results_loaded) AS n
-            FROM `${local.bq_dataset}.mart_screener_results_outcomes`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          ),
-          more_info AS (
-            SELECT SUM(screenings_with_interaction) AS n
-            FROM `${local.bq_dataset}.mart_screener_program_interactions`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-              AND interaction_type = 'more_info'
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          ),
-          apply AS (
-            SELECT SUM(screenings_with_interaction) AS n
-            FROM `${local.bq_dataset}.mart_screener_program_interactions`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-              AND interaction_type = 'apply'
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          )
-          SELECT funnel_step, screenings
-          FROM (
-            SELECT 'Visitors'          AS funnel_step, (SELECT n FROM visitors)  AS screenings, 1 AS step_order
-            UNION ALL SELECT 'Started',            (SELECT n FROM started),   2
-            UNION ALL SELECT 'Saw Results',        (SELECT n FROM results),   3
-            UNION ALL SELECT 'Clicked More Info',  (SELECT n FROM more_info), 4
-            UNION ALL SELECT 'Clicked Apply',      (SELECT n FROM apply),     5
-          )
-          ORDER BY step_order
-        SQL
+          "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"
+        )
         template-tags = local.ga_date_tags
       }
     }
@@ -138,18 +96,7 @@ resource "metabase_card" "screener_step_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            screener_step_name,
-            SUM(screenings_viewed_step) AS screenings_viewed
-          FROM `${local.bq_dataset}.mart_screener_form_funnel`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY screener_step_name
-          ORDER BY MIN(screener_step_number) NULLS LAST, screener_step_name
-        SQL
+        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -179,19 +126,7 @@ resource "metabase_card" "screener_errors_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            screener_step_name,
-            SUM(total_error_count) AS total_errors
-          FROM `${local.bq_dataset}.mart_screener_form_funnel`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY screener_step_name
-          HAVING SUM(total_error_count) > 0
-          ORDER BY total_errors DESC
-        SQL
+        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -220,19 +155,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            screener_step_name,
-            SUM(screenings_navigated_back) AS screenings_back
-          FROM `${local.bq_dataset}.mart_screener_form_funnel`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY screener_step_name
-          HAVING SUM(screenings_navigated_back) > 0
-          ORDER BY screenings_back DESC
-        SQL
+        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -268,28 +191,7 @@ resource "metabase_card" "screener_apply_conversion_rate" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH per_program AS (
-            SELECT
-              program_id,
-              MAX(program_name) AS program_name,
-              SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info_screenings,
-              SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply_screenings
-            FROM `${local.bq_dataset}.mart_screener_program_interactions`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            GROUP BY program_id
-          )
-          SELECT
-            program_name,
-            more_info_screenings,
-            apply_screenings,
-            ROUND(apply_screenings * 100.0 / NULLIF(more_info_screenings, 0), 1) AS apply_rate_pct
-          FROM per_program
-          WHERE more_info_screenings > 0
-          ORDER BY apply_rate_pct DESC
-        SQL
+        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -320,24 +222,7 @@ resource "metabase_card" "screener_more_info_vs_apply" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH per_program AS (
-            SELECT
-              program_id,
-              MAX(program_name) AS program_name,
-              SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
-              SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply
-            FROM `${local.bq_dataset}.mart_screener_program_interactions`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            GROUP BY program_id
-          )
-          SELECT program_name, more_info, apply
-          FROM per_program
-          WHERE more_info > 0 OR apply > 0
-          ORDER BY (more_info - apply) DESC
-        SQL
+        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -369,24 +254,7 @@ resource "metabase_card" "screener_more_info_apply_scatter" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH per_program AS (
-            SELECT
-              program_id,
-              MAX(program_name) AS program_name,
-              SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
-              SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply
-            FROM `${local.bq_dataset}.mart_screener_program_interactions`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-            GROUP BY program_id
-          )
-          SELECT program_name, more_info, apply
-          FROM per_program
-          WHERE more_info > 0 OR apply > 0
-          ORDER BY more_info DESC
-        SQL
+        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -419,30 +287,7 @@ resource "metabase_card" "screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH agg AS (
-            SELECT
-              SUM(screenings_results_loaded) AS results_viewed,
-              SUM(screenings_none_eligible)  AS none_eligible,
-              SUM(screenings_results_error)  AS results_errors,
-              -- avg_* columns are daily averages in the mart; average them across
-              -- days as an approximation (matches the GA median-of-medians approach)
-              ROUND(AVG(avg_program_count), 2)          AS avg_program_count,
-              ROUND(AVG(avg_total_estimated_value), 2)  AS avg_total_estimated_value
-            FROM `${local.bq_dataset}.mart_screener_results_outcomes`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          )
-          SELECT
-            results_viewed,
-            none_eligible,
-            ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS none_eligible_pct,
-            avg_program_count,
-            avg_total_estimated_value,
-            results_errors
-          FROM agg
-        SQL
+        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -480,28 +325,7 @@ resource "metabase_card" "screener_share_funnel_popup" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH filtered AS (
-            SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-              AND share_location = 'popup'
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          )
-          SELECT funnel_step, screenings
-          FROM (
-            SELECT 'Opened' AS funnel_step,
-                   SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-                   1 AS step_order
-            FROM filtered
-            UNION ALL
-            SELECT 'Sent',
-                   SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-                   2
-            FROM filtered
-          )
-          ORDER BY step_order
-        SQL
+        query         = replace(local.screener_sql_share_funnel_popup, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -530,28 +354,7 @@ resource "metabase_card" "screener_share_funnel_footer" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH filtered AS (
-            SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-              AND share_location = 'footer'
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          )
-          SELECT funnel_step, screenings
-          FROM (
-            SELECT 'Opened' AS funnel_step,
-                   SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-                   1 AS step_order
-            FROM filtered
-            UNION ALL
-            SELECT 'Sent',
-                   SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-                   2
-            FROM filtered
-          )
-          ORDER BY step_order
-        SQL
+        query         = replace(local.screener_sql_share_funnel_footer, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -581,19 +384,7 @@ resource "metabase_card" "screener_shares_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            share_channel,
-            COALESCE(share_provider, '(none)') AS share_provider,
-            SUM(total_shares) AS total_shares
-          FROM `${local.bq_dataset}.mart_screener_shares`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND share_action = 'send'
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY share_channel, share_provider
-          ORDER BY total_shares DESC
-        SQL
+        query         = replace(local.screener_sql_shares_by_channel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -628,20 +419,7 @@ resource "metabase_card" "screener_save_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          WITH filtered AS (
-            SELECT * FROM `${local.bq_dataset}.mart_screener_saves`
-            WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-            [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          )
-          SELECT funnel_step, screenings
-          FROM (
-            SELECT 'Shown Popup' AS funnel_step, SUM(screenings_shown_popup) AS screenings, 1 AS step_order FROM filtered
-            UNION ALL SELECT 'Saved', SUM(screenings_with_save), 2 FROM filtered
-          )
-          ORDER BY step_order
-        SQL
+        query         = replace(local.screener_sql_save_funnel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -670,18 +448,7 @@ resource "metabase_card" "screener_saves_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            COALESCE(save_channel, '(none)') AS save_channel,
-            SUM(total_saves) AS total_saves
-          FROM `${local.bq_dataset}.mart_screener_saves`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND save_channel IS NOT NULL
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY save_channel
-          ORDER BY total_saves DESC
-        SQL
+        query         = replace(local.screener_sql_saves_by_channel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -712,18 +479,7 @@ resource "metabase_card" "screener_tab_split" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            dimension AS tab,
-            SUM(distinct_screenings) AS screenings
-          FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND metric = 'tab_open'
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY dimension
-          ORDER BY screenings DESC
-        SQL
+        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -753,19 +509,7 @@ resource "metabase_card" "screener_top_resources" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            dimension AS resource,
-            SUM(total_clicks) AS clicks
-          FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-            AND metric = 'resource_click'
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY dimension
-          ORDER BY clicks DESC
-          LIMIT 20
-        SQL
+        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -795,17 +539,7 @@ resource "metabase_card" "screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = <<-SQL
-          SELECT
-            language_name,
-            SUM(distinct_screenings) AS screenings
-          FROM `${local.bq_dataset}.mart_screener_language`
-          WHERE screener_state IN (${local.tenant_ga_state_filter[each.key]})
-          [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-          [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-          GROUP BY language_name
-          ORDER BY screenings DESC
-        SQL
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
