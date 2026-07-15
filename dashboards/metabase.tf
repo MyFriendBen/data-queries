@@ -999,12 +999,25 @@ resource "metabase_dashboard" "analytics" {
     # -------------------------------------------------------------------------
     # Tab 4: Engagement Overview (all-states screener)
     # Mirrors tenant_dashboard_screener_overview_layout grid positions.
+    # Epoch note (row 0) via its own list so the text-card object type doesn't
+    # clash with the data-card tuple in the ? : ternary.
     # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [{
+      card_id                = null
+      dashboard_tab_id       = 4
+      row                    = 0
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 2
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
+    }] : [],
     var.bigquery_enabled ? [
       {
         card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
         dashboard_tab_id       = 4
-        row                    = 0
+        row                    = 2
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1015,7 +1028,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
         dashboard_tab_id       = 4
-        row                    = 8
+        row                    = 10
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1028,11 +1041,22 @@ resource "metabase_dashboard" "analytics" {
     # Tab 5: Form Journey (all-states screener)
     # Mirrors tenant_dashboard_screener_form_journey_layout grid positions.
     # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [{
+      card_id                = null
+      dashboard_tab_id       = 5
+      row                    = 0
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 2
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
+    }] : [],
     var.bigquery_enabled ? [
       {
         card_id                = tonumber(metabase_card.global_screener_step_funnel[0].id)
         dashboard_tab_id       = 5
-        row                    = 0
+        row                    = 2
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1043,7 +1067,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_errors_by_step[0].id)
         dashboard_tab_id       = 5
-        row                    = 8
+        row                    = 10
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1054,7 +1078,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_back_nav_by_step[0].id)
         dashboard_tab_id       = 5
-        row                    = 8
+        row                    = 10
         col                    = 12
         size_x                 = 12
         size_y                 = 6
@@ -1067,11 +1091,22 @@ resource "metabase_dashboard" "analytics" {
     # Tab 6: Results Page Activity (all-states screener)
     # Mirrors tenant_dashboard_screener_results_layout grid positions.
     # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [{
+      card_id                = null
+      dashboard_tab_id       = 6
+      row                    = 0
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 2
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
+    }] : [],
     var.bigquery_enabled ? [
       {
         card_id                = tonumber(metabase_card.global_screener_results_outcome_kpis[0].id)
         dashboard_tab_id       = 6
-        row                    = 0
+        row                    = 2
         col                    = 0
         size_x                 = 24
         size_y                 = 4
@@ -1082,7 +1117,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_apply_conversion_rate[0].id)
         dashboard_tab_id       = 6
-        row                    = 4
+        row                    = 6
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1093,7 +1128,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_info_vs_apply[0].id)
         dashboard_tab_id       = 6
-        row                    = 12
+        row                    = 14
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1104,7 +1139,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
         dashboard_tab_id       = 6
-        row                    = 20
+        row                    = 22
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1115,7 +1150,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_top_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 20
+        row                    = 22
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1128,11 +1163,22 @@ resource "metabase_dashboard" "analytics" {
     # Tab 7: Sharing & Saving (all-states screener)
     # Mirrors tenant_dashboard_screener_sharing_saving_layout grid positions.
     # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [{
+      card_id                = null
+      dashboard_tab_id       = 7
+      row                    = 0
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 2
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
+    }] : [],
     var.bigquery_enabled ? [
       {
         card_id                = tonumber(metabase_card.global_screener_share_funnel_popup[0].id)
         dashboard_tab_id       = 7
-        row                    = 0
+        row                    = 2
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1143,7 +1189,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_share_funnel_footer[0].id)
         dashboard_tab_id       = 7
-        row                    = 0
+        row                    = 2
         col                    = 12
         size_x                 = 12
         size_y                 = 6
@@ -1154,7 +1200,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_shares_by_channel[0].id)
         dashboard_tab_id       = 7
-        row                    = 6
+        row                    = 8
         col                    = 0
         size_x                 = 24
         size_y                 = 6
@@ -1165,7 +1211,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_save_funnel[0].id)
         dashboard_tab_id       = 7
-        row                    = 12
+        row                    = 14
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1176,7 +1222,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_saves_by_channel[0].id)
         dashboard_tab_id       = 7
-        row                    = 12
+        row                    = 14
         col                    = 12
         size_x                 = 12
         size_y                 = 6

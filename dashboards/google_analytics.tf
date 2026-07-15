@@ -55,6 +55,10 @@ locals {
     for codes in values(local.tenant_ga_state_codes) : join(", ", [for c in codes : "'${c}'"])
   ])
 
+  # Shared note shown at the top of each screener engagement tab, explaining the
+  # data start date + ramp-up so a sparse recent window isn't misread as a drop.
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward, so date ranges extending earlier show nothing before it, and recent figures are still low-volume as data accumulates. Rates (%) stabilize as traffic builds."
+
   # Analytics epoch: the date the full app-emitted screener_* event set went live.
   # Every screener card floors on this so metrics only reflect the new pipeline —
   # earlier data (e.g. screener_form_start firing weeks before the rest) would
