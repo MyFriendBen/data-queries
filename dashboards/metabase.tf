@@ -574,9 +574,15 @@ resource "metabase_dashboard" "analytics" {
   collection_position = 1
 
   tabs_json = jsonencode([
-    { id = 1, name = "Overall Performance" },
-    { id = 2, name = "Households" },
-    { id = 3, name = "Benefits & Immediate Needs" },
+    { id = 1, name = "•      Summary" },
+    { id = 2, name = "•      Households" },
+    { id = 3, name = "•      Benefits & Needs" },
+    # All-states screener analytics tabs (global versions of the per-tenant
+    # screener tabs). Cards are the global_screener_* resources.
+    { id = 4, name = "•      Engagement Overview" },
+    { id = 5, name = "•      Engagement by Step" },
+    { id = 6, name = "•      Results Page" },
+    { id = 7, name = "•      Share & Save" },
   ])
 
   cards_json = jsonencode(concat(
@@ -990,6 +996,206 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
     ],
+    # -------------------------------------------------------------------------
+    # Tab 4: Engagement Overview (all-states screener)
+    # Mirrors tenant_dashboard_screener_overview_layout grid positions.
+    # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [
+      {
+        card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
+        dashboard_tab_id       = 4
+        row                    = 0
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
+        dashboard_tab_id       = 4
+        row                    = 8
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ] : [],
+    # -------------------------------------------------------------------------
+    # Tab 5: Form Journey (all-states screener)
+    # Mirrors tenant_dashboard_screener_form_journey_layout grid positions.
+    # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [
+      {
+        card_id                = tonumber(metabase_card.global_screener_step_funnel[0].id)
+        dashboard_tab_id       = 5
+        row                    = 0
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_errors_by_step[0].id)
+        dashboard_tab_id       = 5
+        row                    = 8
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_back_nav_by_step[0].id)
+        dashboard_tab_id       = 5
+        row                    = 8
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ] : [],
+    # -------------------------------------------------------------------------
+    # Tab 6: Results Page Activity (all-states screener)
+    # Mirrors tenant_dashboard_screener_results_layout grid positions.
+    # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [
+      {
+        card_id                = tonumber(metabase_card.global_screener_results_outcome_kpis[0].id)
+        dashboard_tab_id       = 6
+        row                    = 0
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_apply_conversion_rate[0].id)
+        dashboard_tab_id       = 6
+        row                    = 4
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_more_info_vs_apply[0].id)
+        dashboard_tab_id       = 6
+        row                    = 12
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_more_info_apply_scatter[0].id)
+        dashboard_tab_id       = 6
+        row                    = 12
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
+        dashboard_tab_id       = 6
+        row                    = 20
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_top_resources[0].id)
+        dashboard_tab_id       = 6
+        row                    = 20
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ] : [],
+    # -------------------------------------------------------------------------
+    # Tab 7: Sharing & Saving (all-states screener)
+    # Mirrors tenant_dashboard_screener_sharing_saving_layout grid positions.
+    # -------------------------------------------------------------------------
+    var.bigquery_enabled ? [
+      {
+        card_id                = tonumber(metabase_card.global_screener_share_funnel_popup[0].id)
+        dashboard_tab_id       = 7
+        row                    = 0
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_share_funnel_footer[0].id)
+        dashboard_tab_id       = 7
+        row                    = 0
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_shares_by_channel[0].id)
+        dashboard_tab_id       = 7
+        row                    = 6
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_save_funnel[0].id)
+        dashboard_tab_id       = 7
+        row                    = 12
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_saves_by_channel[0].id)
+        dashboard_tab_id       = 7
+        row                    = 12
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+    ] : [],
   ))
 }
 
@@ -1087,10 +1293,11 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
-    # Start/End date filters — shown for tenants with a Google Analytics tab.
+    # Start/End date filters — shown for tenants with the screener Overview tab
+    # (these params are mapped onto every date-filtered screener analytics card).
     # Using plain date variables instead of field filters to avoid the Metabase BigQuery
     # driver bug that generates `schema.table`.column references BigQuery can't parse.
-    local.tenant_has_tab[each.key]["google_analytics"] && var.bigquery_enabled ? [
+    local.tenant_has_tab[each.key]["screener_overview"] && var.bigquery_enabled ? [
       {
         id        = "ga_start_date_filter"
         name      = "Start Date"
@@ -1113,8 +1320,8 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode(concat(
-    # Tab 1: Google Analytics
-    local.tenant_has_tab[each.key]["google_analytics"] ? local.tenant_dashboard_ga_layout[each.key] : [],
+    # Tab 10 (Overview): screener macro funnel + language distribution
+    local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
     # Tab 2: Overall Performance
     # Two for-loop flattens avoid Terraform's static ternary type-check
     flatten([for k in [each.key] : flatten(concat(
@@ -1626,5 +1833,11 @@ resource "metabase_dashboard" "tenant_analytics" {
     local.tenant_dashboard_benefits_needs_layout[each.key],
     # Tab 6: Homeowners vs Renters (CESN only)
     flatten([for k in [each.key] : local.tenant_dashboard_cesn_hvr_layout if local.tenant_has_tab[k]["cesn_homeowners_vs_renters"]]),
+    # Tab 7: Form Journey (screener analytics)
+    local.tenant_has_tab[each.key]["screener_form_journey"] ? local.tenant_dashboard_screener_form_journey_layout[each.key] : [],
+    # Tab 8: Results (screener analytics)
+    local.tenant_has_tab[each.key]["screener_results"] ? local.tenant_dashboard_screener_results_layout[each.key] : [],
+    # Tab 9: Sharing & Saving (screener analytics)
+    local.tenant_has_tab[each.key]["screener_sharing_saving"] ? local.tenant_dashboard_screener_sharing_saving_layout[each.key] : [],
   ))
 }

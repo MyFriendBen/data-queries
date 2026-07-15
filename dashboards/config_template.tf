@@ -92,23 +92,36 @@ locals {
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
     for k, v in var.tenants : k => {
-      google_analytics           = { id = 1, name = "Google Analytics" }
-      all_time                   = { id = 2, name = "Overall Performance" }
-      households                 = { id = 4, name = "Households" }
-      benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "Benefits & Immediate Needs" : "Benefits" }
-      cesn_homeowners_vs_renters = { id = 6, name = "Homeowners vs Renters" }
+      all_time                   = { id = 2, name = "•      Summary" }
+      households                 = { id = 4, name = "•      Households" }
+      benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "•      Benefits & Needs" : "•      Benefits" }
+      cesn_homeowners_vs_renters = { id = 6, name = "•      Homeowners vs Renters" }
+      screener_form_journey      = { id = 7, name = "•      Engagement by Step" }
+      screener_results           = { id = 8, name = "•      Results Page" }
+      screener_sharing_saving    = { id = 9, name = "•      Share & Save" }
+      screener_overview          = { id = 10, name = "•      Engagement Overview" }
     }
   }
 
-  # Per-tenant tab selection — order determines tab display order
+  # Per-tenant tab selection — a tenant's dashboard shows exactly the tabs listed
+  # here, in this order. To add a tab to a tenant, add its key to that tenant's
+  # list; to remove one, drop the key.
+  #
+  # The four screener analytics tabs (screener_overview, screener_form_journey,
+  # screener_results, screener_sharing_saving) are opt-in per tenant. Adding any
+  # one of them to a tenant's list also creates that tenant's screener CARD
+  # resources: ga_tenants (google_analytics.tf) keys off ANY of the four screener
+  # tab flags, so the cards exist whenever at least one screener tab is listed
+  # (avoids placing a tab whose cards were never built). The all-states versions
+  # of these cards live on the internal Global dashboard independently of this.
   tenant_tabs = {
-    nc                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    co                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    tx                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    wa                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    il                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    ma                = ["all_time", "households", "benefits_needs", "google_analytics"]
-    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "google_analytics"]
+    nc                = ["all_time", "households", "benefits_needs"]
+    co                = ["all_time", "households", "benefits_needs"]
+    tx                = ["all_time", "households", "benefits_needs"]
+    wa                = ["all_time", "households", "benefits_needs"]
+    il                = ["all_time", "households", "benefits_needs"]
+    ma                = ["all_time", "households", "benefits_needs"]
+    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters"]
     co_tax_calculator = ["all_time", "households", "benefits_needs"]
   }
 
