@@ -180,21 +180,34 @@ select
 
     current_timestamp() as updated_at
 
+-- NULL-SAFE state join. screener_state is NULL for landing/language-page events
+-- fired before the user reaches a white-label (bare entry at screener.myfriendben.org
+-- vs. direct /co/... entry). step_grain UNIONs those null-state rows in, but a
+-- plain `g.screener_state = x.screener_state` join evaluates NULL = NULL as
+-- UNKNOWN, stranding every null-state grain row (it never matches its own summary
+-- and coalesces to 0). Verified in prod: ~90% of form_start/complete sessions are
+-- null-state, so the plain join undercounted "Started" by ~8x. IFNULL both sides
+-- to a sentinel so null-state matches null-state.
+-- NOTE (per-tenant limitation): pre-state landing sessions genuinely can't be
+-- attributed to a tenant (only ~7% ever resolve a state within the session), so
+-- per-tenant funnels (WHERE screener_state IN ('co')) legitimately exclude them —
+-- their top-of-funnel is understated by unattributable landing traffic. The
+-- global (all-states) funnel counts them correctly via this null-safe join.
 from step_grain g
 left join step_views_summary sv
     on g.event_date = sv.event_date
-    and g.screener_state = sv.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(sv.screener_state, '∅')
     and g.screener_step_name = sv.screener_step_name
 left join step_completes_summary sc
     on g.event_date = sc.event_date
-    and g.screener_state = sc.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(sc.screener_state, '∅')
     and g.screener_step_name = sc.screener_step_name
 left join form_backs_summary fb
     on g.event_date = fb.event_date
-    and g.screener_state = fb.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(fb.screener_state, '∅')
     and g.screener_step_name = fb.screener_step_name
 left join form_errors_summary fe
     on g.event_date = fe.event_date
-    and g.screener_state = fe.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(fe.screener_state, '∅')
     and g.screener_step_name = fe.screener_step_name
 order by g.event_date desc, g.screener_state, screener_step_number

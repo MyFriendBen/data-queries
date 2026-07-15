@@ -115,17 +115,20 @@ select
 
     current_timestamp() as updated_at
 
+-- NULL-safe state join (see mart_screener_form_funnel for the full rationale):
+-- results events can also carry a null screener_state, and a plain equality join
+-- would strand those rows (NULL = NULL is UNKNOWN). IFNULL both sides.
 from date_state_grain g
 left join results_loaded_summary rl
     on g.event_date = rl.event_date
-    and g.screener_state = rl.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(rl.screener_state, '∅')
 left join none_eligible_summary ne
     on g.event_date = ne.event_date
-    and g.screener_state = ne.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(ne.screener_state, '∅')
 left join results_errors_summary re
     on g.event_date = re.event_date
-    and g.screener_state = re.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(re.screener_state, '∅')
 left join error_recoveries_summary er
     on g.event_date = er.event_date
-    and g.screener_state = er.screener_state
+    and ifnull(g.screener_state, '∅') = ifnull(er.screener_state, '∅')
 order by g.event_date desc, g.screener_state

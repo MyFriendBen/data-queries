@@ -31,7 +31,13 @@ select
 
     -- screener_results_loaded
     max(case when ep.key = 'program_count' then ep.value.int_value end) as program_count,
-    max(case when ep.key = 'total_estimated_value' then ep.value.double_value end) as total_estimated_value,
+    -- total_estimated_value's GA4 value type is value-dependent: it lands in
+    -- int_value for whole-dollar amounts (~94% of rows in prod) and double_value
+    -- only when fractional. Reading double_value alone dropped ~94% of the field
+    -- to NULL (same class as the program_id int/string bug). Coalesce both.
+    max(case when ep.key = 'total_estimated_value'
+        then coalesce(ep.value.double_value, cast(ep.value.int_value as float64))
+    end) as total_estimated_value,
 
     -- screener_results_error
     max(case when ep.key = 'reference_id' then ep.value.string_value end) as reference_id,
