@@ -51,6 +51,8 @@ locals {
   # as a display name like 'Colorado') and null-state landing rows, which a bare
   # `1=1` would sweep in and inflate. Filtering to the known lowercase codes keeps
   # global cards consistent with the per-tenant cards.
+  # NOTE: this includes `cesn` (an energy program, not a US state) since it's
+  # treated as a tenant everywhere else — so "all-states" global totals include it.
   all_screener_state_filter = join(", ", [
     for codes in values(local.tenant_ga_state_codes) : join(", ", [for c in codes : "'${c}'"])
   ])

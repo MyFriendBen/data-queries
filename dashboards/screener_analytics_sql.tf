@@ -5,16 +5,11 @@
 #
 #   __STATE_FILTER__     — the screener_state predicate for the mart being queried.
 #                          tenant: "screener_state IN (${local.tenant_ga_state_filter[each.key]})"
-#                          global: "1=1"  (all states, no filter)
-#   __STATE_FILTER_KPI__ — ONLY in the macro funnel: the state_code predicate on
-#                          mart_ga_kpi_summary (GA sessions use `state_code`, not
-#                          `screener_state`).
-#                          tenant: "state_code IN (${local.tenant_ga_state_filter[each.key]})"
-#                          global: "1=1"
+#                          global: "screener_state IN (${local.all_screener_state_filter})"
 #
 # The sentinel always replaces the ENTIRE predicate that follows `WHERE`, so both
 # the tenant form (`WHERE screener_state IN ('co')`) and the global form
-# (`WHERE 1=1`) chain correctly with any following `AND ...` / `[[AND ...]]`.
+# (all valid codes) chain correctly with any following `AND ...` / `[[AND ...]]`.
 #
 # The bracketed `[[AND event_date_parsed ...]]` predicates and
 # `template-tags = local.ga_date_tags` are preserved verbatim by both consumers
@@ -89,7 +84,7 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    ORDER BY MIN(screener_step_number) NULLS LAST, screener_step_name
+    ORDER BY MIN(screener_step_number) NULLS LAST, MIN(screener_step_name)
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────

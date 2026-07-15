@@ -7,7 +7,6 @@
 # lowercase state codes (NOT a bare 1=1) so legacy DOM-scrape rows (display-name
 # state) and null-state landing rows don't contaminate the all-states totals:
 #   __STATE_FILTER__     -> "screener_state IN (${local.all_screener_state_filter})"
-#   __STATE_FILTER_KPI__ -> "state_code IN (${local.all_screener_state_filter})"  (macro funnel only)
 #
 # name / description / display / visualization_settings / template-tags are
 # identical to the tenant versions in screener_analytics.tf. Placed on the
