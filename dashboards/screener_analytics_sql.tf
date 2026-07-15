@@ -291,13 +291,20 @@ locals {
   SQL
 
   # ── Tab 9 (Sharing & Saving): saves by channel ──────────────────────────────
+  # save_channel is null on two kinds of rows in the mart: the synthetic
+  # __saved__/__popup_shown__ funnel rows, and real save events fired before the
+  # user picked a channel (e.g. save_action='open'). This is a by-channel
+  # breakdown, so channel-less rows have no bar to contribute to: the synthetic
+  # rows are excluded by save_action, and un-channeled saves are surfaced under a
+  # '(no channel yet)' bucket rather than silently dropped, so the totals still
+  # reconcile with the overall save count.
   screener_sql_saves_by_channel = <<-SQL
     SELECT
-      save_channel,
+      COALESCE(save_channel, '(no channel yet)') AS save_channel,
       SUM(total_saves) AS total_saves
     FROM `${local.bq_dataset}.mart_screener_saves`
     WHERE __STATE_FILTER__
-      AND save_channel IS NOT NULL
+      AND save_action NOT IN ('__saved__', '__popup_shown__')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY save_channel
