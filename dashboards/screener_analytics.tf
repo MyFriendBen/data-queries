@@ -21,39 +21,26 @@
 # Tab 10 (Overview) — Macro funnel
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Macro funnel — 5 ordered stages assembled with UNION ALL across three marts,
-# mirroring the ga_conversion_funnel ordered-rows pattern:
-#   Visitors         — GA sessions from mart_ga_kpi_summary (state_code column)
-#   Started          — distinct screenings that hit the synthetic __form_start__
+# Macro funnel — 4 ordered stages assembled with UNION ALL across the screener
+# event marts, mirroring the ga_conversion_funnel ordered-rows pattern:
+#   Started          — distinct sessions that hit the synthetic __form_start__
 #                      step in mart_screener_form_funnel
 #   Saw Results      — screenings_results_loaded from mart_screener_results_outcomes
 #   Clicked More Info— distinct screenings with a more_info interaction
 #   Clicked Apply    — distinct screenings with an apply interaction
 #
 # ⚠️ MIXED DEDUP KEYS across stages — not a strictly apples-to-apples ratio:
-#   Visitors + Started come from mart_screener_form_funnel, deduped on the GA4
-#   SESSION key (screener_uid is null pre-step-3, so a session key is used).
-#   Saw Results / More Info / Apply come from the results/interaction marts,
-#   deduped on screener_uid (which exists post-step-3).
-#   So the Started→Saw Results transition changes denominators (sessions → uids).
-#   The card description carries a one-line caveat; treat stage-to-stage
-#   conversion as directional, not exact.
-#
-# NOTE: each mart is pre-aggregated per (date, state[, step]) then re-aggregated
-# across days here, so a screening/session spanning two days could be counted in
-# both — the same daily-distinct-then-sum approximation the GA funnel makes,
-# acceptable for a top-of-funnel trend.
-#
-# ⚠️ VISITORS SOURCING RISK: the Visitors stage reads mart_ga_kpi_summary, which
-# is fed by the legacy DOM-scrape pipeline. If the old triggers are removed,
-# total_sessions there will decay to only whatever still populates it. Re-base
-# Visitors on a screener_*-native session/pageview count when one exists.
+#   Started is deduped on the GA4 SESSION key (screener_uid is null before step 3,
+#   so a session key is used); Saw Results / More Info / Apply dedupe on
+#   screener_uid (which exists from step 3). So the Started→Saw Results transition
+#   changes denominators (sessions → screenings). Treat stage-to-stage conversion
+#   as directional, not exact — noted in the card description.
 resource "metabase_card" "screener_macro_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Screener Macro Funnel"
-    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
+    description         = "Started -> Saw Results -> Clicked More Info -> Clicked Apply. Started is counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3), so read stage-to-stage conversion as directional, not an exact ratio."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -62,20 +49,14 @@ resource "metabase_card" "screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query = replace(
-          replace(
-            local.screener_sql_macro_funnel,
-            "__STATE_FILTER_KPI__", "state_code IN (${local.tenant_ga_state_filter[each.key]})"
-          ),
-          "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"
-        )
+        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -112,8 +93,8 @@ resource "metabase_card" "screener_step_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_viewed"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -142,8 +123,8 @@ resource "metabase_card" "screener_errors_by_step" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["total_errors"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Total Errors"]
     }
     parameter_mappings = []
     parameters         = []
@@ -171,8 +152,8 @@ resource "metabase_card" "screener_back_nav_by_step" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_back"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings (Back-Nav)"]
     }
     parameter_mappings = []
     parameters         = []
@@ -207,8 +188,8 @@ resource "metabase_card" "screener_apply_conversion_rate" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["apply_rate_pct"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -238,8 +219,8 @@ resource "metabase_card" "screener_more_info_vs_apply" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["more_info", "apply"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -270,8 +251,8 @@ resource "metabase_card" "screener_more_info_apply_scatter" {
     }
     display = "scatter"
     visualization_settings = {
-      "graph.dimensions" = ["more_info"]
-      "graph.metrics"    = ["apply"]
+      "graph.dimensions" = ["More Info"]
+      "graph.metrics"    = ["Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -341,8 +322,8 @@ resource "metabase_card" "screener_share_funnel_popup" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -370,8 +351,8 @@ resource "metabase_card" "screener_share_funnel_footer" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -400,8 +381,8 @@ resource "metabase_card" "screener_shares_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["share_channel"]
-      "graph.metrics"    = ["total_shares"]
+      "graph.dimensions" = ["Share Channel"]
+      "graph.metrics"    = ["Total Shares"]
     }
     parameter_mappings = []
     parameters         = []
@@ -435,8 +416,8 @@ resource "metabase_card" "screener_save_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -464,8 +445,8 @@ resource "metabase_card" "screener_saves_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["save_channel"]
-      "graph.metrics"    = ["total_saves"]
+      "graph.dimensions" = ["Save Channel"]
+      "graph.metrics"    = ["Total Saves"]
     }
     parameter_mappings = []
     parameters         = []
@@ -495,8 +476,8 @@ resource "metabase_card" "screener_tab_split" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["tab"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Tab"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -525,8 +506,8 @@ resource "metabase_card" "screener_top_resources" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["resource"]
-      "graph.metrics"    = ["clicks"]
+      "graph.dimensions" = ["Resource"]
+      "graph.metrics"    = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []
@@ -556,7 +537,7 @@ resource "metabase_card" "screener_language_distribution" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["language_name"]
-      "graph.metrics"    = ["screenings"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []

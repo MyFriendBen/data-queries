@@ -31,17 +31,14 @@ resource "metabase_card" "global_screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query = replace(
-          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_KPI__", "state_code IN (${local.all_screener_state_filter})"),
-          "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})"
-        )
+        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -69,7 +66,7 @@ resource "metabase_card" "global_screener_language_distribution" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["language_name"]
-      "graph.metrics"    = ["screenings"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -100,8 +97,8 @@ resource "metabase_card" "global_screener_step_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_viewed"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -128,8 +125,8 @@ resource "metabase_card" "global_screener_errors_by_step" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["total_errors"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Total Errors"]
     }
     parameter_mappings = []
     parameters         = []
@@ -156,8 +153,8 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_back"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings (Back-Nav)"]
     }
     parameter_mappings = []
     parameters         = []
@@ -216,8 +213,8 @@ resource "metabase_card" "global_screener_apply_conversion_rate" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["apply_rate_pct"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -244,8 +241,8 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["more_info", "apply"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -272,8 +269,8 @@ resource "metabase_card" "global_screener_more_info_apply_scatter" {
     }
     display = "scatter"
     visualization_settings = {
-      "graph.dimensions" = ["more_info"]
-      "graph.metrics"    = ["apply"]
+      "graph.dimensions" = ["More Info"]
+      "graph.metrics"    = ["Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -300,8 +297,8 @@ resource "metabase_card" "global_screener_tab_split" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["tab"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Tab"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -328,8 +325,8 @@ resource "metabase_card" "global_screener_top_resources" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["resource"]
-      "graph.metrics"    = ["clicks"]
+      "graph.dimensions" = ["Resource"]
+      "graph.metrics"    = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []
@@ -360,8 +357,8 @@ resource "metabase_card" "global_screener_share_funnel_popup" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -388,8 +385,8 @@ resource "metabase_card" "global_screener_share_funnel_footer" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -416,8 +413,8 @@ resource "metabase_card" "global_screener_shares_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["share_channel"]
-      "graph.metrics"    = ["total_shares"]
+      "graph.dimensions" = ["Share Channel"]
+      "graph.metrics"    = ["Total Shares"]
     }
     parameter_mappings = []
     parameters         = []
@@ -444,8 +441,8 @@ resource "metabase_card" "global_screener_save_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -472,8 +469,8 @@ resource "metabase_card" "global_screener_saves_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["save_channel"]
-      "graph.metrics"    = ["total_saves"]
+      "graph.dimensions" = ["Save Channel"]
+      "graph.metrics"    = ["Total Saves"]
     }
     parameter_mappings = []
     parameters         = []

@@ -28,15 +28,7 @@
 locals {
   # ── Tab 10 (Overview): Macro funnel ─────────────────────────────────────────
   screener_sql_macro_funnel = <<-SQL
-    WITH visitors AS (
-      SELECT SUM(total_sessions) AS n
-      FROM `${local.bq_dataset}.mart_ga_kpi_summary`
-      WHERE __STATE_FILTER_KPI__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    started AS (
+    WITH started AS (
       SELECT SUM(screenings_viewed_step) AS n
       FROM `${local.bq_dataset}.mart_screener_form_funnel`
       WHERE __STATE_FILTER__
@@ -71,13 +63,16 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT funnel_step, screenings
+    -- Funnel starts at "Started" (form_start), not raw site Visitors: the old
+    -- Visitors stage read the legacy all-time mart_ga_kpi_summary, a different
+    -- population/window that produced a meaningless ~99% first-stage drop. All
+    -- stages here come from the new event marts on the same epoch-floored window.
+    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Visitors'          AS funnel_step, (SELECT n FROM visitors)  AS screenings, 1 AS step_order
-      UNION ALL SELECT 'Started',            (SELECT n FROM started),   2
-      UNION ALL SELECT 'Saw Results',        (SELECT n FROM results),   3
-      UNION ALL SELECT 'Clicked More Info',  (SELECT n FROM more_info), 4
-      UNION ALL SELECT 'Clicked Apply',      (SELECT n FROM apply),     5
+      SELECT 'Started'            AS funnel_step, (SELECT n FROM started)   AS screenings, 1 AS step_order
+      UNION ALL SELECT 'Saw Results',        (SELECT n FROM results),   2
+      UNION ALL SELECT 'Clicked More Info',  (SELECT n FROM more_info), 3
+      UNION ALL SELECT 'Clicked Apply',      (SELECT n FROM apply),     4
     )
     ORDER BY step_order
   SQL
@@ -85,48 +80,48 @@ locals {
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
   screener_sql_step_funnel = <<-SQL
     SELECT
-      screener_step_name,
-      SUM(screenings_viewed_step) AS screenings_viewed
+      screener_step_label,
+      SUM(screenings_viewed_step) AS `Screenings`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY screener_step_name
+    GROUP BY screener_step_label
     ORDER BY MIN(screener_step_number) NULLS LAST, screener_step_name
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
   screener_sql_errors_by_step = <<-SQL
     SELECT
-      screener_step_name,
-      SUM(total_error_count) AS total_errors
+      screener_step_label,
+      SUM(total_error_count) AS `Total Errors`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY screener_step_name
+    GROUP BY screener_step_label
     HAVING SUM(total_error_count) > 0
-    ORDER BY total_errors DESC
+    ORDER BY `Total Errors` DESC
   SQL
 
   # ── Tab 7 (Form Journey): back navigation by step ───────────────────────────
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
-      screener_step_name,
-      SUM(screenings_navigated_back) AS screenings_back
+      screener_step_label,
+      SUM(screenings_navigated_back) AS `Screenings (Back-Nav)`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY screener_step_name
+    GROUP BY screener_step_label
     HAVING SUM(screenings_navigated_back) > 0
-    ORDER BY screenings_back DESC
+    ORDER BY `Screenings (Back-Nav)` DESC
   SQL
 
   # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
@@ -145,13 +140,13 @@ locals {
       GROUP BY program_id
     )
     SELECT
-      program_name,
-      more_info_screenings,
-      apply_screenings,
-      ROUND(apply_screenings * 100.0 / NULLIF(more_info_screenings, 0), 1) AS apply_rate_pct
+      program_name AS `Program`,
+      more_info_screenings AS `More Info`,
+      apply_screenings AS `Applied`,
+      ROUND(apply_screenings * 100.0 / NULLIF(more_info_screenings, 0), 1) AS `Apply Rate %`
     FROM per_program
     WHERE more_info_screenings > 0
-    ORDER BY apply_rate_pct DESC
+    ORDER BY `Apply Rate %` DESC
   SQL
 
   # ── Tab 8 (Results): more info vs apply by program ──────────────────────────
@@ -169,7 +164,7 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
     )
-    SELECT program_name, more_info, apply
+    SELECT program_name AS `Program`, more_info AS `More Info`, apply AS `Apply`
     FROM per_program
     WHERE more_info > 0 OR apply > 0
     ORDER BY (more_info - apply) DESC
@@ -190,7 +185,7 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
     )
-    SELECT program_name, more_info, apply
+    SELECT program_name AS `Program`, more_info AS `More Info`, apply AS `Apply`
     FROM per_program
     WHERE more_info > 0 OR apply > 0
     ORDER BY more_info DESC
@@ -214,12 +209,12 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      results_viewed,
-      none_eligible,
-      ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS none_eligible_pct,
-      avg_program_count,
-      avg_total_estimated_value,
-      results_errors
+      results_viewed AS `Results Viewed`,
+      none_eligible AS `None Eligible`,
+      ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS `% None Eligible`,
+      avg_program_count AS `Avg Programs`,
+      avg_total_estimated_value AS `Avg Est. Value`,
+      results_errors AS `Results Errors`
     FROM agg
   SQL
 
@@ -233,7 +228,7 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT funnel_step, screenings
+    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
       SELECT 'Opened' AS funnel_step,
              SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
@@ -258,7 +253,7 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT funnel_step, screenings
+    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
       SELECT 'Opened' AS funnel_step,
              SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
@@ -276,17 +271,23 @@ locals {
   # ── Tab 9 (Sharing & Saving): shares by channel ─────────────────────────────
   screener_sql_shares_by_channel = <<-SQL
     SELECT
-      share_channel,
-      COALESCE(share_provider, '(none)') AS share_provider,
-      SUM(total_shares) AS total_shares
+      CASE share_channel
+        WHEN 'email' THEN 'Email'
+        WHEN 'sms' THEN 'SMS'
+        WHEN 'whatsapp' THEN 'WhatsApp'
+        WHEN 'copy_link' THEN 'Copy Link'
+        ELSE COALESCE(share_channel, '(none)')
+      END AS `Share Channel`,
+      COALESCE(share_provider, '(none)') AS `Share Provider`,
+      SUM(total_shares) AS `Total Shares`
     FROM `${local.bq_dataset}.mart_screener_shares`
     WHERE __STATE_FILTER__
       AND share_action = 'send'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY share_channel, share_provider
-    ORDER BY total_shares DESC
+    GROUP BY `Share Channel`, `Share Provider`
+    ORDER BY `Total Shares` DESC
   SQL
 
   # ── Tab 9 (Sharing & Saving): save funnel ───────────────────────────────────
@@ -298,7 +299,7 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT funnel_step, screenings
+    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
       SELECT 'Shown Popup' AS funnel_step, SUM(screenings_shown_popup) AS screenings, 1 AS step_order FROM filtered
       UNION ALL SELECT 'Saved', SUM(screenings_with_save), 2 FROM filtered
@@ -316,38 +317,48 @@ locals {
   # reconcile with the overall save count.
   screener_sql_saves_by_channel = <<-SQL
     SELECT
-      COALESCE(save_channel, '(no channel yet)') AS save_channel,
-      SUM(total_saves) AS total_saves
+      CASE save_channel
+        WHEN 'email' THEN 'Email'
+        WHEN 'sms' THEN 'SMS'
+        WHEN 'whatsapp' THEN 'WhatsApp'
+        WHEN 'copy_link' THEN 'Copy Link'
+        ELSE COALESCE(save_channel, '(no channel yet)')
+      END AS `Save Channel`,
+      SUM(total_saves) AS `Total Saves`
     FROM `${local.bq_dataset}.mart_screener_saves`
     WHERE __STATE_FILTER__
       AND save_action NOT IN ('__saved__', '__popup_shown__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY save_channel
-    ORDER BY total_saves DESC
+    GROUP BY `Save Channel`
+    ORDER BY `Total Saves` DESC
   SQL
 
   # ── Tab 8 (Results): results-page tab split ─────────────────────────────────
   screener_sql_tab_split = <<-SQL
     SELECT
-      dimension AS tab,
-      SUM(distinct_screenings) AS screenings
+      CASE dimension
+        WHEN 'additional_resources' THEN 'Additional Resources'
+        WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
+        ELSE COALESCE(dimension, '(none)')
+      END AS `Tab`,
+      SUM(distinct_screenings) AS `Screenings`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
     WHERE __STATE_FILTER__
       AND metric = 'tab_open'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY dimension
-    ORDER BY screenings DESC
+    GROUP BY `Tab`
+    ORDER BY `Screenings` DESC
   SQL
 
   # ── Tab 8 (Results): top additional resources ───────────────────────────────
   screener_sql_top_resources = <<-SQL
     SELECT
-      dimension AS resource,
-      SUM(total_clicks) AS clicks
+      dimension AS `Resource`,
+      SUM(total_clicks) AS `Clicks`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
     WHERE __STATE_FILTER__
       AND metric = 'resource_click'
@@ -355,7 +366,7 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY dimension
-    ORDER BY clicks DESC
+    ORDER BY `Clicks` DESC
     LIMIT 20
   SQL
 
@@ -363,13 +374,13 @@ locals {
   screener_sql_language_distribution = <<-SQL
     SELECT
       language_name,
-      SUM(distinct_screenings) AS screenings
+      SUM(distinct_screenings) AS `Screenings`
     FROM `${local.bq_dataset}.mart_screener_language`
     WHERE __STATE_FILTER__
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name
-    ORDER BY screenings DESC
+    ORDER BY `Screenings` DESC
   SQL
 }
