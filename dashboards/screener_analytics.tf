@@ -23,8 +23,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Macro funnel — 5 ordered stages assembled with UNION ALL across three marts,
-# mirroring the ga_conversion_funnel ordered-rows pattern. All stages use
-# COUNT(DISTINCT screener_uid) semantics:
+# mirroring the ga_conversion_funnel ordered-rows pattern:
 #   Visitors         — GA sessions from mart_ga_kpi_summary (state_code column)
 #   Started          — distinct screenings that hit the synthetic __form_start__
 #                      step in mart_screener_form_funnel
@@ -32,18 +31,25 @@
 #   Clicked More Info— distinct screenings with a more_info interaction
 #   Clicked Apply    — distinct screenings with an apply interaction
 #
-# NOTE: mart_screener_form_funnel is pre-aggregated to COUNT(DISTINCT screener_uid)
-# per (date, state, step), so a re-aggregation across days SUMs those daily
-# distinct counts (a screening spanning two days could be counted twice). This is
-# the same daily-distinct-then-sum approximation the GA funnel makes and is
-# acceptable for a top-of-funnel trend. Same applies to the results/interaction
-# marts below.
+# ⚠️ MIXED DEDUP KEYS across stages — not a strictly apples-to-apples ratio:
+#   Visitors + Started come from mart_screener_form_funnel, deduped on the GA4
+#   SESSION key (screener_uid is null pre-step-3, so a session key is used — see
+#   analytics-dbt-notes.md). Saw Results / More Info / Apply come from the
+#   results/interaction marts, deduped on screener_uid (which exists post-step-3).
+#   So the Started→Saw Results transition changes denominators (sessions → uids).
+#   The card description carries a one-line caveat; treat stage-to-stage
+#   conversion as directional, not exact.
+#
+# NOTE: each mart is pre-aggregated per (date, state[, step]) then re-aggregated
+# across days here, so a screening/session spanning two days could be counted in
+# both — the same daily-distinct-then-sum approximation the GA funnel makes,
+# acceptable for a top-of-funnel trend.
 resource "metabase_card" "screener_macro_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Screener Macro Funnel"
-    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply (distinct screenings per stage; Visitors = GA sessions)"
+    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null

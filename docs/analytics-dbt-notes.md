@@ -98,7 +98,8 @@ GTM→GA4 relay lands data in BigQuery). Marts feeding each tab:
 - Tab 1 Overview: existing KPIs + 5-stage macro funnel (Visitors→Started→Saw
   Results→More Info→Apply) + language distribution (`mart_screener_language`).
 - Tab 2 Form Journey: detailed per-step drop-off funnel + errors-by-step +
-  back-nav-by-step, all from `mart_screener_form_funnel` (dedupe by uid);
+  back-nav-by-step, all from `mart_screener_form_funnel` (dedupe by GA4 session
+  key, NOT uid — see the ⚠️ note above);
   step-interaction cards from `mart` on `stg_ga_screener_step_interactions`.
 - Tab 3 Results: apply-conversion-rate (apply/more_info) + more-info-vs-apply +
   scatter + outcome KPIs, from `mart_screener_program_interactions` /

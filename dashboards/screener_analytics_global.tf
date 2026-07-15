@@ -20,7 +20,7 @@ resource "metabase_card" "global_screener_macro_funnel" {
 
   json = jsonencode({
     name                = "Screener Macro Funnel"
-    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply (distinct screenings per stage; Visitors = GA sessions)"
+    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
