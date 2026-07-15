@@ -186,7 +186,7 @@ resource "metabase_card" "screener_apply_conversion_rate" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
       "graph.dimensions" = ["Program"]
       "graph.metrics"    = ["Apply Rate %"]
@@ -217,7 +217,7 @@ resource "metabase_card" "screener_more_info_vs_apply" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
       "graph.dimensions" = ["Program"]
       "graph.metrics"    = ["More Info", "Apply"]
@@ -472,7 +472,7 @@ resource "metabase_card" "screener_top_resources" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
       "graph.dimensions" = ["Resource"]
       "graph.metrics"    = ["Clicks"]
