@@ -111,6 +111,9 @@ locals {
   # (screener_analytics.tf) — they are simply not placed on any dashboard. The
   # all-states equivalents live on the internal Global dashboard (tabs 4-7).
   # To re-reveal a per-tenant screener tab, re-add its key to that tenant's list.
+  # ga_tenants (google_analytics.tf) keys off ANY of the four screener tab flags,
+  # so re-adding any one of them also creates that tenant's screener CARD
+  # resources (not just the tab layout) — no empty-tab footgun.
   tenant_tabs = {
     nc                = ["all_time", "households", "benefits_needs"]
     co                = ["all_time", "households", "benefits_needs"]

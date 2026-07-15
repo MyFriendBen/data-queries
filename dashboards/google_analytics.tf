@@ -11,12 +11,22 @@
 
 locals {
   # Tenants enabled for the BigQuery/GA4-derived analytics cards.
-  # Derived from the central tab config: any tenant that has at least one screener
-  # analytics tab configured (form journey / results / sharing-saving / overview)
-  # participates. All those tenants also carry the same state-code mapping below.
+  # Derived from the central tab config: any tenant that has AT LEAST ONE screener
+  # analytics tab configured (overview / form-journey / results / sharing-saving)
+  # participates. Keyed off ALL four tab flags (not just screener_overview) so the
+  # per-tenant screener cards are created whenever ANY screener tab is enabled —
+  # otherwise re-adding, say, only "screener_results" to a tenant's tenant_tabs
+  # would place the tab but leave its cards uncreated (ga_tenants_enabled would
+  # still be empty), producing a visible-but-empty tab. See MFB-1268.
+  # NOTE: all four screener tabs are currently removed from every tenant_tabs list
+  # (hidden pending review), so this set is {} today — the per-tenant screener
+  # cards are not created. Re-add any screener tab key to a tenant to re-enable.
   ga_tenants = {
     for key, tenant in var.tenants : key => tenant
     if local.tenant_has_tab[key]["screener_overview"]
+    || local.tenant_has_tab[key]["screener_form_journey"]
+    || local.tenant_has_tab[key]["screener_results"]
+    || local.tenant_has_tab[key]["screener_sharing_saving"]
   }
   # Analytics cards are enabled for all eligible tenants when BigQuery is on.
   ga_tenants_enabled = var.bigquery_enabled ? local.ga_tenants : {}

@@ -5,7 +5,8 @@
 # These marts have NO DATA until the GTM->GA4 relay is live, so these cards are
 # correct-by-construction and cannot be terraform-applied/validated against real
 # rows yet. They intentionally mirror dashboards/google_analytics.tf exactly:
-#   - for_each = local.ga_tenants_enabled (same enabled-tenant set)
+#   - for_each = local.ga_tenants_enabled (tenants with >=1 screener tab enabled;
+#     currently {} since all screener tabs are hidden — see google_analytics.tf)
 #   - tenant state filter via local.tenant_ga_state_filter[each.key], BUT the new
 #     marts use column `screener_state` (NOT `state_code` like the GA marts)
 #   - date template-tags via local.ga_date_tags + the bracketed date predicates
@@ -44,6 +45,12 @@
 # across days here, so a screening/session spanning two days could be counted in
 # both — the same daily-distinct-then-sum approximation the GA funnel makes,
 # acceptable for a top-of-funnel trend.
+#
+# ⚠️ VISITORS SOURCING RISK: the Visitors stage reads mart_ga_kpi_summary, which
+# is fed by the LEGACY DOM-scrape pipeline being decommissioned (GTM Wave 1).
+# Once the old triggers are fully removed, total_sessions there will decay to
+# only whatever still populates it. Re-base Visitors on a screener_*-native
+# session/pageview count when one exists (follow-up: MFB-1306).
 resource "metabase_card" "screener_macro_funnel" {
   for_each = local.ga_tenants_enabled
 
