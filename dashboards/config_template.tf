@@ -92,14 +92,14 @@ locals {
   # IDs are foreign keys used by dashboard_tab_id in layout blocks — do not renumber
   all_tabs = {
     for k, v in var.tenants : k => {
-      all_time                   = { id = 2, name = "Screening Summary" }
-      households                 = { id = 4, name = "Households" }
-      benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "Benefits & Immediate Needs" : "Benefits" }
-      cesn_homeowners_vs_renters = { id = 6, name = "Homeowners vs Renters" }
-      screener_form_journey      = { id = 7, name = "User Journey by Step" }
-      screener_results           = { id = 8, name = "Results Page Activity" }
-      screener_sharing_saving    = { id = 9, name = "Sharing & Saving" }
-      screener_overview          = { id = 10, name = "User Journey Overview" }
+      all_time                   = { id = 2, name = "•   Summary" }
+      households                 = { id = 4, name = "•   Households" }
+      benefits_needs             = { id = 5, name = local.tenant_features[k].has_immediate_needs ? "•   Benefits & Needs" : "•   Benefits" }
+      cesn_homeowners_vs_renters = { id = 6, name = "•   Homeowners vs Renters" }
+      screener_form_journey      = { id = 7, name = "•   Engagement by Step" }
+      screener_results           = { id = 8, name = "•   Results Page" }
+      screener_sharing_saving    = { id = 9, name = "•   Share & Save" }
+      screener_overview          = { id = 10, name = "•   Engagement Overview" }
     }
   }
 

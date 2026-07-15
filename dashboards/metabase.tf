@@ -574,15 +574,15 @@ resource "metabase_dashboard" "analytics" {
   collection_position = 1
 
   tabs_json = jsonencode([
-    { id = 1, name = "Screening Summary" },
-    { id = 2, name = "Households" },
-    { id = 3, name = "Benefits & Immediate Needs" },
+    { id = 1, name = "•   Summary" },
+    { id = 2, name = "•   Households" },
+    { id = 3, name = "•   Benefits & Needs" },
     # MFB-1311: all-states screener analytics tabs (global versions of the
     # per-tenant screener tabs). Cards are the global_screener_* resources.
-    { id = 4, name = "User Journey Overview" },
-    { id = 5, name = "User Journey by Step" },
-    { id = 6, name = "Results Page Activity" },
-    { id = 7, name = "Sharing & Saving" },
+    { id = 4, name = "•   Engagement Overview" },
+    { id = 5, name = "•   Engagement by Step" },
+    { id = 6, name = "•   Results Page" },
+    { id = 7, name = "•   Share & Save" },
   ])
 
   cards_json = jsonencode(concat(
