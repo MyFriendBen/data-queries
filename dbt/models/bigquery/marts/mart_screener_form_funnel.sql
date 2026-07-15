@@ -106,6 +106,46 @@ form_errors as (
     where event_name = 'screener_form_error'
 ),
 
+-- Pre-aggregate each event source to the (date, state, step) grain BEFORE
+-- joining. Joining the raw per-event CTEs directly would fan out (cartesian
+-- product per grain group): the COUNT(DISTINCT session_key) measures survive
+-- that (DISTINCT collapses dupes) but SUM(form_error_count) would be inflated
+-- by (views x completes x backs). Aggregating first makes every side one row
+-- per grain, so the join can't multiply. Same pattern as mart_screener_saves.
+step_views_summary as (
+    select
+        event_date, event_date_parsed, screener_state, screener_step_name,
+        max(screener_step_number) as screener_step_number,
+        count(distinct session_key) as screenings_viewed_step
+    from step_views
+    group by event_date, event_date_parsed, screener_state, screener_step_name
+),
+
+step_completes_summary as (
+    select
+        event_date, screener_state, screener_step_name,
+        count(distinct session_key) as screenings_completed_step
+    from step_completes
+    group by event_date, screener_state, screener_step_name
+),
+
+form_backs_summary as (
+    select
+        event_date, screener_state, screener_step_name,
+        count(distinct session_key) as screenings_navigated_back
+    from form_backs
+    group by event_date, screener_state, screener_step_name
+),
+
+form_errors_summary as (
+    select
+        event_date, screener_state, screener_step_name,
+        count(distinct session_key) as screenings_with_error,
+        sum(form_error_count) as total_error_count
+    from form_errors
+    group by event_date, screener_state, screener_step_name
+),
+
 step_grain as (
     -- One row per (date, state, step) present in any step-scoped event, so
     -- steps with e.g. only errors and no views still surface in the funnel
@@ -126,36 +166,35 @@ select
 
     -- Most common step number seen for this step name; null for pre-numbered
     -- pages (select-state) and the synthetic start/complete rows
-    max(sv.screener_step_number) as screener_step_number,
+    sv.screener_step_number,
 
     -- Column names kept as screenings_* for consistency with the sibling marts
     -- and existing dashboard cards, but these are deduped on the SESSION key
     -- (see header) — screener_uid is null pre-step-3 and would zero out the
     -- top of the funnel. "screenings" here == distinct GA4 sessions.
-    count(distinct sv.session_key) as screenings_viewed_step,
-    count(distinct sc.session_key) as screenings_completed_step,
-    count(distinct fb.session_key) as screenings_navigated_back,
-    count(distinct fe.session_key) as screenings_with_error,
-    coalesce(sum(fe.form_error_count), 0) as total_error_count,
+    coalesce(sv.screenings_viewed_step, 0) as screenings_viewed_step,
+    coalesce(sc.screenings_completed_step, 0) as screenings_completed_step,
+    coalesce(fb.screenings_navigated_back, 0) as screenings_navigated_back,
+    coalesce(fe.screenings_with_error, 0) as screenings_with_error,
+    coalesce(fe.total_error_count, 0) as total_error_count,
 
     current_timestamp() as updated_at
 
 from step_grain g
-left join step_views sv
+left join step_views_summary sv
     on g.event_date = sv.event_date
     and g.screener_state = sv.screener_state
     and g.screener_step_name = sv.screener_step_name
-left join step_completes sc
+left join step_completes_summary sc
     on g.event_date = sc.event_date
     and g.screener_state = sc.screener_state
     and g.screener_step_name = sc.screener_step_name
-left join form_backs fb
+left join form_backs_summary fb
     on g.event_date = fb.event_date
     and g.screener_state = fb.screener_state
     and g.screener_step_name = fb.screener_step_name
-left join form_errors fe
+left join form_errors_summary fe
     on g.event_date = fe.event_date
     and g.screener_state = fe.screener_state
     and g.screener_step_name = fe.screener_step_name
-group by g.event_date, g.event_date_parsed, g.screener_state, g.screener_step_name
 order by g.event_date desc, g.screener_state, screener_step_number
