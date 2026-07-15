@@ -2,11 +2,9 @@
 #   mart_screener_form_funnel, mart_screener_program_interactions,
 #   mart_screener_results_outcomes, mart_screener_shares, mart_screener_saves.
 #
-# These marts have NO DATA until the GTM->GA4 relay is live, so these cards are
-# correct-by-construction and cannot be terraform-applied/validated against real
-# rows yet. They intentionally mirror dashboards/google_analytics.tf exactly:
+# These cards intentionally mirror dashboards/google_analytics.tf exactly:
 #   - for_each = local.ga_tenants_enabled (tenants with >=1 screener tab enabled;
-#     currently {} since all screener tabs are hidden — see google_analytics.tf)
+#     see google_analytics.tf)
 #   - tenant state filter via local.tenant_ga_state_filter[each.key], BUT the new
 #     marts use column `screener_state` (NOT `state_code` like the GA marts)
 #   - date template-tags via local.ga_date_tags + the bracketed date predicates
@@ -34,9 +32,9 @@
 #
 # ⚠️ MIXED DEDUP KEYS across stages — not a strictly apples-to-apples ratio:
 #   Visitors + Started come from mart_screener_form_funnel, deduped on the GA4
-#   SESSION key (screener_uid is null pre-step-3, so a session key is used — see
-#   analytics-dbt-notes.md). Saw Results / More Info / Apply come from the
-#   results/interaction marts, deduped on screener_uid (which exists post-step-3).
+#   SESSION key (screener_uid is null pre-step-3, so a session key is used).
+#   Saw Results / More Info / Apply come from the results/interaction marts,
+#   deduped on screener_uid (which exists post-step-3).
 #   So the Started→Saw Results transition changes denominators (sessions → uids).
 #   The card description carries a one-line caveat; treat stage-to-stage
 #   conversion as directional, not exact.
@@ -47,10 +45,9 @@
 # acceptable for a top-of-funnel trend.
 #
 # ⚠️ VISITORS SOURCING RISK: the Visitors stage reads mart_ga_kpi_summary, which
-# is fed by the LEGACY DOM-scrape pipeline being decommissioned (GTM Wave 1).
-# Once the old triggers are fully removed, total_sessions there will decay to
-# only whatever still populates it. Re-base Visitors on a screener_*-native
-# session/pageview count when one exists (follow-up: MFB-1306).
+# is fed by the legacy DOM-scrape pipeline. If the old triggers are removed,
+# total_sessions there will decay to only whatever still populates it. Re-base
+# Visitors on a screener_*-native session/pageview count when one exists.
 resource "metabase_card" "screener_macro_funnel" {
   for_each = local.ga_tenants_enabled
 
@@ -92,7 +89,7 @@ resource "metabase_card" "screener_macro_funnel" {
 # Detailed per-step drop-off funnel from mart_screener_form_funnel.
 # Ordered by MIN(screener_step_number) so steps appear in true flow order rather
 # than alphabetically. CAVEAT: select-state is a pre-numbered page with a null
-# screener_step_number (see the mart header + analytics-dbt-notes.md); such rows
+# screener_step_number (see the mart header); such rows
 # sort last (NULLS LAST). The synthetic __form_start__/__form_complete__ rows are
 # excluded here since this is the step-by-step (not start-to-complete) funnel.
 resource "metabase_card" "screener_step_funnel" {
@@ -252,7 +249,7 @@ resource "metabase_card" "screener_more_info_vs_apply" {
 # Scatter: more_info (x) vs apply (y) per program.
 # NOTE: display="scatter" is not used elsewhere in this repo; the column shape
 # (two numeric metrics + a program dimension) is also valid for a table fallback
-# if the Metabase scatter renderer misbehaves. Flagged in the report.
+# if the Metabase scatter renderer misbehaves
 resource "metabase_card" "screener_more_info_apply_scatter" {
   for_each = local.ga_tenants_enabled
 
@@ -323,7 +320,7 @@ resource "metabase_card" "screener_results_outcome_kpis" {
 # share_action). The share funnel is open -> send within a share_location.
 # NOTE: assumes share_action values 'open' and 'send' (open->send is the design's
 # stated funnel). If the relay emits different action labels these predicates need
-# updating — flagged in the report.
+# updating
 resource "metabase_card" "screener_share_funnel_popup" {
   for_each = local.ga_tenants_enabled
 
@@ -417,7 +414,7 @@ resource "metabase_card" "screener_shares_by_channel" {
 # NOTE: the save funnel denominator is the share-popup impression (the mart pairs
 # these two on date+state); numerator is distinct screenings that saved. This is
 # an approximation of a true per-screening funnel since the two events are joined
-# at day/state grain, not per screening — flagged in the report.
+# at day/state grain, not per screening
 resource "metabase_card" "screener_save_funnel" {
   for_each = local.ga_tenants_enabled
 

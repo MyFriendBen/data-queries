@@ -13,9 +13,9 @@
 -- Two event types share one mart via a `metric` discriminator so a single
 -- table backs both cards; `dimension` holds either the tab_name or the
 -- resource_name depending on the metric.
--- Dedupe by screener_uid for the "distinct screenings" measure, per
--- analytics-dbt-notes.md. Resource clicks are website clicks only until
--- MFB-1306 adds the phone/website contact_method split.
+-- Dedupe by screener_uid for the "distinct screenings" measure (these events
+-- fire post-step-3, so uid exists). Resource clicks are website clicks only;
+-- there is no phone/website contact_method split.
 
 with tab_clicks as (
     select

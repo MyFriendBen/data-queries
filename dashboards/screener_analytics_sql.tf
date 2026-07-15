@@ -1,4 +1,4 @@
-# Shared SQL bodies for the 16 screener analytics cards (MFB-1311 DRY refactor).
+# Shared SQL bodies for the 16 screener analytics cards.
 #
 # Each card's SQL is defined ONCE here with sentinel tokens where the per-scope
 # state predicate goes. Consumers substitute the sentinel with `replace()`:

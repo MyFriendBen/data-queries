@@ -4,7 +4,7 @@
   )
 }}
 
--- Screener results-page resource + tab engagement (MFB-1268 app-emitted events)
+-- Screener results-page resource + tab engagement (app-emitted events)
 -- Covers:
 --   screener_results_tab_click        — which results tab was opened
 --                                        (long_term_benefits vs additional_resources)
@@ -12,10 +12,9 @@
 --                                        was clicked (resource_name is the real
 --                                        resource label, e.g. "Hunger Free Colorado")
 -- screener_state / screener_uid arrive directly as event params.
--- NOTE (see analytics-dbt-notes.md / MFB-1306): resource clicks today are
--- website clicks only — the phone tel: link on resource cards is not yet
--- tracked, and there is no website-vs-phone `contact_method` split. Treat resource
--- click counts as "website clicks" until MFB-1306 adds the contact_method param.
+-- Resource clicks are website clicks only — the phone tel: link on resource cards
+-- is not tracked, and there is no website-vs-phone `contact_method` split, so
+-- resource click counts are effectively website clicks.
 
 select
     -- Event/date info

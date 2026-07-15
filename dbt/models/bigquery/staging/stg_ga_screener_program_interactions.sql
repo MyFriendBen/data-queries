@@ -4,15 +4,14 @@
   )
 }}
 
--- Screener program interaction events (MFB-1268 app-emitted screener_* events)
+-- Screener program interaction events (app-emitted screener_* events)
 -- Covers screener_apply_click, screener_program_more_info,
 -- screener_program_visit_website, screener_program_phone_click,
 -- screener_program_document_download, screener_required_program_click,
 -- screener_eligibility_tags_shown, screener_filter_engaged,
 -- screener_results_tab_click
 -- Group downstream by program_id, not program_name — program_name is the
--- English display label and can vary in spelling for the same program
--- (see analytics-dbt-notes.md).
+-- English display label and can vary in spelling for the same program.
 
 select
     -- Event/date info
@@ -39,8 +38,7 @@ select
 
     -- Program identifiers
     -- program_id is sent as a NUMBER by the FE, so it lands in int_value, not
-    -- string_value. Coalesce both so it's robust regardless of value type
-    -- (verified 2026-07-15: prod events carry program_id in int_value).
+    -- string_value. Coalesce both so it's robust regardless of value type.
     max(case when ep.key = 'program_id'
         then coalesce(cast(ep.value.int_value as string), ep.value.string_value)
     end) as program_id,

@@ -4,12 +4,11 @@
   )
 }}
 
--- Screener results outcome events (MFB-1268 app-emitted screener_* events)
+-- Screener results outcome events (app-emitted screener_* events)
 -- Covers screener_results_loaded, screener_results_none_eligible,
 -- screener_results_error, screener_results_error_recovery
--- program_count on screener_results_loaded reflects apiResults.programs.length,
--- which is effectively "eligible programs found" in MFB today (see
--- analytics-dbt-notes.md open question on eligible vs. total incl. ineligible).
+-- program_count on screener_results_loaded is the count returned by the results
+-- API (eligible programs in MFB); confirm whether partners want eligible vs total.
 
 select
     -- Event/date info
@@ -37,9 +36,8 @@ select
     -- screener_results_loaded
     max(case when ep.key = 'program_count' then ep.value.int_value end) as program_count,
     -- total_estimated_value's GA4 value type is value-dependent: it lands in
-    -- int_value for whole-dollar amounts (~94% of rows in prod) and double_value
-    -- only when fractional. Reading double_value alone dropped ~94% of the field
-    -- to NULL (same class as the program_id int/string bug). Coalesce both.
+    -- int_value for whole-dollar amounts and double_value only when fractional,
+    -- so read both and coalesce to avoid nulling out whole-dollar values.
     max(case when ep.key = 'total_estimated_value'
         then coalesce(ep.value.double_value, cast(ep.value.int_value as float64))
     end) as total_estimated_value,

@@ -4,13 +4,13 @@
   )
 }}
 
--- Screener form funnel events (MFB-1268 app-emitted screener_* events)
+-- Screener form funnel events (app-emitted screener_* events)
 -- Covers screener_form_start, screener_form_step, screener_form_complete,
 -- screener_form_error, screener_form_back
 -- screener_state / screener_uid are sent directly as event params by the app,
 -- so no page_location regex is needed to derive state (unlike the legacy GA4 events).
 -- Do NOT filter out null screener_uid here — top-of-funnel steps (language,
--- select-state) fire before a screening uuid exists (see analytics-dbt-notes.md).
+-- select-state) fire before a screening uuid exists, so uid is null on them.
 
 select
     -- Event/date info

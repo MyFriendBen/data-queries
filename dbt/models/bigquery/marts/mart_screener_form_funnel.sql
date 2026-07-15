@@ -11,28 +11,26 @@
 -- '__form_complete__' step rows (see below).
 --
 -- Grain is (event_date, screener_state, screener_step_name) — NOT step number,
--- since select-state is a pre-numbered page with a null screener_step_number
--- (see analytics-dbt-notes.md).
+-- since select-state is a pre-numbered page with a null screener_step_number.
 --
 -- Dedupe by SESSION KEY (user_pseudo_id, ga_session_id), NOT screener_uid.
 -- screener_uid is the app-minted screening UUID, which does not exist until
 -- step 3 (zip/county creates the Screen record) — so it is null on form_start,
 -- language, disclaimer, and select-state. Counting distinct screener_uid would
--- therefore collapse the top-of-funnel denominator to ~0 (form_start is ~4%
--- uid-populated in prod). The GA4 session key is present on 100% of events from
--- the first pageview, so it is the correct funnel-dedup key — this matches the
--- proven approach in mart_ga_kpi_summary (the old GA tab). The output columns
--- keep the screenings_* names for consistency with sibling marts / existing
--- cards, but each is a distinct-SESSION count. screener_uid is kept in staging
--- for screening-level joins (results revisits, conversion) but is NOT the
--- funnel denominator.
+-- therefore collapse the top-of-funnel denominator, since uid is null on those
+-- events. The GA4 session key is present on every event from the first pageview,
+-- so it is the correct funnel-dedup key — this matches the approach in
+-- mart_ga_kpi_summary (the old GA tab). The output columns keep the screenings_*
+-- names for consistency with sibling marts / existing cards, but each is a
+-- distinct-SESSION count. screener_uid is kept in staging for screening-level
+-- joins (results revisits, conversion) but is NOT the funnel denominator.
 --
 -- screener_form_start / screener_form_complete are not step-scoped events, so
 -- they are surfaced as synthetic '__form_start__' / '__form_complete__' step
 -- rows in sessions_viewed_step, giving one table that covers both the
 -- step-by-step drop-off funnel and the overall start-to-complete funnel
 -- (screener_form_start fires once per screening, guarded by a sessionStorage
--- flag, so one session ≈ one start per analytics-dbt-notes.md).
+-- flag, so one session is approximately one start).
 
 with step_views as (
     select
@@ -186,11 +184,10 @@ select
 -- vs. direct /co/... entry). step_grain UNIONs those null-state rows in, but a
 -- plain `g.screener_state = x.screener_state` join evaluates NULL = NULL as
 -- UNKNOWN, stranding every null-state grain row (it never matches its own summary
--- and coalesces to 0). Verified in prod: ~90% of form_start/complete sessions are
--- null-state, so the plain join undercounted "Started" by ~8x. IFNULL both sides
--- to a sentinel so null-state matches null-state.
--- NOTE (per-tenant limitation): pre-state landing sessions genuinely can't be
--- attributed to a tenant (only ~7% ever resolve a state within the session), so
+-- and coalesces to 0). IFNULL both sides to a sentinel so null-state matches
+-- null-state.
+-- NOTE (per-tenant limitation): pre-state landing sessions can't be attributed to
+-- a tenant, and most such sessions never resolve a state within the session, so
 -- per-tenant funnels (WHERE screener_state IN ('co')) legitimately exclude them —
 -- their top-of-funnel is understated by unattributable landing traffic. The
 -- global (all-states) funnel counts them correctly via this null-safe join.

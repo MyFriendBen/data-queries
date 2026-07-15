@@ -4,10 +4,10 @@
   )
 }}
 
--- Screener share/save events (MFB-1268 app-emitted screener_* events)
+-- Screener share/save events (app-emitted screener_* events)
 -- Covers screener_share, screener_share_popup_shown, screener_results_save
--- No save_action:'error' or share-failure event exists yet — send-failure is
--- not distinguished from send-attempt (see analytics-dbt-notes.md).
+-- There is no save_action:'error' or share-failure event, so send-failure is
+-- not distinguished from send-attempt.
 
 select
     -- Event/date info

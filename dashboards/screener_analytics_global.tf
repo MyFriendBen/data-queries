@@ -1,4 +1,4 @@
-# Global (all-states) versions of the 16 screener analytics cards (MFB-1311).
+# Global (all-states) versions of the 16 screener analytics cards.
 #
 # These are SINGLE-INSTANCE cards (no for_each) that live in the Global
 # collection and query ALL states. They consume the SAME shared SQL bodies as

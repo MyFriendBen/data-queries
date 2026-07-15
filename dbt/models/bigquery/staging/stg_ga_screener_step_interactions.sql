@@ -4,13 +4,13 @@
   )
 }}
 
--- Screener step interaction events (MFB-1268 app-emitted screener_* events)
+-- Screener step interaction events (app-emitted screener_* events)
 -- Covers screener_household_member, screener_income_source,
 -- screener_has_benefits_load_error, screener_language_changed,
 -- screener_confirmation_edit, screener_confirmation_proceed
 -- Note: screener_income_source add/delete counts are NOT expected to reconcile
 -- 1:1 — the form auto-appends an empty income row for 16+ members that is not
--- tracked as an add (see analytics-dbt-notes.md).
+-- tracked as an add.
 
 select
     -- Event/date info

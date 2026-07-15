@@ -10,8 +10,8 @@
 -- / document-download counts per program.
 -- Grouped by program_id, not program_name — program_name is the English
 -- display label and can vary in spelling for the same program; program_id is
--- the stable key (see analytics-dbt-notes.md). One arbitrary program_name is
--- carried through per program_id as the display label.
+-- the stable key. One arbitrary program_name is carried through per program_id
+-- as the display label.
 
 with interactions as (
     select

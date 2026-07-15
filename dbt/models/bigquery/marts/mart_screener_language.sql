@@ -8,8 +8,8 @@
 -- Powers the Overview tab's language-distribution bar: which languages users
 -- switch to via the language selector (screener_language_changed.language_name).
 -- Note: this captures explicit language CHANGES, not the initial/default
--- language of a session (see analytics-dbt-notes.md) — so it reflects users who
--- actively switched, which is the engagement signal we want here.
+-- language of a session — so it reflects users who actively switched, which is
+-- the engagement signal we want here.
 
 select
     event_date,
@@ -21,7 +21,7 @@ select
     -- Session-deduped, NOT screener_uid: screener_language_changed fires from
     -- the global Header language selector, most often on the landing/language
     -- page BEFORE a screening uuid exists (uid is null pre-step-3). Deduping on
-    -- screener_uid would collapse those to ~0 (same bug fixed in the funnel mart).
+    -- screener_uid would undercount those, so dedupe on the session key instead.
     count(distinct to_json_string(struct(user_pseudo_id, ga_session_id))) as distinct_screenings,
 
     current_timestamp() as updated_at

@@ -15,9 +15,9 @@
 -- savers, and a synthetic '__popup_shown__' row for popup impressions — so each
 -- metric sums exactly once with no fan-out. Distinct metrics (screenings_with_save,
 -- screenings_shown_popup) dedupe on screener_uid, which is valid here because both
--- save and popup events fire post-step-3 (uid exists). (see analytics-dbt-notes.md)
--- No save_action:'error' event exists yet, so send-failure is not
--- distinguished from send-attempt in save_action values.
+-- save and popup events fire post-step-3 (uid exists).
+-- There is no save_action:'error' event, so send-failure is not distinguished
+-- from send-attempt in save_action values.
 
 with saves as (
     select
@@ -45,8 +45,8 @@ popup_shown as (
 -- so it sums correctly across channel/action rows. screenings_with_save (a
 -- DISTINCT-screening metric) is NOT computed here — a uid that saved via two
 -- channels/actions would be counted once per combo, and the card's
--- SUM(screenings_with_save) would inflate the "Saved" funnel stage (verified:
--- 23 vs. 5 true distinct savers). It lives on its own disjoint row below.
+-- SUM(screenings_with_save) would inflate the "Saved" funnel stage. It lives on
+-- its own disjoint row below.
 save_summary as (
     select
         event_date,

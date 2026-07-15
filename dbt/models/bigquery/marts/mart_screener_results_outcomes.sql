@@ -8,9 +8,8 @@
 -- Powers the Results dashboard tab's outcome summary: results loaded vs.
 -- none-eligible vs. error, and the distribution of programs found / estimated
 -- value among screenings that loaded results.
--- program_count is treated as "eligible programs found" per
--- analytics-dbt-notes.md (open question on eligible vs. total incl. ineligible
--- pending confirmation with partners).
+-- program_count is the count returned by the results API (eligible programs in
+-- MFB); confirm whether partners want eligible vs total.
 
 with results_loaded as (
     select
@@ -58,9 +57,8 @@ error_recoveries as (
 -- the raw per-event CTEs directly fans out (cartesian product per grain group).
 -- The COUNT(DISTINCT uid) and AVG/approx_quantiles happen to survive uniform
 -- fan-out mathematically, but it builds a large intermediate product per day/
--- state and is a trap (any future SUM() here would be inflated — see the bug
--- fixed in mart_screener_form_funnel). Aggregating first makes every side one
--- row per grain. Same pattern as mart_screener_saves.
+-- state and is a trap (any future SUM() here would be inflated). Aggregating
+-- first makes every side one row per grain. Same pattern as mart_screener_saves.
 results_loaded_summary as (
     select
         event_date, event_date_parsed, screener_state,
