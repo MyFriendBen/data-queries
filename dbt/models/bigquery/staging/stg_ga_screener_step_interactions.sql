@@ -22,6 +22,11 @@ select
     -- User info
     user_pseudo_id,
     user_id,
+    -- Batch fields make each raw GA4 event unique. GA4 client batching can
+    -- assign the SAME event_timestamp to multiple distinct events; without these,
+    -- GROUP BY collapses them and max(case...) mixes their params (data loss).
+    event_bundle_sequence_id,
+    batch_event_index,
 
     -- Session info (extracted from event_params)
     max(case when ep.key = 'ga_session_id' then ep.value.int_value end) as ga_session_id,
@@ -61,4 +66,6 @@ group by
     event_timestamp,
     event_name,
     user_pseudo_id,
-    user_id
+    user_id,
+    event_bundle_sequence_id,
+    batch_event_index

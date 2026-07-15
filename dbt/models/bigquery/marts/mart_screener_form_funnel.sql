@@ -164,8 +164,9 @@ select
     g.screener_state,
     g.screener_step_name,
 
-    -- Most common step number seen for this step name; null for pre-numbered
-    -- pages (select-state) and the synthetic start/complete rows
+    -- MAX step number seen for this step name (step_number is stable per step,
+    -- so max = the value); null for pre-numbered pages (select-state) and the
+    -- synthetic start/complete rows
     sv.screener_step_number,
 
     -- Column names kept as screenings_* for consistency with the sibling marts
