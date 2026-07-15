@@ -170,27 +170,6 @@ locals {
     ORDER BY (more_info - apply) DESC
   SQL
 
-  # ── Tab 8 (Results): more info vs apply scatter ─────────────────────────────
-  screener_sql_more_info_apply_scatter = <<-SQL
-    WITH per_program AS (
-      SELECT
-        program_id,
-        MAX(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
-        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
-    )
-    SELECT program_name AS `Program`, more_info AS `More Info`, apply AS `Apply`
-    FROM per_program
-    WHERE more_info > 0 OR apply > 0
-    ORDER BY more_info DESC
-  SQL
-
   # ── Tab 8 (Results): results outcome KPIs ───────────────────────────────────
   screener_sql_results_outcome_kpis = <<-SQL
     WITH agg AS (

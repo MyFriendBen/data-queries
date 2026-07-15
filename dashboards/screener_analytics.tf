@@ -227,38 +227,6 @@ resource "metabase_card" "screener_more_info_vs_apply" {
   })
 }
 
-# Scatter: more_info (x) vs apply (y) per program.
-# NOTE: display="scatter" is not used elsewhere in this repo; the column shape
-# (two numeric metrics + a program dimension) is also valid for a table fallback
-# if the Metabase scatter renderer misbehaves
-resource "metabase_card" "screener_more_info_apply_scatter" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "More Info vs Apply (Scatter)"
-    description         = "Per-program scatter of distinct more-info screenings (x) against apply screenings (y)"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "scatter"
-    visualization_settings = {
-      "graph.dimensions" = ["More Info"]
-      "graph.metrics"    = ["Apply"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
-
 # Results outcome KPIs — single table of the outcome scalars, mirroring the GA
 # funnel-detail table pattern (one native query, ordered rows). Kept as one card
 # rather than many tiles to avoid re-querying the mart per tile.
@@ -750,28 +718,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_more_info_vs_apply[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_more_info_apply_scatter[key].id)
-          dashboard_tab_id = 8
-          row              = 12
-          col              = 12
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_more_info_apply_scatter[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_more_info_apply_scatter[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

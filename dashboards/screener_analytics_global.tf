@@ -249,33 +249,6 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
   })
 }
 
-resource "metabase_card" "global_screener_more_info_apply_scatter" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "More Info vs Apply (Scatter)"
-    description         = "Per-program scatter of distinct more-info screenings (x) against apply screenings (y)"
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "scatter"
-    visualization_settings = {
-      "graph.dimensions" = ["More Info"]
-      "graph.metrics"    = ["Apply"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
 
 resource "metabase_card" "global_screener_tab_split" {
   count = var.bigquery_enabled ? 1 : 0

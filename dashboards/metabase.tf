@@ -1102,17 +1102,6 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_more_info_apply_scatter[0].id)
-        dashboard_tab_id       = 6
-        row                    = 12
-        col                    = 12
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
         card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
         dashboard_tab_id       = 6
         row                    = 20
