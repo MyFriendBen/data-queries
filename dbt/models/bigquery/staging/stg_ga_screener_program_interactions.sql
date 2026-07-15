@@ -33,7 +33,12 @@ select
     max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
 
     -- Program identifiers
-    max(case when ep.key = 'program_id' then ep.value.string_value end) as program_id,
+    -- program_id is sent as a NUMBER by the FE, so it lands in int_value, not
+    -- string_value. Coalesce both so it's robust regardless of value type
+    -- (verified 2026-07-15: prod events carry program_id in int_value).
+    max(case when ep.key = 'program_id'
+        then coalesce(cast(ep.value.int_value as string), ep.value.string_value)
+    end) as program_id,
     max(case when ep.key = 'program_name' then ep.value.string_value end) as program_name,
     max(case when ep.key = 'url' then ep.value.string_value end) as url,
     max(case when ep.key = 'document_name' then ep.value.string_value end) as document_name,

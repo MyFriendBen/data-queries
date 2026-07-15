@@ -12,17 +12,27 @@
 --
 -- Grain is (event_date, screener_state, screener_step_name) — NOT step number,
 -- since select-state is a pre-numbered page with a null screener_step_number
--- (see analytics-dbt-notes.md). Dedupe by screener_uid so back-nav re-views of
--- a step don't inflate "distinct screenings that reached step X".
--- screener_uid is null for top-of-funnel steps (language, select-state) before
--- a screening uuid exists; these rows are intentionally kept, not filtered.
+-- (see analytics-dbt-notes.md).
+--
+-- Dedupe by SESSION KEY (user_pseudo_id, ga_session_id), NOT screener_uid.
+-- screener_uid is the app-minted screening UUID, which does not exist until
+-- step 3 (zip/county creates the Screen record) — so it is null on form_start,
+-- language, disclaimer, and select-state. Counting distinct screener_uid would
+-- therefore collapse the top-of-funnel denominator to ~0 (form_start is ~4%
+-- uid-populated in prod). The GA4 session key is present on 100% of events from
+-- the first pageview, so it is the correct funnel-dedup key — this matches the
+-- proven approach in mart_ga_kpi_summary (the old GA tab). The output columns
+-- keep the screenings_* names for consistency with sibling marts / existing
+-- cards, but each is a distinct-SESSION count. screener_uid is kept in staging
+-- for screening-level joins (results revisits, conversion) but is NOT the
+-- funnel denominator.
 --
 -- screener_form_start / screener_form_complete are not step-scoped events, so
 -- they are surfaced as synthetic '__form_start__' / '__form_complete__' step
--- rows in screenings_viewed_step, giving one table that covers both the
+-- rows in sessions_viewed_step, giving one table that covers both the
 -- step-by-step drop-off funnel and the overall start-to-complete funnel
 -- (screener_form_start fires once per screening, guarded by a sessionStorage
--- flag, so it's a clean funnel denominator per analytics-dbt-notes.md).
+-- flag, so one session ≈ one start per analytics-dbt-notes.md).
 
 with step_views as (
     select
@@ -31,7 +41,7 @@ with step_views as (
         screener_state,
         screener_step_name,
         screener_step_number,
-        screener_uid
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_step'
         and step_action = 'view'
@@ -44,7 +54,7 @@ with step_views as (
         screener_state,
         '__form_start__' as screener_step_name,
         null as screener_step_number,
-        screener_uid
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_start'
 
@@ -56,7 +66,7 @@ with step_views as (
         screener_state,
         '__form_complete__' as screener_step_name,
         null as screener_step_number,
-        screener_uid
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_complete'
 ),
@@ -67,7 +77,7 @@ step_completes as (
         event_date_parsed,
         screener_state,
         screener_step_name,
-        screener_uid
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_step'
         and step_action = 'complete'
@@ -79,7 +89,7 @@ form_backs as (
         event_date_parsed,
         screener_state,
         screener_step_name,
-        screener_uid
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_back'
 ),
@@ -90,7 +100,7 @@ form_errors as (
         event_date_parsed,
         screener_state,
         screener_step_name,
-        screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         form_error_count
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
@@ -118,10 +128,14 @@ select
     -- pages (select-state) and the synthetic start/complete rows
     max(sv.screener_step_number) as screener_step_number,
 
-    count(distinct sv.screener_uid) as screenings_viewed_step,
-    count(distinct sc.screener_uid) as screenings_completed_step,
-    count(distinct fb.screener_uid) as screenings_navigated_back,
-    count(distinct fe.screener_uid) as screenings_with_error,
+    -- Column names kept as screenings_* for consistency with the sibling marts
+    -- and existing dashboard cards, but these are deduped on the SESSION key
+    -- (see header) — screener_uid is null pre-step-3 and would zero out the
+    -- top of the funnel. "screenings" here == distinct GA4 sessions.
+    count(distinct sv.session_key) as screenings_viewed_step,
+    count(distinct sc.session_key) as screenings_completed_step,
+    count(distinct fb.session_key) as screenings_navigated_back,
+    count(distinct fe.session_key) as screenings_with_error,
     coalesce(sum(fe.form_error_count), 0) as total_error_count,
 
     current_timestamp() as updated_at

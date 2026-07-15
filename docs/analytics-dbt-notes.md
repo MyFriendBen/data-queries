@@ -25,10 +25,24 @@ accounted for. Grouped by the model area they affect.
   - Pre-directory steps use slugs `language`, `disclaimer`, `select-state`
     (see `PRE_DIRECTORY_STEP_IDS` in `stepIds.ts`).
 
-- **Do NOT drop rows on null `screener_uid`.** Top-of-funnel events (step-1
-  language, select-state) fire before a screening uuid exists, so `screener_uid`
-  is null on those. If a model inner-joins on uid or filters nulls, you'll lose
-  the start of the funnel. Left-join / tolerate nulls for those events.
+- **⚠️ Funnel dedup key is the GA4 SESSION, not `screener_uid`.** `screener_uid`
+  is the app-minted screening UUID and does not exist until **step 3** (zip/county
+  creates the Screen record → URL gets `/:uuid`). It is null on `form_start`,
+  language, disclaimer, and select-state. Verified in prod (2026-07-15):
+  `screener_uid` is ~4% populated on `form_start`, ~5% on `form_back`, ~13% on
+  `form_error` — recovering to ~97% by `form_complete`. So **`COUNT(DISTINCT
+  screener_uid)` collapses the top-of-funnel denominator to near-zero.** Dedup
+  funnel/drop-off metrics on the GA4 session key
+  `TO_JSON_STRING(STRUCT(user_pseudo_id, ga_session_id))` instead — it is present
+  on 100% of events from the first pageview, and it's the same key the old
+  `mart_ga_kpi_summary` uses. `mart_screener_form_funnel` was fixed to do this
+  (2026-07-15); columns keep the `screenings_*` names (sibling-mart consistency)
+  but are session-deduped. Use `screener_uid` only for **screening-level** joins
+  (results revisits, conversion), never as the funnel denominator.
+
+- **Do NOT drop rows on null `screener_uid`.** Because uid is null pre-step-3, any
+  model that inner-joins on uid or filters `uid is not null` loses the start of
+  the funnel. Left-join / tolerate nulls.
 
 ## Counting semantics (avoid inflation)
 
@@ -41,14 +55,15 @@ accounted for. Grouped by the model area they affect.
   engagement metrics — do NOT expect them to reconcile 1:1.
 
 - **`screener_form_start` fires once per screening** (guarded by a per-uuid
-  sessionStorage flag), so it's a clean funnel denominator even with
-  back-navigation to step-1. Safe to count directly.
+  sessionStorage flag), so one session ≈ one start — a clean funnel denominator
+  when deduped on the **session key** (NOT uid, which is null here; see above).
 
 - **`screener_form_step` (`step_action='view'`) fires once per step view**,
   including re-views after back-nav — that's intentional (drop-off wants views).
-  For a "distinct screenings that reached step X" funnel, `COUNT(DISTINCT
-  screener_uid)` per step, not raw event count. Same dedupe discipline as the
-  existing `mart_ga_kpi_summary`.
+  For a "distinct sessions that reached step X" funnel, `COUNT(DISTINCT
+  session_key)` per step (NOT `COUNT(DISTINCT screener_uid)` — uid is null on
+  early steps), and NOT raw event count. Same dedupe discipline as
+  `mart_ga_kpi_summary`.
 
 - **`screener_results_loaded.program_count`** = `apiResults.programs.length`.
   ⚠️ OPEN QUESTION for the team: in MFB the `/results` API returns eligible
