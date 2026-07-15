@@ -3,9 +3,11 @@
 # These are SINGLE-INSTANCE cards (no for_each) that live in the Global
 # collection and query ALL states. They consume the SAME shared SQL bodies as
 # the per-tenant cards (locals in screener_analytics_sql.tf); the ONLY difference
-# is the state predicate substitution:
-#   __STATE_FILTER__     -> "1=1"  (all screener_state)
-#   __STATE_FILTER_KPI__ -> "1=1"  (all state_code; macro funnel only)
+# is the state predicate substitution — filtered to the full set of valid
+# lowercase state codes (NOT a bare 1=1) so legacy DOM-scrape rows (display-name
+# state) and null-state landing rows don't contaminate the all-states totals:
+#   __STATE_FILTER__     -> "screener_state IN (${local.all_screener_state_filter})"
+#   __STATE_FILTER_KPI__ -> "state_code IN (${local.all_screener_state_filter})"  (macro funnel only)
 #
 # name / description / display / visualization_settings / template-tags are
 # identical to the tenant versions in screener_analytics.tf. Placed on the
@@ -30,8 +32,8 @@ resource "metabase_card" "global_screener_macro_funnel" {
       type     = "native"
       native = {
         query = replace(
-          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_KPI__", "1=1"),
-          "__STATE_FILTER__", "1=1"
+          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_KPI__", "state_code IN (${local.all_screener_state_filter})"),
+          "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})"
         )
         template-tags = local.ga_date_tags
       }
@@ -60,7 +62,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -92,7 +94,7 @@ resource "metabase_card" "global_screener_step_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -120,7 +122,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -148,7 +150,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -180,7 +182,7 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -208,7 +210,7 @@ resource "metabase_card" "global_screener_apply_conversion_rate" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -236,7 +238,7 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -264,7 +266,7 @@ resource "metabase_card" "global_screener_more_info_apply_scatter" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -292,7 +294,7 @@ resource "metabase_card" "global_screener_tab_split" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -320,7 +322,7 @@ resource "metabase_card" "global_screener_top_resources" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -352,7 +354,7 @@ resource "metabase_card" "global_screener_share_funnel_popup" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_share_funnel_popup, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_share_funnel_popup, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -380,7 +382,7 @@ resource "metabase_card" "global_screener_share_funnel_footer" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_share_funnel_footer, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_share_funnel_footer, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -408,7 +410,7 @@ resource "metabase_card" "global_screener_shares_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_shares_by_channel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_shares_by_channel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -436,7 +438,7 @@ resource "metabase_card" "global_screener_save_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_save_funnel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_save_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -464,7 +466,7 @@ resource "metabase_card" "global_screener_saves_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_saves_by_channel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_saves_by_channel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
