@@ -428,8 +428,8 @@ resource "metabase_card" "screener_tab_split" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Results Tab Split"
-    description         = "Distinct screenings opening each results-page tab (long-term benefits vs additional resources)"
+    name                = "Results Tab Engagement"
+    description         = "% of results-page viewers who opened each results tab (denominator = screenings that loaded results). Long-Term Benefits is the default tab (~100%); the signal is the Additional Resources rate."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -445,7 +445,7 @@ resource "metabase_card" "screener_tab_split" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["Tab"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.metrics"    = ["% of Results Viewers"]
     }
     parameter_mappings = []
     parameters         = []

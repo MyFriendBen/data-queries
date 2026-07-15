@@ -315,22 +315,41 @@ locals {
   SQL
 
   # ── Tab 8 (Results): results-page tab split ─────────────────────────────────
+  # % of results-page viewers who opened each results tab. Numerator = distinct
+  # screenings that opened the tab; denominator = distinct screenings that loaded
+  # results (mart_screener_results_outcomes). A raw count is meaningless without
+  # this denominator. Note long_term_benefits is the default tab (≈100%); the
+  # signal is the Additional Resources rate.
   screener_sql_tab_split = <<-SQL
+    WITH tab_opens AS (
+      SELECT
+        CASE dimension
+          WHEN 'additional_resources' THEN 'Additional Resources'
+          WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
+          ELSE COALESCE(dimension, '(none)')
+        END AS tab_label,
+        SUM(distinct_screenings) AS n
+      FROM `${local.bq_dataset}.mart_screener_resource_engagement`
+      WHERE __STATE_FILTER__
+        AND metric = 'tab_open'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY tab_label
+    ),
+    results_viewers AS (
+      SELECT SUM(screenings_results_loaded) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
     SELECT
-      CASE dimension
-        WHEN 'additional_resources' THEN 'Additional Resources'
-        WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
-        ELSE COALESCE(dimension, '(none)')
-      END AS `Tab`,
-      SUM(distinct_screenings) AS `Screenings`
-    FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-    WHERE __STATE_FILTER__
-      AND metric = 'tab_open'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Tab`
-    ORDER BY `Screenings` DESC
+      tab_opens.tab_label AS `Tab`,
+      ROUND(tab_opens.n * 100.0 / NULLIF((SELECT denom FROM results_viewers), 0), 1) AS `% of Results Viewers`
+    FROM tab_opens
+    ORDER BY `% of Results Viewers` DESC
   SQL
 
   # ── Tab 8 (Results): top additional resources ───────────────────────────────
