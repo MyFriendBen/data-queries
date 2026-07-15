@@ -103,17 +103,17 @@ locals {
     }
   }
 
-  # Per-tenant tab selection — order determines tab display order
+  # Per-tenant tab selection — a tenant's dashboard shows exactly the tabs listed
+  # here, in this order. To add a tab to a tenant, add its key to that tenant's
+  # list; to remove one, drop the key.
   #
-  # MFB-1268: the four per-tenant screener analytics tabs ("screener_overview",
-  # "screener_form_journey", "screener_results", "screener_sharing_saving") are
-  # HIDDEN from partner dashboards pending review. The card resources still exist
-  # (screener_analytics.tf) — they are simply not placed on any dashboard. The
-  # all-states equivalents live on the internal Global dashboard (tabs 4-7).
-  # To re-reveal a per-tenant screener tab, re-add its key to that tenant's list.
-  # ga_tenants (google_analytics.tf) keys off ANY of the four screener tab flags,
-  # so re-adding any one of them also creates that tenant's screener CARD
-  # resources (not just the tab layout) — no empty-tab footgun.
+  # The four screener analytics tabs (screener_overview, screener_form_journey,
+  # screener_results, screener_sharing_saving) are opt-in per tenant. Adding any
+  # one of them to a tenant's list also creates that tenant's screener CARD
+  # resources: ga_tenants (google_analytics.tf) keys off ANY of the four screener
+  # tab flags, so the cards exist whenever at least one screener tab is listed
+  # (avoids placing a tab whose cards were never built). The all-states versions
+  # of these cards live on the internal Global dashboard independently of this.
   tenant_tabs = {
     nc                = ["all_time", "households", "benefits_needs"]
     co                = ["all_time", "households", "benefits_needs"]

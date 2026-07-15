@@ -577,8 +577,8 @@ resource "metabase_dashboard" "analytics" {
     { id = 1, name = "•      Summary" },
     { id = 2, name = "•      Households" },
     { id = 3, name = "•      Benefits & Needs" },
-    # MFB-1311: all-states screener analytics tabs (global versions of the
-    # per-tenant screener tabs). Cards are the global_screener_* resources.
+    # All-states screener analytics tabs (global versions of the per-tenant
+    # screener tabs). Cards are the global_screener_* resources.
     { id = 4, name = "•      Engagement Overview" },
     { id = 5, name = "•      Engagement by Step" },
     { id = 6, name = "•      Results Page" },
@@ -997,7 +997,7 @@ resource "metabase_dashboard" "analytics" {
       },
     ],
     # -------------------------------------------------------------------------
-    # Tab 4: Engagement Overview (all-states screener) — MFB-1311
+    # Tab 4: Engagement Overview (all-states screener)
     # Mirrors tenant_dashboard_screener_overview_layout grid positions.
     # -------------------------------------------------------------------------
     var.bigquery_enabled ? [
@@ -1025,7 +1025,7 @@ resource "metabase_dashboard" "analytics" {
       },
     ] : [],
     # -------------------------------------------------------------------------
-    # Tab 5: Form Journey (all-states screener) — MFB-1311
+    # Tab 5: Form Journey (all-states screener)
     # Mirrors tenant_dashboard_screener_form_journey_layout grid positions.
     # -------------------------------------------------------------------------
     var.bigquery_enabled ? [
@@ -1064,7 +1064,7 @@ resource "metabase_dashboard" "analytics" {
       },
     ] : [],
     # -------------------------------------------------------------------------
-    # Tab 6: Results Page Activity (all-states screener) — MFB-1311
+    # Tab 6: Results Page Activity (all-states screener)
     # Mirrors tenant_dashboard_screener_results_layout grid positions.
     # -------------------------------------------------------------------------
     var.bigquery_enabled ? [
@@ -1136,7 +1136,7 @@ resource "metabase_dashboard" "analytics" {
       },
     ] : [],
     # -------------------------------------------------------------------------
-    # Tab 7: Sharing & Saving (all-states screener) — MFB-1311
+    # Tab 7: Sharing & Saving (all-states screener)
     # Mirrors tenant_dashboard_screener_sharing_saving_layout grid positions.
     # -------------------------------------------------------------------------
     var.bigquery_enabled ? [

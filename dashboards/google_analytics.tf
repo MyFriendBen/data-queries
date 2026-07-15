@@ -1,13 +1,9 @@
-# Shared analytics locals (BigQuery/GA4-derived), retained after the old
-# "Google Analytics" dashboard tab was retired. The GA-backed dashboard cards and
-# the tab-1 layout were removed; these locals are still consumed by the screener
-# analytics cards in dashboards/screener_analytics.tf (ga_tenants_enabled,
-# tenant_ga_state_filter, ga_date_tags) and by the shared date-filter parameter
-# ids used across the screener tabs (_ga_start_date_param_id / _ga_end_date_param_id).
-#
+# Shared BigQuery/GA4-derived locals for the screener analytics cards.
+# Consumed by dashboards/screener_analytics.tf: ga_tenants_enabled,
+# tenant_ga_state_filter, ga_date_tags, and the shared date-filter parameter ids
+# (_ga_start_date_param_id / _ga_end_date_param_id) used across the screener tabs.
 # The GA marts (mart_ga_kpi_summary, mart_ga_traffic_mediums, mart_ga_clicked_links,
-# etc.) are intentionally left in place in dbt — only the dashboard cards/tab were
-# retired.
+# etc.) remain available in dbt and feed the macro-funnel Visitors stage.
 
 locals {
   # Tenants enabled for the BigQuery/GA4-derived analytics cards.
@@ -15,12 +11,10 @@ locals {
   # analytics tab configured (overview / form-journey / results / sharing-saving)
   # participates. Keyed off ALL four tab flags (not just screener_overview) so the
   # per-tenant screener cards are created whenever ANY screener tab is enabled —
-  # otherwise re-adding, say, only "screener_results" to a tenant's tenant_tabs
-  # would place the tab but leave its cards uncreated (ga_tenants_enabled would
-  # still be empty), producing a visible-but-empty tab. See MFB-1268.
-  # NOTE: all four screener tabs are currently removed from every tenant_tabs list
-  # (hidden pending review), so this set is {} today — the per-tenant screener
-  # cards are not created. Re-add any screener tab key to a tenant to re-enable.
+  # otherwise adding, say, only "screener_results" to a tenant's tenant_tabs would
+  # place the tab but leave its cards uncreated (ga_tenants_enabled would be
+  # empty), producing a visible-but-empty tab. Re-adding any screener tab key to a
+  # tenant's tenant_tabs list re-creates that tenant's screener cards.
   ga_tenants = {
     for key, tenant in var.tenants : key => tenant
     if local.tenant_has_tab[key]["screener_overview"]
