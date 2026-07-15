@@ -37,6 +37,12 @@ popup_shown as (
     where event_name = 'screener_share_popup_shown'
 ),
 
+-- Per (channel, action): raw save COUNT only. total_saves is a plain count(*),
+-- so it sums correctly across channel/action rows. screenings_with_save (a
+-- DISTINCT-screening metric) is NOT computed here — a uid that saved via two
+-- channels/actions would be counted once per combo, and the card's
+-- SUM(screenings_with_save) would inflate the "Saved" funnel stage (verified:
+-- 23 vs. 5 true distinct savers). It lives on its own disjoint row below.
 save_summary as (
     select
         event_date,
@@ -44,10 +50,22 @@ save_summary as (
         screener_state,
         save_channel,
         save_action,
-        count(*) as total_saves,
-        count(distinct screener_uid) as screenings_with_save
+        count(*) as total_saves
     from saves
     group by event_date, event_date_parsed, screener_state, save_channel, save_action
+),
+
+-- Distinct savers per (date, state) — the "Saved" funnel denominator. One row
+-- per grain, so SUM() counts each screening once regardless of how many
+-- channels/actions it used.
+saves_distinct_summary as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        count(distinct screener_uid) as screenings_with_save
+    from saves
+    group by event_date, event_date_parsed, screener_state
 ),
 
 popup_summary as (
@@ -61,16 +79,15 @@ popup_summary as (
     group by event_date, event_date_parsed, screener_state
 )
 
--- Save rows and popup-impression rows live at DIFFERENT grains: saves are per
--- (date, state, channel, action); popup impressions are per (date, state). A
--- join would repeat the single popup value across every channel/action save row,
--- and the card's SUM(screenings_shown_popup) would then inflate by the number of
--- channel/action combos that day. Instead we UNION them as disjoint rows —
--- popup rows carry a synthetic save_action = '__popup_shown__' (null channel),
--- mirroring the __form_start__ synthetic-row pattern in mart_screener_form_funnel.
--- Each metric column is non-zero on only ONE row type, so SUM() over any filter
--- counts each exactly once. The card reads Shown Popup from the popup rows and
--- Saved from the save rows.
+-- Three DISJOINT row types unioned at a common shape (mirrors the __form_start__
+-- synthetic-row pattern). Each metric column is non-zero on exactly ONE row type,
+-- so SUM() over any filter counts each exactly once — no fan-out:
+--   1. channel/action rows  → total_saves (raw count, summable per channel)
+--   2. '__saved__' rows      → screenings_with_save (distinct savers per date/state)
+--   3. '__popup_shown__' rows → popup impressions/distinct (per date/state)
+-- The card reads Saved from row type 2, Shown Popup from row type 3, and
+-- saves-by-channel from row type 1 (which excludes the synthetic rows via its
+-- save_channel IS NOT NULL filter).
 select
     event_date,
     event_date_parsed,
@@ -79,13 +96,31 @@ select
     save_action,
 
     total_saves,
-    screenings_with_save,
+    0 as screenings_with_save,
     0 as total_popup_impressions,
     0 as screenings_shown_popup,
 
     current_timestamp() as updated_at
 
 from save_summary
+
+union all
+
+select
+    event_date,
+    event_date_parsed,
+    screener_state,
+    cast(null as string) as save_channel,
+    '__saved__' as save_action,
+
+    0 as total_saves,
+    screenings_with_save,
+    0 as total_popup_impressions,
+    0 as screenings_shown_popup,
+
+    current_timestamp() as updated_at
+
+from saves_distinct_summary
 
 union all
 
