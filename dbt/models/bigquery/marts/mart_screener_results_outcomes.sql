@@ -16,7 +16,9 @@ with results_loaded as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         program_count,
         total_estimated_value
     from {{ ref('stg_ga_screener_results_outcomes') }}
@@ -28,6 +30,7 @@ none_eligible as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_uid
     from {{ ref('stg_ga_screener_results_outcomes') }}
     where event_name = 'screener_results_none_eligible'
@@ -38,6 +41,7 @@ results_errors as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_uid
     from {{ ref('stg_ga_screener_results_outcomes') }}
     where event_name = 'screener_results_error'
@@ -48,6 +52,7 @@ error_recoveries as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_uid
     from {{ ref('stg_ga_screener_results_outcomes') }}
     where event_name = 'screener_results_error_recovery'
@@ -59,49 +64,58 @@ error_recoveries as (
 -- fan-out mathematically, but it builds a large intermediate product per day/
 -- state and is a trap (any future SUM() here would be inflated). Aggregating
 -- first makes every side one row per grain. Same pattern as mart_screener_saves.
+-- is_cesn is carried into every grain (session-level, so it only splits a
+-- (date, state) group into cesn / non-cesn parts). screenings_results_loaded is
+-- kept as the distinct-screener_uid count (screening grain), and a parallel
+-- screenings_results_loaded_by_session is added at SESSION grain so the step
+-- funnel's terminal "Reached Results" bar can use a denominator comparable to
+-- its session-grained step bars (the funnel mart counts distinct sessions).
 results_loaded_summary as (
     select
-        event_date, event_date_parsed, screener_state,
+        event_date, event_date_parsed, screener_state, is_cesn,
         count(distinct screener_uid) as screenings_results_loaded,
+        count(distinct session_key) as screenings_results_loaded_by_session,
         round(avg(program_count), 2) as avg_program_count,
         round(approx_quantiles(program_count, 100 ignore nulls)[offset(50)], 2) as median_program_count,
         round(avg(total_estimated_value), 2) as avg_total_estimated_value,
         round(approx_quantiles(total_estimated_value, 100 ignore nulls)[offset(50)], 2) as median_total_estimated_value
     from results_loaded
-    group by event_date, event_date_parsed, screener_state
+    group by event_date, event_date_parsed, screener_state, is_cesn
 ),
 
 none_eligible_summary as (
-    select event_date, screener_state, count(distinct screener_uid) as screenings_none_eligible
-    from none_eligible group by event_date, screener_state
+    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_none_eligible
+    from none_eligible group by event_date, screener_state, is_cesn
 ),
 
 results_errors_summary as (
-    select event_date, screener_state, count(distinct screener_uid) as screenings_results_error
-    from results_errors group by event_date, screener_state
+    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_results_error
+    from results_errors group by event_date, screener_state, is_cesn
 ),
 
 error_recoveries_summary as (
-    select event_date, screener_state, count(distinct screener_uid) as screenings_error_recovered
-    from error_recoveries group by event_date, screener_state
+    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_error_recovered
+    from error_recoveries group by event_date, screener_state, is_cesn
 ),
 
 date_state_grain as (
-    select event_date, event_date_parsed, screener_state from results_loaded
+    select event_date, event_date_parsed, screener_state, is_cesn from results_loaded
     union distinct
-    select event_date, event_date_parsed, screener_state from none_eligible
+    select event_date, event_date_parsed, screener_state, is_cesn from none_eligible
     union distinct
-    select event_date, event_date_parsed, screener_state from results_errors
+    select event_date, event_date_parsed, screener_state, is_cesn from results_errors
     union distinct
-    select event_date, event_date_parsed, screener_state from error_recoveries
+    select event_date, event_date_parsed, screener_state, is_cesn from error_recoveries
 )
 
 select
     g.event_date,
     g.event_date_parsed,
     g.screener_state,
+    g.is_cesn,
 
     coalesce(rl.screenings_results_loaded, 0) as screenings_results_loaded,
+    coalesce(rl.screenings_results_loaded_by_session, 0) as screenings_results_loaded_by_session,
     coalesce(ne.screenings_none_eligible, 0) as screenings_none_eligible,
     coalesce(re.screenings_results_error, 0) as screenings_results_error,
     coalesce(er.screenings_error_recovered, 0) as screenings_error_recovered,
@@ -120,13 +134,17 @@ from date_state_grain g
 left join results_loaded_summary rl
     on g.event_date = rl.event_date
     and ifnull(g.screener_state, '∅') = ifnull(rl.screener_state, '∅')
+    and g.is_cesn = rl.is_cesn
 left join none_eligible_summary ne
     on g.event_date = ne.event_date
     and ifnull(g.screener_state, '∅') = ifnull(ne.screener_state, '∅')
+    and g.is_cesn = ne.is_cesn
 left join results_errors_summary re
     on g.event_date = re.event_date
     and ifnull(g.screener_state, '∅') = ifnull(re.screener_state, '∅')
+    and g.is_cesn = re.is_cesn
 left join error_recoveries_summary er
     on g.event_date = er.event_date
     and ifnull(g.screener_state, '∅') = ifnull(er.screener_state, '∅')
+    and g.is_cesn = er.is_cesn
 order by g.event_date desc, g.screener_state

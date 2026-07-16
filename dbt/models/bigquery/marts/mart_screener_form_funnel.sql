@@ -37,6 +37,7 @@ with step_views as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_step_name,
         screener_step_number,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
@@ -50,6 +51,7 @@ with step_views as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         '__form_start__' as screener_step_name,
         null as screener_step_number,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
@@ -62,6 +64,7 @@ with step_views as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         '__form_complete__' as screener_step_name,
         null as screener_step_number,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
@@ -74,6 +77,7 @@ step_completes as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_step_name,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
@@ -86,6 +90,7 @@ form_backs as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_step_name,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
@@ -97,6 +102,7 @@ form_errors as (
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_step_name,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         form_error_count
@@ -110,62 +116,70 @@ form_errors as (
 -- that (DISTINCT collapses dupes) but SUM(form_error_count) would be inflated
 -- by (views x completes x backs). Aggregating first makes every side one row
 -- per grain, so the join can't multiply. Same pattern as mart_screener_saves.
+-- is_cesn is carried into every summary grain. It is session-level (constant
+-- per session), so adding it to the GROUP BY only ever splits a (date, state,
+-- step) group into its cesn / non-cesn parts — it never fans out a session
+-- across both. This lets the global dashboard exclude all CESN rows (incl. a
+-- CESN session's unmarked null-state landing rows) with a single WHERE NOT is_cesn.
 step_views_summary as (
     select
-        event_date, event_date_parsed, screener_state, screener_step_name,
+        event_date, event_date_parsed, screener_state, is_cesn, screener_step_name,
         max(screener_step_number) as screener_step_number,
         count(distinct session_key) as screenings_viewed_step
     from step_views
-    group by event_date, event_date_parsed, screener_state, screener_step_name
+    group by event_date, event_date_parsed, screener_state, is_cesn, screener_step_name
 ),
 
 step_completes_summary as (
     select
-        event_date, screener_state, screener_step_name,
+        event_date, screener_state, is_cesn, screener_step_name,
         count(distinct session_key) as screenings_completed_step
     from step_completes
-    group by event_date, screener_state, screener_step_name
+    group by event_date, screener_state, is_cesn, screener_step_name
 ),
 
 form_backs_summary as (
     select
-        event_date, screener_state, screener_step_name,
+        event_date, screener_state, is_cesn, screener_step_name,
         count(distinct session_key) as screenings_navigated_back
     from form_backs
-    group by event_date, screener_state, screener_step_name
+    group by event_date, screener_state, is_cesn, screener_step_name
 ),
 
 form_errors_summary as (
     select
-        event_date, screener_state, screener_step_name,
+        event_date, screener_state, is_cesn, screener_step_name,
         count(distinct session_key) as screenings_with_error,
         sum(form_error_count) as total_error_count
     from form_errors
-    group by event_date, screener_state, screener_step_name
+    group by event_date, screener_state, is_cesn, screener_step_name
 ),
 
 step_grain as (
-    -- One row per (date, state, step) present in any step-scoped event, so
-    -- steps with e.g. only errors and no views still surface in the funnel
-    select event_date, event_date_parsed, screener_state, screener_step_name from step_views
+    -- One row per (date, state, is_cesn, step) present in any step-scoped event,
+    -- so steps with e.g. only errors and no views still surface in the funnel
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_step_name from step_views
     union distinct
-    select event_date, event_date_parsed, screener_state, screener_step_name from step_completes
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_step_name from step_completes
     union distinct
-    select event_date, event_date_parsed, screener_state, screener_step_name from form_backs
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_step_name from form_backs
     union distinct
-    select event_date, event_date_parsed, screener_state, screener_step_name from form_errors
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_step_name from form_errors
 )
 
 select
     g.event_date,
     g.event_date_parsed,
     g.screener_state,
+    g.is_cesn,
     g.screener_step_name,
 
     -- Human-readable step label for dashboard display. Maps the stable analytics
     -- slugs (from the app) to friendly names; unmapped/future slugs fall back to
     -- the raw slug so nothing silently disappears.
     case g.screener_step_name
+        when '__form_start__' then 'Started Screener'
+        when '__form_complete__' then 'Reached Results'
         when 'language' then 'Language'
         when 'disclaimer' then 'Disclaimer'
         when 'select-state' then 'Select State'
@@ -223,17 +237,21 @@ from step_grain g
 left join step_views_summary sv
     on g.event_date = sv.event_date
     and ifnull(g.screener_state, '∅') = ifnull(sv.screener_state, '∅')
+    and g.is_cesn = sv.is_cesn
     and g.screener_step_name = sv.screener_step_name
 left join step_completes_summary sc
     on g.event_date = sc.event_date
     and ifnull(g.screener_state, '∅') = ifnull(sc.screener_state, '∅')
+    and g.is_cesn = sc.is_cesn
     and g.screener_step_name = sc.screener_step_name
 left join form_backs_summary fb
     on g.event_date = fb.event_date
     and ifnull(g.screener_state, '∅') = ifnull(fb.screener_state, '∅')
+    and g.is_cesn = fb.is_cesn
     and g.screener_step_name = fb.screener_step_name
 left join form_errors_summary fe
     on g.event_date = fe.event_date
     and ifnull(g.screener_state, '∅') = ifnull(fe.screener_state, '∅')
+    and g.is_cesn = fe.is_cesn
     and g.screener_step_name = fe.screener_step_name
 order by g.event_date desc, g.screener_state, screener_step_number

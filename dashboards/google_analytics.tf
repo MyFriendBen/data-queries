@@ -45,21 +45,38 @@ locals {
     key => join(", ", [for c in codes : "'${c}'"])
   }
 
-  # All valid screener_state codes, as a SQL IN-list. The GLOBAL (all-states)
-  # screener cards use this instead of a no-op `1=1` so they only count the clean
-  # app-emitted rows: the marts also contain legacy DOM-scrape rows (state stored
-  # as a display name like 'Colorado') and null-state landing rows, which a bare
-  # `1=1` would sweep in and inflate. Filtering to the known lowercase codes keeps
-  # global cards consistent with the per-tenant cards.
-  # NOTE: this includes `cesn` (an energy program, not a US state) since it's
-  # treated as a tenant everywhere else — so "all-states" global totals include it.
+  # Valid screener_state codes for the GLOBAL (all-states) screener cards, as a
+  # SQL IN-list. Used instead of a no-op `1=1` so the global cards only count the
+  # clean app-emitted rows: the marts also contain legacy DOM-scrape rows (state
+  # stored as a display name like 'Colorado') and null-state landing rows, which a
+  # bare `1=1` would sweep in and inflate. Filtering to the known lowercase codes
+  # keeps global cards consistent with the per-tenant cards.
+  #
+  # EXCLUDES `cesn`: it's an energy program (not a US state) with a DIFFERENT
+  # screener flow (extra energy steps), so folding it into "all-states" totals —
+  # especially the step-level charts — is misleading. CESN data lives on its own
+  # tenant dashboard.
   all_screener_state_filter = join(", ", [
-    for codes in values(local.tenant_ga_state_codes) : join(", ", [for c in codes : "'${c}'"])
+    for k, codes in local.tenant_ga_state_codes : join(", ", [for c in codes : "'${c}'"])
+    if k != "cesn"
   ])
+
+  # Global predicate for the two marts that carry the session-level is_cesn flag
+  # AND retain null-state rows (form funnel + results outcomes). It:
+  #  - keeps known non-CESN state codes,
+  #  - ALSO keeps null-state rows (pre-white-label landing / language / select-state
+  #    sessions the funnel mart deliberately retains for correct top-of-funnel), and
+  #  - excludes every CESN session's rows via NOT is_cesn — including a CESN
+  #    session's own null-state landing rows (energysavings.colorado.gov redirect),
+  #    which a bare `OR screener_state IS NULL` would otherwise leak back in.
+  # Other global marts (interactions, saves, shares, resources, language) fire
+  # after a white-label is set — no null-state rows and no cesn rows — so they use
+  # the plain all_screener_state_filter IN-list and need no is_cesn column.
+  all_screener_global_predicate = "NOT is_cesn AND (screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward, so date ranges extending earlier show nothing before it, and recent figures are still low-volume as data accumulates. Rates (%) stabilize as traffic builds."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward."
 
   # Analytics epoch: the date the full app-emitted screener_* event set went live.
   # Every screener card floors on this so metrics only reflect the new pipeline —

@@ -30,7 +30,9 @@ resource "metabase_card" "global_screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query = replace(
+          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -80,8 +82,8 @@ resource "metabase_card" "global_screener_step_funnel" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Form Step Drop-off Funnel"
-    description         = "Distinct screenings that viewed each screener step, in flow order (by step number; null-numbered pages sort last)"
+    name                = "Form Step Views"
+    description         = "Distinct sessions that viewed each screener step, in flow order, ending with how many reached the results page. Shown as a bar chart, not a funnel: steps can be re-viewed via back-navigation, so counts are not strictly monotonic. Referral Source is excluded (it is conditionally shown) and reported on its own card."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -90,11 +92,11 @@ resource "metabase_card" "global_screener_step_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
-    display = "funnel"
+    display = "row"
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
       "graph.metrics"    = ["Screenings"]
@@ -118,7 +120,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -146,14 +148,47 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings (Back-Nav)"]
+      "graph.metrics"    = ["Back-Nav Screenings"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Referral Source completion — reported separately from the step funnel because
+# the step is conditionally shown (auto-skipped for referral-link entry traffic),
+# so it can't sit in the drop-off funnel without corrupting the shape and the
+# cross-step percentages. Measured against its own denominator: of sessions
+# actually shown the step, how many completed vs dropped, plus the drop-off %.
+resource "metabase_card" "global_screener_referral_source_completion" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Referral Source Completion"
+    description         = "Referral Source is auto-skipped when the entry URL carries a referral parameter, so it is excluded from the step funnel (a skip there would look like drop-off). Reported here against its own denominator: of the sessions actually shown the step, how many completed it vs dropped, with the drop-off %."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", local.all_screener_global_predicate)
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
     }
     parameter_mappings = []
     parameters         = []
@@ -178,7 +213,7 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -212,8 +247,10 @@ resource "metabase_card" "global_screener_apply_conversion_rate" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["Apply Rate %"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -240,8 +277,10 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["More Info", "Apply"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -297,8 +336,10 @@ resource "metabase_card" "global_screener_top_resources" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Resource"]
-      "graph.metrics"    = ["Clicks"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Resource"]
+      "graph.metrics"                = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []
