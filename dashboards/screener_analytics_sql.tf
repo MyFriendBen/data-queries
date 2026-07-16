@@ -99,20 +99,26 @@ locals {
   # Both synthetic mart rows ('__form_start__' / '__form_complete__') are excluded
   # from the form-step side. The results row carries a large sort key so it lands
   # last regardless of step numbering.
+  # Select State is EXCLUDED alongside Referral Source: it is a pre-white-label
+  # global page (bare-domain entry), so its view count is a small unrelated
+  # population that doesn't belong in the drop-off sequence.
+  #
+  # A "% of Started" column is added: each stage as a share of the funnel's entry
+  # (first) stage, so the drop-off reads as percentages, not just raw counts.
   screener_sql_step_funnel = <<-SQL
     WITH steps AS (
       SELECT
         screener_step_label,
         -- Coalesce to a large-but-below-terminal sentinel so null-numbered form
-        -- steps (e.g. select-state, or any future unmapped step) sort near the
-        -- end of the form yet still BEFORE the "Reached Results" terminal bar
-        -- (999999). A bare MIN(step_number) with NULLS LAST would drop them
-        -- after the terminal, putting the destination in the middle of the flow.
+        -- steps (or any future unmapped step) sort near the end of the form yet
+        -- still BEFORE the "Reached Results" terminal bar (999999). A bare
+        -- MIN(step_number) with NULLS LAST would drop them after the terminal,
+        -- putting the destination in the middle of the flow.
         COALESCE(MIN(screener_step_number), 99999) AS sort_key,
         SUM(screenings_viewed_step) AS screenings
       FROM `${local.bq_dataset}.mart_screener_form_funnel`
       WHERE __STATE_FILTER__
-        AND screener_step_name NOT IN ('__form_start__', '__form_complete__', 'referral-source')
+        AND screener_step_name NOT IN ('__form_start__', '__form_complete__', 'referral-source', 'select-state')
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -132,9 +138,29 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    combined AS (
+      SELECT * FROM steps UNION ALL SELECT * FROM reached_results
+    ),
+    -- Anchor the % denominator to the ACTUAL entry step (lowest sort_key), not
+    -- MAX(screenings). Counts aren't strictly monotonic (back-navigation re-views
+    -- a step), so MAX() could pick a later step and make earlier stages read
+    -- >100% of something that isn't "Started". FIRST_VALUE by sort_key is the
+    -- true first step everyone sees.
+    entry AS (
+      SELECT screenings AS entry_screenings
+      FROM combined
+      WHERE screenings > 0
+      ORDER BY sort_key
+      LIMIT 1
     )
-    SELECT screener_step_label, screenings AS `Screenings`
-    FROM (SELECT * FROM steps UNION ALL SELECT * FROM reached_results)
+    SELECT
+      screener_step_label,
+      -- % of the entry step is the PLOTTED metric (the funnel drop-off reads as a
+      -- percentage); the raw count rides along as `Screenings` for the tooltip.
+      ROUND(screenings * 100.0 / NULLIF((SELECT entry_screenings FROM entry), 0), 1) AS `% of Started`,
+      screenings AS `Screenings`
+    FROM combined
     WHERE screenings > 0
     ORDER BY sort_key, screener_step_label
   SQL
@@ -176,9 +202,16 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
+  # Raw error COUNTS (no rate) — deliberately, and for the SAME reason as back-nav
+  # below: an error rate needs a per-step view denominator, but the highest-error
+  # steps (member-details, household-basics) emit their view under a nonstandard
+  # event name, so screenings_viewed_step = 0 for them and a rate would be NULL on
+  # exactly the biggest bars. Verified in BigQuery: member-details ~322 errors /
+  # 0 views, household-basics ~97 errors / 0 views. Once the frontend normalizes
+  # those view events, this can move to an "errors per 100 views" rate.
   screener_sql_errors_by_step = <<-SQL
     SELECT
-      screener_step_label,
+      screener_step_label AS `Step`,
       SUM(total_error_count) AS `Total Errors`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
@@ -192,9 +225,18 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): back navigation by step ───────────────────────────
+  # Raw counts (no rate) — deliberately. A back-nav RATE needs a per-step view
+  # denominator, but the steps with the MOST back-nav (confirm-information,
+  # member-details, household-basics) currently emit their view under a
+  # nonstandard event name (screener_step_* / screener_form_step_*) instead of
+  # the clean screener_form_step/view the mart counts, so their view count is 0
+  # and a rate would be NULL exactly on the biggest bars. Once the frontend
+  # normalizes those view events, this can move to a rate (see the errors card,
+  # whose steps all have clean views, for the pattern). confirm-information IS a
+  # real step and is kept.
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
-      screener_step_label,
+      screener_step_label AS `Step`,
       SUM(screenings_navigated_back) AS `Back-Nav Screenings`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
@@ -247,7 +289,11 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
     )
-    SELECT program_name AS `Program`, more_info AS `More Info`, apply AS `Apply`
+    SELECT
+      program_name AS `Program`,
+      more_info AS `More Info`,
+      apply AS `Apply`,
+      ROUND(apply * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`
     FROM per_program
     WHERE more_info > 0 OR apply > 0
     ORDER BY (more_info - apply) DESC
@@ -370,13 +416,14 @@ locals {
   SQL
 
   # ── Tab 9 (Sharing & Saving): saves by channel ──────────────────────────────
-  # save_channel is null on two kinds of rows in the mart: the synthetic
-  # __saved__/__popup_shown__ funnel rows, and real save events fired before the
-  # user picked a channel (e.g. save_action='open'). This is a by-channel
-  # breakdown, so channel-less rows have no bar to contribute to: the synthetic
-  # rows are excluded by save_action, and un-channeled saves are surfaced under a
-  # '(no channel yet)' bucket rather than silently dropped, so the totals still
-  # reconcile with the overall save count.
+  # Counts only COMPLETED saves (save_action = 'send'), mirroring
+  # screener_sql_shares_by_channel. A channel is only assigned at 'send'; the
+  # 'open' and 'close' actions carry a null channel (the user opened the save
+  # popup but had not picked Email/SMS yet). Including those inflated each real
+  # channel (the same save counted at open + close + send) and produced a
+  # spurious '(no channel yet)' bar. The open→send drop-off — i.e. people who
+  # opened the save popup and exited without picking a channel — is shown on the
+  # Save Funnel card, which is the correct home for that abandonment signal.
   screener_sql_saves_by_channel = <<-SQL
     SELECT
       CASE save_channel
@@ -384,12 +431,12 @@ locals {
         WHEN 'sms' THEN 'SMS'
         WHEN 'whatsapp' THEN 'WhatsApp'
         WHEN 'copy_link' THEN 'Copy Link'
-        ELSE COALESCE(save_channel, '(no channel yet)')
+        ELSE COALESCE(save_channel, '(none)')
       END AS `Save Channel`,
       SUM(total_saves) AS `Total Saves`
     FROM `${local.bq_dataset}.mart_screener_saves`
     WHERE __STATE_FILTER__
-      AND save_action NOT IN ('__saved__', '__popup_shown__')
+      AND save_action = 'send'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]

@@ -95,22 +95,24 @@ resource "metabase_card" "screener_step_funnel" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Errors by step — bar. Uses total_error_count (raw error events); screenings_with_error
-# is available if a distinct-screening view is preferred later.
+# Errors by step — horizontal bar. Raw error counts (no rate: the highest-error
+# steps lack a clean per-step view denominator — see the shared SQL comment).
 resource "metabase_card" "screener_errors_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step"
+    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -123,23 +125,25 @@ resource "metabase_card" "screener_errors_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Total Errors"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Total Errors"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Back-navigation by step — bar (distinct screenings that navigated back from a step).
+# Back-navigation by step — horizontal bar (distinct screenings that navigated back).
 resource "metabase_card" "screener_back_nav_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step"
+    description         = "Distinct screenings that navigated back from each screener step. Shown as counts: a rate needs per-step view data that some high-back steps (Confirm Information, Member Details) do not yet emit under the standard step event."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -152,10 +156,12 @@ resource "metabase_card" "screener_back_nav_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Back-Nav Screenings"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Back-Nav Screenings"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
@@ -630,7 +636,7 @@ locals {
           dashboard_tab_id = 7
           row              = 0
           col              = 0
-          size_x           = 18
+          size_x           = 24
           size_y           = 12
           parameter_mappings = [
             {
@@ -650,10 +656,10 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_referral_source_completion[key].id)
           dashboard_tab_id = 7
-          row              = 0
-          col              = 18
-          size_x           = 6
-          size_y           = 6
+          row              = 12
+          col              = 0
+          size_x           = 24
+          size_y           = 4
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -672,7 +678,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 12
+          row              = 16
           col              = 0
           size_x           = 12
           size_y           = 9
@@ -694,7 +700,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 12
+          row              = 16
           col              = 12
           size_x           = 12
           size_y           = 9

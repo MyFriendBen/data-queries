@@ -98,8 +98,10 @@ resource "metabase_card" "global_screener_step_funnel" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
@@ -111,7 +113,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step"
+    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -124,10 +126,12 @@ resource "metabase_card" "global_screener_errors_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Total Errors"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Total Errors"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
@@ -139,7 +143,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step"
+    description         = "Distinct screenings that navigated back from each screener step. Shown as counts: a rate needs per-step view data that some high-back steps (Confirm Information, Member Details) do not yet emit under the standard step event."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -152,10 +156,12 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Back-Nav Screenings"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Back-Nav Screenings"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
