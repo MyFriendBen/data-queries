@@ -73,28 +73,82 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
-  # Step-views funnel. Excludes the synthetic '__form_start__' row (that headline
-  # lives on the macro funnel), but KEEPS '__form_complete__' so the chart ends
-  # with a "Reached Results" bar — the count of screenings that finished and
-  # landed on the results page. Results is a destination, not a form step, so no
-  # 'results' step-view event is ever emitted; screener_form_complete (surfaced
-  # here as '__form_complete__') is the correct terminal signal. It has a null
-  # step number, so it is forced to sort last via the is-complete ORDER BY key.
+  # Per-step view counts (form steps), capped with a terminal "Reached Results"
+  # bar so the chart shows how many screenings actually reached the results page.
+  #
+  # Results is a destination, not a form step, so no 'results' step-view event is
+  # emitted — the results page fires its own screener_results_loaded event. We
+  # read that terminal count from mart_screener_results_outcomes (the SAME source
+  # as the Overview funnel's "Saw Results" stage) so the two funnels agree,
+  # rather than from screener_form_complete (a confirmation-page button click,
+  # deduped on a different key, that would show a slightly different number).
+  #
+  # Referral Source is EXCLUDED: it is conditionally shown (auto-skipped when the
+  # entry URL carries a referral parameter), so its view count is lower than the
+  # steps around it for reasons unrelated to drop-off. Leaving it in would break
+  # the monotonic funnel shape and corrupt any step-to-step drop-off percentage
+  # (a skip would read as attrition). Its completion is reported on its own card
+  # (screener_sql_referral_source_completion) against the population actually
+  # shown the step.
+  #
+  # Both synthetic mart rows ('__form_start__' / '__form_complete__') are excluded
+  # from the form-step side. The results row carries a large sort key so it lands
+  # last regardless of step numbering.
   screener_sql_step_funnel = <<-SQL
+    WITH steps AS (
+      SELECT
+        screener_step_label,
+        MIN(screener_step_number) AS sort_key,
+        SUM(screenings_viewed_step) AS screenings
+      FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      WHERE __STATE_FILTER__
+        AND screener_step_name NOT IN ('__form_start__', '__form_complete__', 'referral-source')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY screener_step_label
+    ),
+    reached_results AS (
+      SELECT
+        'Reached Results' AS screener_step_label,
+        999999 AS sort_key,
+        SUM(screenings_results_loaded) AS screenings
+      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT screener_step_label, screenings AS `Screenings`
+    FROM (SELECT * FROM steps UNION ALL SELECT * FROM reached_results)
+    WHERE screenings > 0
+    ORDER BY sort_key NULLS LAST, screener_step_label
+  SQL
+
+  # ── Tab 7 (Form Journey): Referral Source completion (reported separately) ───
+  # Referral Source is conditionally shown — it is auto-skipped when the entry
+  # URL carries a referral parameter — so it is pulled out of the main step
+  # funnel (a skip there would masquerade as drop-off and corrupt the cross-step
+  # percentages). It is reported HERE against its own honest denominator: of the
+  # sessions that were actually SHOWN the step (viewed it), how many completed it
+  # vs dropped. "Shown" = viewed, so a session that never saw the step (referral
+  # skip) is excluded from both the numerator and the denominator — the drop-off
+  # % reflects only people who were genuinely asked.
+  screener_sql_referral_source_completion = <<-SQL
     SELECT
-      screener_step_label,
-      SUM(screenings_viewed_step) AS `Screenings`
+      SUM(screenings_viewed_step) AS `Shown`,
+      SUM(screenings_completed_step) AS `Completed`,
+      SUM(screenings_viewed_step) - SUM(screenings_completed_step) AS `Dropped`,
+      ROUND(
+        (SUM(screenings_viewed_step) - SUM(screenings_completed_step)) * 100.0
+        / NULLIF(SUM(screenings_viewed_step), 0), 1
+      ) AS `Drop-off %`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
-      AND screener_step_name != '__form_start__'
+      AND screener_step_name = 'referral-source'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY screener_step_label
-    ORDER BY
-      MAX(CASE WHEN screener_step_name = '__form_complete__' THEN 1 ELSE 0 END),
-      MIN(screener_step_number) NULLS LAST,
-      MIN(screener_step_name)
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────

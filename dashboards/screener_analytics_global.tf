@@ -81,7 +81,7 @@ resource "metabase_card" "global_screener_step_funnel" {
 
   json = jsonencode({
     name                = "Form Step Views"
-    description         = "Distinct sessions that viewed each screener step, in flow order. Not a strict funnel (steps can be skipped/re-viewed, and CESN-only steps interleave), so shown as a bar chart rather than a funnel."
+    description         = "Distinct sessions that viewed each screener step, in flow order, ending with how many reached the results page. Shown as a bar chart, not a funnel: steps can be re-viewed via back-navigation, so counts are not strictly monotonic. Referral Source is excluded (it is conditionally shown) and reported on its own card."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -154,6 +154,39 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
       "graph.metrics"    = ["Back-Nav Screenings"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Referral Source completion — reported separately from the step funnel because
+# the step is conditionally shown (auto-skipped for referral-link entry traffic),
+# so it can't sit in the drop-off funnel without corrupting the shape and the
+# cross-step percentages. Measured against its own denominator: of sessions
+# actually shown the step, how many completed vs dropped, plus the drop-off %.
+resource "metabase_card" "global_screener_referral_source_completion" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Referral Source Completion"
+    description         = "Referral Source is auto-skipped when the entry URL carries a referral parameter, so it is excluded from the step funnel (a skip there would look like drop-off). Reported here against its own denominator: of the sessions actually shown the step, how many completed it vs dropped, with the drop-off %."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
     }
     parameter_mappings = []
     parameters         = []

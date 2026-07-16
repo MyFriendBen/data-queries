@@ -1058,8 +1058,19 @@ resource "metabase_dashboard" "analytics" {
         dashboard_tab_id       = 5
         row                    = 2
         col                    = 0
-        size_x                 = 24
+        size_x                 = 18
         size_y                 = 12
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_referral_source_completion[0].id)
+        dashboard_tab_id       = 5
+        row                    = 2
+        col                    = 18
+        size_x                 = 6
+        size_y                 = 6
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}

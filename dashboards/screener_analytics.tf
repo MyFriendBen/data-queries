@@ -78,7 +78,7 @@ resource "metabase_card" "screener_step_funnel" {
 
   json = jsonencode({
     name                = "Form Step Views"
-    description         = "Distinct sessions that viewed each screener step, in flow order. Not a strict funnel (steps can be skipped/re-viewed, and CESN-only steps interleave), so shown as a bar chart rather than a funnel."
+    description         = "Distinct sessions that viewed each screener step, in flow order, ending with how many reached the results page. Shown as a bar chart, not a funnel: steps can be re-viewed via back-navigation, so counts are not strictly monotonic. Referral Source is excluded (it is conditionally shown) and reported on its own card."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -154,6 +154,39 @@ resource "metabase_card" "screener_back_nav_by_step" {
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
       "graph.metrics"    = ["Back-Nav Screenings"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Referral Source completion — reported separately from the step funnel because
+# the step is conditionally shown (auto-skipped for referral-link entry traffic),
+# so it can't sit in the drop-off funnel without corrupting the shape and the
+# cross-step percentages. Measured against its own denominator: of sessions
+# actually shown the step, how many completed vs dropped, plus the drop-off %.
+resource "metabase_card" "screener_referral_source_completion" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Referral Source Completion"
+    description         = "Referral Source is auto-skipped when the entry URL carries a referral parameter, so it is excluded from the step funnel (a skip there would look like drop-off). Reported here against its own denominator: of the sessions actually shown the step, how many completed it vs dropped, with the drop-off %."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
     }
     parameter_mappings = []
     parameters         = []
@@ -595,8 +628,8 @@ locals {
           dashboard_tab_id = 7
           row              = 0
           col              = 0
-          size_x           = 24
-          size_y           = 8
+          size_x           = 18
+          size_y           = 12
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -615,10 +648,10 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 8
+          row              = 12
           col              = 0
           size_x           = 12
-          size_y           = 6
+          size_y           = 9
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -637,10 +670,10 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 8
+          row              = 12
           col              = 12
           size_x           = 12
-          size_y           = 6
+          size_y           = 9
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -650,6 +683,28 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_referral_source_completion[key].id)
+          dashboard_tab_id = 7
+          row              = 0
+          col              = 18
+          size_x           = 6
+          size_y           = 6
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
