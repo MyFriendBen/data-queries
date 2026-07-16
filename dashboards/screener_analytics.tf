@@ -638,7 +638,7 @@ locals {
           dashboard_tab_id = 7
           row              = 0
           col              = 0
-          size_x           = 18
+          size_x           = 24
           size_y           = 12
           parameter_mappings = [
             {
@@ -658,10 +658,10 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_referral_source_completion[key].id)
           dashboard_tab_id = 7
-          row              = 0
-          col              = 18
-          size_x           = 6
-          size_y           = 6
+          row              = 12
+          col              = 0
+          size_x           = 24
+          size_y           = 4
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -680,7 +680,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 12
+          row              = 16
           col              = 0
           size_x           = 12
           size_y           = 9
@@ -702,7 +702,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
           dashboard_tab_id = 7
-          row              = 12
+          row              = 16
           col              = 12
           size_x           = 12
           size_y           = 9
