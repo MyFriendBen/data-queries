@@ -99,6 +99,45 @@ resource "metabase_card" "tenant_median_monthly_expenses" {
   }))
 }
 
+# --- Demographic percentage scorecards (MFB-1202) ---
+# Shown only on tenants with has_demographics_card = true. Denominator is
+# individual household members matching the active filters (partner = unique
+# link, county, date, UTM), joined to the filtered screener set.
+
+resource "metabase_card" "tenant_pct_young_adults" {
+  for_each = var.tenants
+  json = jsonencode(merge(local.tenant_percentage_card_config, {
+    name          = "% Young Adults"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = templatefile("${path.module}/sql/pct_young_adults.sql", {})
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = local.benefits_pct_visualization_settings
+  }))
+}
+
+resource "metabase_card" "tenant_pct_disabled" {
+  for_each = var.tenants
+  json = jsonencode(merge(local.tenant_percentage_card_config, {
+    name          = "% Disabled"
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = templatefile("${path.module}/sql/pct_disabled.sql", {})
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = local.benefits_pct_visualization_settings
+  }))
+}
+
 # --- Age distribution bar charts ---
 
 resource "metabase_card" "tenant_head_of_household_ages" {
@@ -841,6 +880,77 @@ locals {
               { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
               { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
               { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_common_expenses[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
+          series                 = []
+          visualization_settings = {}
+        },
+      ] : [],
+      # Row 36: Demographic percentage scorecards (MFB-1202) — tenants with the flag only
+      local.tenant_features[k].has_demographics_card ? [
+        {
+          card_id          = tonumber(metabase_card.tenant_pct_young_adults[k].id)
+          dashboard_tab_id = 4
+          row              = 36
+          col              = 0
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_young_adults[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_young_adults[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_young_adults[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_pct_young_adults[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_pct_young_adults[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_pct_young_adults[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.tenant_pct_disabled[k].id)
+          dashboard_tab_id = 4
+          row              = 36
+          col              = 6
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = concat(
+            [
+              {
+                parameter_id = "date_range_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_disabled[k].id)
+                target       = ["dimension", ["template-tag", "submission_date"]]
+              },
+              {
+                parameter_id = "partner_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_disabled[k].id)
+                target       = ["dimension", ["template-tag", "partner"]]
+              },
+              {
+                parameter_id = "county_filter"
+                card_id      = tonumber(metabase_card.tenant_pct_disabled[k].id)
+                target       = ["dimension", ["template-tag", "county"]]
+              }
+            ],
+            local.tenant_features[k].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_pct_disabled[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_pct_disabled[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_pct_disabled[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
             ] : []
           )
           series                 = []
