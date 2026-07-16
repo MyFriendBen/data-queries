@@ -61,6 +61,19 @@ locals {
     if k != "cesn"
   ])
 
+  # Global predicate for the two marts that carry the session-level is_cesn flag
+  # AND retain null-state rows (form funnel + results outcomes). It:
+  #  - keeps known non-CESN state codes,
+  #  - ALSO keeps null-state rows (pre-white-label landing / language / select-state
+  #    sessions the funnel mart deliberately retains for correct top-of-funnel), and
+  #  - excludes every CESN session's rows via NOT is_cesn — including a CESN
+  #    session's own null-state landing rows (energysavings.colorado.gov redirect),
+  #    which a bare `OR screener_state IS NULL` would otherwise leak back in.
+  # Other global marts (interactions, saves, shares, resources, language) fire
+  # after a white-label is set — no null-state rows and no cesn rows — so they use
+  # the plain all_screener_state_filter IN-list and need no is_cesn column.
+  all_screener_global_predicate = "NOT is_cesn AND (screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
+
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
   screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward."

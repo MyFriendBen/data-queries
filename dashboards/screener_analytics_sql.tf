@@ -22,11 +22,17 @@
 
 locals {
   # ── Tab 10 (Overview): Macro funnel ─────────────────────────────────────────
+  # NOTE: this body uses TWO state sentinels. __STATE_FILTER_CESN__ goes on the
+  # marts that carry the is_cesn flag and retain null-state rows (form funnel,
+  # results outcomes); __STATE_FILTER__ goes on program_interactions, which fires
+  # post-white-label (no null-state / no cesn rows, no is_cesn column). The global
+  # consumer substitutes the is_cesn predicate for the former and the plain IN-list
+  # for the latter; the tenant consumer substitutes its own IN-list for both.
   screener_sql_macro_funnel = <<-SQL
     WITH started AS (
       SELECT SUM(screenings_viewed_step) AS n
       FROM `${local.bq_dataset}.mart_screener_form_funnel`
-      WHERE __STATE_FILTER__
+      WHERE __STATE_FILTER_CESN__
         AND screener_step_name = '__form_start__'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
@@ -35,7 +41,7 @@ locals {
     results AS (
       SELECT SUM(screenings_results_loaded) AS n
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
-      WHERE __STATE_FILTER__
+      WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -79,9 +85,8 @@ locals {
   # Results is a destination, not a form step, so no 'results' step-view event is
   # emitted — the results page fires its own screener_results_loaded event. We
   # read that terminal count from mart_screener_results_outcomes (the SAME source
-  # as the Overview funnel's "Saw Results" stage) so the two funnels agree,
-  # rather than from screener_form_complete (a confirmation-page button click,
-  # deduped on a different key, that would show a slightly different number).
+  # as the Overview funnel's "Saw Results" stage), at SESSION grain so it's
+  # comparable to the session-counted step bars above.
   #
   # Referral Source is EXCLUDED: it is conditionally shown (auto-skipped when the
   # entry URL carries a referral parameter), so its view count is lower than the
@@ -114,10 +119,14 @@ locals {
       GROUP BY screener_step_label
     ),
     reached_results AS (
+      -- SESSION grain (screenings_results_loaded_by_session), NOT the uid-grain
+      -- screenings_results_loaded, so this terminal bar is comparable to the
+      -- step bars above — every one of which is a distinct-SESSION count from
+      -- the funnel mart. Using the uid count here would silently mix grains.
       SELECT
         'Reached Results' AS screener_step_label,
         999999 AS sort_key,
-        SUM(screenings_results_loaded) AS screenings
+        SUM(screenings_results_loaded_by_session) AS screenings
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -139,13 +148,23 @@ locals {
   # vs dropped. "Shown" = viewed, so a session that never saw the step (referral
   # skip) is excluded from both the numerator and the denominator — the drop-off
   # % reflects only people who were genuinely asked.
+  #
+  # Shown and Completed are aggregated per (event_date, state, step) in the mart,
+  # so they align on the same day: a step's view and its completion fire seconds
+  # apart, effectively always within one calendar day. Across a multi-day window
+  # both sums therefore count the same cohort of sessions. GREATEST(..., 0) floors
+  # the drop at zero to defend against the pathological case of a session that
+  # viewed just before midnight of the window's start and completed just after —
+  # which would otherwise let Completed exceed Shown and yield a nonsensical
+  # negative drop. Clamping keeps the reported figure sane without a session-level
+  # cohort join (the per-step mart grain does not expose session keys downstream).
   screener_sql_referral_source_completion = <<-SQL
     SELECT
       SUM(screenings_viewed_step) AS `Shown`,
       SUM(screenings_completed_step) AS `Completed`,
-      SUM(screenings_viewed_step) - SUM(screenings_completed_step) AS `Dropped`,
+      GREATEST(SUM(screenings_viewed_step) - SUM(screenings_completed_step), 0) AS `Dropped`,
       ROUND(
-        (SUM(screenings_viewed_step) - SUM(screenings_completed_step)) * 100.0
+        GREATEST(SUM(screenings_viewed_step) - SUM(screenings_completed_step), 0) * 100.0
         / NULLIF(SUM(screenings_viewed_step), 0), 1
       ) AS `Drop-off %`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`

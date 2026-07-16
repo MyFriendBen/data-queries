@@ -49,7 +49,9 @@ resource "metabase_card" "screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query = replace(
+          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }

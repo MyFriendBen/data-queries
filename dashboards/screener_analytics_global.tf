@@ -30,7 +30,9 @@ resource "metabase_card" "global_screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query = replace(
+          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -90,7 +92,7 @@ resource "metabase_card" "global_screener_step_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -118,7 +120,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -146,7 +148,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -179,7 +181,7 @@ resource "metabase_card" "global_screener_referral_source_completion" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -211,7 +213,7 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
