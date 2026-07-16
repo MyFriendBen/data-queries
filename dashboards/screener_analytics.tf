@@ -77,8 +77,8 @@ resource "metabase_card" "screener_step_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Form Step Drop-off Funnel"
-    description         = "Distinct screenings that viewed each screener step, in flow order (by step number; null-numbered pages sort last)"
+    name                = "Form Step Views"
+    description         = "Distinct sessions that viewed each screener step, in flow order. Not a strict funnel (steps can be skipped/re-viewed, and CESN-only steps interleave), so shown as a bar chart rather than a funnel."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -91,7 +91,7 @@ resource "metabase_card" "screener_step_funnel" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "funnel"
+    display = "row"
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
       "graph.metrics"    = ["Screenings"]
@@ -153,7 +153,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings (Back-Nav)"]
+      "graph.metrics"    = ["Back-Nav Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -188,8 +188,10 @@ resource "metabase_card" "screener_apply_conversion_rate" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["Apply Rate %"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -219,8 +221,10 @@ resource "metabase_card" "screener_more_info_vs_apply" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["More Info", "Apply"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -474,8 +478,10 @@ resource "metabase_card" "screener_top_resources" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Resource"]
-      "graph.metrics"    = ["Clicks"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Resource"]
+      "graph.metrics"                = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []

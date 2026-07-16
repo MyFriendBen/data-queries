@@ -73,18 +73,28 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
+  # Step-views funnel. Excludes the synthetic '__form_start__' row (that headline
+  # lives on the macro funnel), but KEEPS '__form_complete__' so the chart ends
+  # with a "Reached Results" bar — the count of screenings that finished and
+  # landed on the results page. Results is a destination, not a form step, so no
+  # 'results' step-view event is ever emitted; screener_form_complete (surfaced
+  # here as '__form_complete__') is the correct terminal signal. It has a null
+  # step number, so it is forced to sort last via the is-complete ORDER BY key.
   screener_sql_step_funnel = <<-SQL
     SELECT
       screener_step_label,
       SUM(screenings_viewed_step) AS `Screenings`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
-      AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
+      AND screener_step_name != '__form_start__'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    ORDER BY MIN(screener_step_number) NULLS LAST, MIN(screener_step_name)
+    ORDER BY
+      MAX(CASE WHEN screener_step_name = '__form_complete__' THEN 1 ELSE 0 END),
+      MIN(screener_step_number) NULLS LAST,
+      MIN(screener_step_name)
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
@@ -107,7 +117,7 @@ locals {
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
       screener_step_label,
-      SUM(screenings_navigated_back) AS `Screenings (Back-Nav)`
+      SUM(screenings_navigated_back) AS `Back-Nav Screenings`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
@@ -116,7 +126,7 @@ locals {
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
     HAVING SUM(screenings_navigated_back) > 0
-    ORDER BY `Screenings (Back-Nav)` DESC
+    ORDER BY `Back-Nav Screenings` DESC
   SQL
 
   # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
@@ -187,7 +197,7 @@ locals {
       none_eligible AS `None Eligible`,
       ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS `% None Eligible`,
       avg_program_count AS `Avg Programs`,
-      avg_total_estimated_value AS `Avg Est. Value`,
+      avg_total_estimated_value AS `Avg Est Value`,
       results_errors AS `Results Errors`
     FROM agg
   SQL

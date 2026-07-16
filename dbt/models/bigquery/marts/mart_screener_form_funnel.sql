@@ -166,6 +166,8 @@ select
     -- slugs (from the app) to friendly names; unmapped/future slugs fall back to
     -- the raw slug so nothing silently disappears.
     case g.screener_step_name
+        when '__form_start__' then 'Started Screener'
+        when '__form_complete__' then 'Reached Results'
         when 'language' then 'Language'
         when 'disclaimer' then 'Disclaimer'
         when 'select-state' then 'Select State'
