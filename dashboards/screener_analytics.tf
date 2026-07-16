@@ -646,6 +646,28 @@ locals {
           visualization_settings = {}
         },
         {
+          card_id          = tonumber(metabase_card.screener_referral_source_completion[key].id)
+          dashboard_tab_id = 7
+          row              = 0
+          col              = 18
+          size_x           = 6
+          size_y           = 6
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
           card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
           dashboard_tab_id = 7
           row              = 12
@@ -683,28 +705,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_referral_source_completion[key].id)
-          dashboard_tab_id = 7
-          row              = 0
-          col              = 18
-          size_x           = 6
-          size_y           = 6
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_referral_source_completion[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

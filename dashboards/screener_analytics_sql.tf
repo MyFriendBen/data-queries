@@ -98,7 +98,12 @@ locals {
     WITH steps AS (
       SELECT
         screener_step_label,
-        MIN(screener_step_number) AS sort_key,
+        -- Coalesce to a large-but-below-terminal sentinel so null-numbered form
+        -- steps (e.g. select-state, or any future unmapped step) sort near the
+        -- end of the form yet still BEFORE the "Reached Results" terminal bar
+        -- (999999). A bare MIN(step_number) with NULLS LAST would drop them
+        -- after the terminal, putting the destination in the middle of the flow.
+        COALESCE(MIN(screener_step_number), 99999) AS sort_key,
         SUM(screenings_viewed_step) AS screenings
       FROM `${local.bq_dataset}.mart_screener_form_funnel`
       WHERE __STATE_FILTER__
@@ -122,7 +127,7 @@ locals {
     SELECT screener_step_label, screenings AS `Screenings`
     FROM (SELECT * FROM steps UNION ALL SELECT * FROM reached_results)
     WHERE screenings > 0
-    ORDER BY sort_key NULLS LAST, screener_step_label
+    ORDER BY sort_key, screener_step_label
   SQL
 
   # ── Tab 7 (Form Journey): Referral Source completion (reported separately) ───
