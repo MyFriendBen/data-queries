@@ -153,7 +153,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings (Back-Nav)"]
+      "graph.metrics"    = ["Back-Nav Screenings"]
     }
     parameter_mappings = []
     parameters         = []

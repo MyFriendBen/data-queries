@@ -107,7 +107,7 @@ locals {
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
       screener_step_label,
-      SUM(screenings_navigated_back) AS `Screenings (Back-Nav)`
+      SUM(screenings_navigated_back) AS `Back-Nav Screenings`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
@@ -116,7 +116,7 @@ locals {
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
     HAVING SUM(screenings_navigated_back) > 0
-    ORDER BY `Screenings (Back-Nav)` DESC
+    ORDER BY `Back-Nav Screenings` DESC
   SQL
 
   # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
@@ -187,7 +187,7 @@ locals {
       none_eligible AS `None Eligible`,
       ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS `% None Eligible`,
       avg_program_count AS `Avg Programs`,
-      avg_total_estimated_value AS `Avg Est. Value`,
+      avg_total_estimated_value AS `Avg Est Value`,
       results_errors AS `Results Errors`
     FROM agg
   SQL
