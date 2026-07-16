@@ -188,8 +188,10 @@ resource "metabase_card" "screener_apply_conversion_rate" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["Apply Rate %"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -219,8 +221,10 @@ resource "metabase_card" "screener_more_info_vs_apply" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Program"]
-      "graph.metrics"    = ["More Info", "Apply"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Program"]
+      "graph.metrics"                = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
@@ -474,8 +478,10 @@ resource "metabase_card" "screener_top_resources" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Resource"]
-      "graph.metrics"    = ["Clicks"]
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Resource"]
+      "graph.metrics"                = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []
