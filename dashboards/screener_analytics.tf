@@ -95,22 +95,26 @@ resource "metabase_card" "screener_step_funnel" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Screenings"]
+      "graph.dimensions"  = ["screener_step_label"]
+      "graph.metrics"     = ["Screenings"]
+      "graph.show_values" = true
+      "series_settings" = {
+        "% of Started" = { "show_series_values" = true }
+      }
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Errors by step — bar. Uses total_error_count (raw error events); screenings_with_error
-# is available if a distinct-screening view is preferred later.
+# Errors by step — horizontal bar. Total errors + error rate per 100 views.
 resource "metabase_card" "screener_errors_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step"
+    description         = "Total form validation errors at each screener step, plus errors per 100 views of that step (rate normalizes for how many people reached the step)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -123,23 +127,25 @@ resource "metabase_card" "screener_errors_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Total Errors"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Total Errors"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Back-navigation by step — bar (distinct screenings that navigated back from a step).
+# Back-navigation by step — horizontal bar (distinct screenings that navigated back).
 resource "metabase_card" "screener_back_nav_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step"
+    description         = "Distinct screenings that navigated back from each screener step. Shown as counts: a rate needs per-step view data that some high-back steps (Confirm Information, Member Details) do not yet emit under the standard step event."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -152,10 +158,12 @@ resource "metabase_card" "screener_back_nav_by_step" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_label"]
-      "graph.metrics"    = ["Back-Nav Screenings"]
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["Back-Nav Screenings"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []
     parameters         = []
