@@ -45,6 +45,29 @@ locals {
     key => join(", ", [for c in codes : "'${c}'"])
   }
 
+  # All valid screener_state codes, as a SQL IN-list. The GLOBAL (all-states)
+  # screener cards use this instead of a no-op `1=1` so they only count the clean
+  # app-emitted rows: the marts also contain legacy DOM-scrape rows (state stored
+  # as a display name like 'Colorado') and null-state landing rows, which a bare
+  # `1=1` would sweep in and inflate. Filtering to the known lowercase codes keeps
+  # global cards consistent with the per-tenant cards.
+  # NOTE: this includes `cesn` (an energy program, not a US state) since it's
+  # treated as a tenant everywhere else — so "all-states" global totals include it.
+  all_screener_state_filter = join(", ", [
+    for codes in values(local.tenant_ga_state_codes) : join(", ", [for c in codes : "'${c}'"])
+  ])
+
+  # Shared note shown at the top of each screener engagement tab, explaining the
+  # data start date + ramp-up so a sparse recent window isn't misread as a drop.
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward, so date ranges extending earlier show nothing before it, and recent figures are still low-volume as data accumulates. Rates (%) stabilize as traffic builds."
+
+  # Analytics epoch: the date the full app-emitted screener_* event set went live.
+  # Every screener card floors on this so metrics only reflect the new pipeline —
+  # earlier data (e.g. screener_form_start firing weeks before the rest) would
+  # otherwise skew any cross-event rate. A fixed historical fact, not a moving
+  # window: intentionally hardcoded in one place and referenced everywhere.
+  screener_analytics_epoch = "2026-07-14"
+
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`
   bq_dataset = "${var.gcp_project_id}.${var.bigquery_analytics_dataset}"

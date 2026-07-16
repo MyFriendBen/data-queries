@@ -3,9 +3,10 @@
 # These are SINGLE-INSTANCE cards (no for_each) that live in the Global
 # collection and query ALL states. They consume the SAME shared SQL bodies as
 # the per-tenant cards (locals in screener_analytics_sql.tf); the ONLY difference
-# is the state predicate substitution:
-#   __STATE_FILTER__     -> "1=1"  (all screener_state)
-#   __STATE_FILTER_KPI__ -> "1=1"  (all state_code; macro funnel only)
+# is the state predicate substitution — filtered to the full set of valid
+# lowercase state codes (NOT a bare 1=1) so legacy DOM-scrape rows (display-name
+# state) and null-state landing rows don't contaminate the all-states totals:
+#   __STATE_FILTER__     -> "screener_state IN (${local.all_screener_state_filter})"
 #
 # name / description / display / visualization_settings / template-tags are
 # identical to the tenant versions in screener_analytics.tf. Placed on the
@@ -29,17 +30,14 @@ resource "metabase_card" "global_screener_macro_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query = replace(
-          replace(local.screener_sql_macro_funnel, "__STATE_FILTER_KPI__", "1=1"),
-          "__STATE_FILTER__", "1=1"
-        )
+        query         = replace(local.screener_sql_macro_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -50,8 +48,8 @@ resource "metabase_card" "global_screener_language_distribution" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Language Distribution"
-    description         = "Distinct screenings by language (language changes)"
+    name                = "Header Language Switches"
+    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Deduped per session."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -60,14 +58,14 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["language_name"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Switched To"]
+      "graph.metrics"    = ["Sessions"]
     }
     parameter_mappings = []
     parameters         = []
@@ -92,14 +90,14 @@ resource "metabase_card" "global_screener_step_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_step_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_viewed"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -120,14 +118,14 @@ resource "metabase_card" "global_screener_errors_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_errors_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["total_errors"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Total Errors"]
     }
     parameter_mappings = []
     parameters         = []
@@ -148,14 +146,14 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_back_nav_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["screener_step_name"]
-      "graph.metrics"    = ["screenings_back"]
+      "graph.dimensions" = ["screener_step_label"]
+      "graph.metrics"    = ["Screenings (Back-Nav)"]
     }
     parameter_mappings = []
     parameters         = []
@@ -180,7 +178,7 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -208,14 +206,14 @@ resource "metabase_card" "global_screener_apply_conversion_rate" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["apply_rate_pct"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["Apply Rate %"]
     }
     parameter_mappings = []
     parameters         = []
@@ -236,54 +234,27 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["program_name"]
-      "graph.metrics"    = ["more_info", "apply"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["More Info", "Apply"]
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-resource "metabase_card" "global_screener_more_info_apply_scatter" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "More Info vs Apply (Scatter)"
-    description         = "Per-program scatter of distinct more-info screenings (x) against apply screenings (y)"
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_more_info_apply_scatter, "__STATE_FILTER__", "1=1")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "scatter"
-    visualization_settings = {
-      "graph.dimensions" = ["more_info"]
-      "graph.metrics"    = ["apply"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
 
 resource "metabase_card" "global_screener_tab_split" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Results Tab Split"
-    description         = "Distinct screenings opening each results-page tab (long-term benefits vs additional resources)"
+    name                = "Results Tab Engagement"
+    description         = "% of results-page viewers who opened each results tab (denominator = screenings that loaded results). Long-Term Benefits is the default tab (~100%); the signal is the Additional Resources rate."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -292,14 +263,14 @@ resource "metabase_card" "global_screener_tab_split" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["tab"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Tab"]
+      "graph.metrics"    = ["% of Results Viewers"]
     }
     parameter_mappings = []
     parameters         = []
@@ -320,14 +291,14 @@ resource "metabase_card" "global_screener_top_resources" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["resource"]
-      "graph.metrics"    = ["clicks"]
+      "graph.dimensions" = ["Resource"]
+      "graph.metrics"    = ["Clicks"]
     }
     parameter_mappings = []
     parameters         = []
@@ -352,14 +323,14 @@ resource "metabase_card" "global_screener_share_funnel_popup" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_share_funnel_popup, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_share_funnel_popup, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -380,14 +351,14 @@ resource "metabase_card" "global_screener_share_funnel_footer" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_share_funnel_footer, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_share_funnel_footer, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -408,14 +379,14 @@ resource "metabase_card" "global_screener_shares_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_shares_by_channel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_shares_by_channel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["share_channel"]
-      "graph.metrics"    = ["total_shares"]
+      "graph.dimensions" = ["Share Channel"]
+      "graph.metrics"    = ["Total Shares"]
     }
     parameter_mappings = []
     parameters         = []
@@ -436,14 +407,14 @@ resource "metabase_card" "global_screener_save_funnel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_save_funnel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_save_funnel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions" = ["funnel_step"]
-      "graph.metrics"    = ["screenings"]
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -464,14 +435,14 @@ resource "metabase_card" "global_screener_saves_by_channel" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_saves_by_channel, "__STATE_FILTER__", "1=1")
+        query         = replace(local.screener_sql_saves_by_channel, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["save_channel"]
-      "graph.metrics"    = ["total_saves"]
+      "graph.dimensions" = ["Save Channel"]
+      "graph.metrics"    = ["Total Saves"]
     }
     parameter_mappings = []
     parameters         = []
