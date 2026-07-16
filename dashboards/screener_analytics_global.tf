@@ -99,7 +99,7 @@ resource "metabase_card" "global_screener_step_funnel" {
     display = "row"
     visualization_settings = {
       "graph.dimensions"        = ["screener_step_label"]
-      "graph.metrics"           = ["Screenings"]
+      "graph.metrics"           = ["% of Started"]
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
     }

@@ -95,12 +95,9 @@ resource "metabase_card" "screener_step_funnel" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions"  = ["screener_step_label"]
-      "graph.metrics"     = ["Screenings"]
-      "graph.show_values" = true
-      "series_settings" = {
-        "% of Started" = { "show_series_values" = true }
-      }
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
     }
     parameter_mappings = []

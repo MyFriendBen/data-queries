@@ -141,13 +141,25 @@ locals {
     ),
     combined AS (
       SELECT * FROM steps UNION ALL SELECT * FROM reached_results
+    ),
+    -- Anchor the % denominator to the ACTUAL entry step (lowest sort_key), not
+    -- MAX(screenings). Counts aren't strictly monotonic (back-navigation re-views
+    -- a step), so MAX() could pick a later step and make earlier stages read
+    -- >100% of something that isn't "Started". FIRST_VALUE by sort_key is the
+    -- true first step everyone sees.
+    entry AS (
+      SELECT screenings AS entry_screenings
+      FROM combined
+      WHERE screenings > 0
+      ORDER BY sort_key
+      LIMIT 1
     )
     SELECT
       screener_step_label,
-      screenings AS `Screenings`,
-      -- % of the funnel's entry stage (the largest bar = the first step everyone
-      -- sees). MAX() OVER () is that denominator; every stage divides into it.
-      ROUND(screenings * 100.0 / NULLIF(MAX(screenings) OVER (), 0), 1) AS `% of Started`
+      -- % of the entry step is the PLOTTED metric (the funnel drop-off reads as a
+      -- percentage); the raw count rides along as `Screenings` for the tooltip.
+      ROUND(screenings * 100.0 / NULLIF((SELECT entry_screenings FROM entry), 0), 1) AS `% of Started`,
+      screenings AS `Screenings`
     FROM combined
     WHERE screenings > 0
     ORDER BY sort_key, screener_step_label
@@ -190,14 +202,17 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
-  # Error RATE per step: errors at a step ÷ sessions that VIEWED that step, so a
-  # deep step isn't penalized for having fewer people reach it. Only synthetic
-  # rows are excluded — confirm-information IS a real step and is kept.
+  # Raw error COUNTS (no rate) — deliberately, and for the SAME reason as back-nav
+  # below: an error rate needs a per-step view denominator, but the highest-error
+  # steps (member-details, household-basics) emit their view under a nonstandard
+  # event name, so screenings_viewed_step = 0 for them and a rate would be NULL on
+  # exactly the biggest bars. Verified in BigQuery: member-details ~322 errors /
+  # 0 views, household-basics ~97 errors / 0 views. Once the frontend normalizes
+  # those view events, this can move to an "errors per 100 views" rate.
   screener_sql_errors_by_step = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      SUM(total_error_count) AS `Total Errors`,
-      ROUND(SUM(total_error_count) * 100.0 / NULLIF(SUM(screenings_viewed_step), 0), 1) AS `Errors per 100 Views`
+      SUM(total_error_count) AS `Total Errors`
     FROM `${local.bq_dataset}.mart_screener_form_funnel`
     WHERE __STATE_FILTER__
       AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
@@ -399,7 +414,6 @@ locals {
     )
     ORDER BY step_order
   SQL
-
 
   # ── Tab 9 (Sharing & Saving): saves by channel ──────────────────────────────
   # Counts only COMPLETED saves (save_action = 'send'), mirroring
