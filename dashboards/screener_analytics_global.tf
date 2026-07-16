@@ -113,7 +113,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors at each screener step, plus errors per 100 views of that step (rate normalizes for how many people reached the step)."
+    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

@@ -103,8 +103,8 @@ locals {
   # global page (bare-domain entry), so its view count is a small unrelated
   # population that doesn't belong in the drop-off sequence.
   #
-  # A "% of Started" column is added: each stage as a share of the funnel's first
-  # (largest) stage, so the drop-off reads as percentages, not just raw counts.
+  # A "% of Started" column is added: each stage as a share of the funnel's entry
+  # (first) stage, so the drop-off reads as percentages, not just raw counts.
   screener_sql_step_funnel = <<-SQL
     WITH steps AS (
       SELECT
@@ -431,7 +431,7 @@ locals {
         WHEN 'sms' THEN 'SMS'
         WHEN 'whatsapp' THEN 'WhatsApp'
         WHEN 'copy_link' THEN 'Copy Link'
-        ELSE save_channel
+        ELSE COALESCE(save_channel, '(none)')
       END AS `Save Channel`,
       SUM(total_saves) AS `Total Saves`
     FROM `${local.bq_dataset}.mart_screener_saves`

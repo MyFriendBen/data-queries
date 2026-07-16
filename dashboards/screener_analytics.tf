@@ -105,13 +105,14 @@ resource "metabase_card" "screener_step_funnel" {
   })
 }
 
-# Errors by step — horizontal bar. Total errors + error rate per 100 views.
+# Errors by step — horizontal bar. Raw error counts (no rate: the highest-error
+# steps lack a clean per-step view denominator — see the shared SQL comment).
 resource "metabase_card" "screener_errors_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors at each screener step, plus errors per 100 views of that step (rate normalizes for how many people reached the step)."
+    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
