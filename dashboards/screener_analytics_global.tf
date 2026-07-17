@@ -572,7 +572,7 @@ resource "metabase_card" "global_screener_errors_detail" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_errors_detail, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_errors_detail, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }

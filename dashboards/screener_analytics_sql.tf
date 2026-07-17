@@ -505,6 +505,10 @@ locals {
   # ── Results: per-program conversion (more-info ÷ shown, apply ÷ more-info) ──────
   # Pivots interaction_type from mart_screener_program_interactions to compute the
   # two conversion rates now that program_shown gives a "shown" denominator.
+  # NOTE: screenings_with_interaction is deduped per DAY in the mart, so summing
+  # across a multi-day window counts a screening active on N days N times — the
+  # rate is "screening-days", not truly-distinct screenings. This matches every
+  # other rate card over these daily-grain marts (e.g. apply_conversion_rate).
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT

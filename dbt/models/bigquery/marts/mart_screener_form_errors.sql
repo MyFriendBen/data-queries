@@ -16,12 +16,19 @@
 -- attempt and its form_error_message lists every field that failed that attempt,
 -- so total_errors here counts attempts, and screenings_with_error is the distinct
 -- screenings that hit this step+message combo.
+--
+-- Carries the session-level is_cesn flag, like the sibling mart_screener_form_funnel
+-- (errors_by_step reads that one). Both are screener_form_error surfaces, so they
+-- MUST treat CESN + null-state rows identically: the global cards use the
+-- all_screener_global_predicate (NOT is_cesn AND (state IN codes OR state IS NULL))
+-- so pre-white-label errors are included and CESN excluded, consistently.
 
 with errors as (
     select
         event_date,
         event_date_parsed,
         screener_state,
+        is_cesn,
         screener_step_name,
         screener_uid,
         -- Guard against the odd null/empty message so it groups into one bucket
@@ -37,6 +44,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    is_cesn,
 
     -- Human-readable step label, mirroring mart_screener_form_funnel's mapping so
     -- cards read consistently across the Form Journey tab.
@@ -68,5 +76,5 @@ select
     current_timestamp() as updated_at
 
 from errors
-group by event_date, event_date_parsed, screener_state, screener_step_name, form_error_message
+group by event_date, event_date_parsed, screener_state, is_cesn, screener_step_name, form_error_message
 order by event_date desc, screener_state, total_errors desc
