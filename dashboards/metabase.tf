@@ -1097,6 +1097,40 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # Analytics v2 (MFB-1306) — Form-Journey cards
+      {
+        card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
+        dashboard_tab_id       = 5
+        row                    = 27
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_help_by_step[0].id)
+        dashboard_tab_id       = 5
+        row                    = 27
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_errors_detail[0].id)
+        dashboard_tab_id       = 5
+        row                    = 35
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
     ] : [],
     # -------------------------------------------------------------------------
     # Tab 6: Results Page Activity (all-states screener)
@@ -1165,6 +1199,62 @@ resource "metabase_dashboard" "analytics" {
         col                    = 12
         size_x                 = 12
         size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Analytics v2 (MFB-1306) — Results-tab cards
+      {
+        card_id                = tonumber(metabase_card.global_screener_program_conversion[0].id)
+        dashboard_tab_id       = 6
+        row                    = 30
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_resource_engagement[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
+        dashboard_tab_id       = 6
+        row                    = 46
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
+        dashboard_tab_id       = 6
+        row                    = 46
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 4
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}

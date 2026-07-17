@@ -967,6 +967,72 @@ locals {
           series                 = []
           visualization_settings = {}
         },
+        {
+          card_id          = tonumber(metabase_card.screener_scroll_depth[key].id)
+          dashboard_tab_id = 7
+          row              = 30
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_scroll_depth[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_scroll_depth[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_help_by_step[key].id)
+          dashboard_tab_id = 7
+          row              = 30
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_errors_detail[key].id)
+          dashboard_tab_id = 7
+          row              = 38
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
       ] : []
     )
   }
@@ -1079,6 +1145,116 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_top_resources[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
+          dashboard_tab_id = 8
+          row              = 28
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 36
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resource_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resource_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 36
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 44
+          col              = 0
+          size_x           = 12
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
+          dashboard_tab_id = 8
+          row              = 44
+          col              = 12
+          size_x           = 12
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
