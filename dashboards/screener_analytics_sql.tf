@@ -575,6 +575,11 @@ locals {
   SQL
 
   # ── Results: Additional Resources tab engagement (count + % of results viewers) ─
+  # TWO sentinels (like macro_funnel): the `tab` CTE reads
+  # mart_screener_resource_engagement (no is_cesn column) → plain __STATE_FILTER__;
+  # the `viewers` CTE reads mart_screener_results_outcomes (carries is_cesn) →
+  # __STATE_FILTER_CESN__ so the global denominator excludes CESN, matching the
+  # numerator (which has no CESN rows) and every other global funnel-rate card.
   screener_sql_resources_tab_engagement = <<-SQL
     WITH tab AS (
       SELECT SUM(distinct_screenings) AS n
@@ -589,7 +594,7 @@ locals {
     viewers AS (
       SELECT SUM(screenings_results_loaded) AS denom
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
-      WHERE __STATE_FILTER__
+      WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]

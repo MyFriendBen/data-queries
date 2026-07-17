@@ -17,6 +17,11 @@
 --   resource_more_info (expand)  →  resource_click split by contact_method.
 -- Dedupe by screener_uid for "distinct screenings" (these events fire
 -- post-step-3, so uid exists).
+-- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
+-- screening that clicked both website and phone for one resource produces two
+-- rows — do NOT SUM(distinct_screenings) across contact_method (it double-counts;
+-- re-dedupe instead). total_clicks IS safe to sum. tab_open / resource_more_info
+-- rows have a null contact_method, so they're unaffected.
 
 with tab_clicks as (
     select
