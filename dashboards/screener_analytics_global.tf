@@ -353,6 +353,238 @@ resource "metabase_card" "global_screener_top_resources" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Analytics v2 cards (MFB-1306) — new event families
+# ══════════════════════════════════════════════════════════════════════════════
+
+resource "metabase_card" "global_screener_program_conversion" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Program Conversion"
+    description         = "Per-program funnel: shown, more-info, and applied counts with the more-info and apply conversion rates, highest more-info rate first."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_program_conversion, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_navigator_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Navigator Engagement"
+    description         = "Distinct screenings that engaged a navigator, broken out by program, navigator, and contact method."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_navigator_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_resource_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Additional Resource Engagement"
+    description         = "Per additional resource: more-info expands and contact clicks split by website vs phone, top 20 by more-info."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_resource_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Resource"]
+      "graph.metrics"                = ["More Info", "Website", "Phone"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_resources_tab_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Additional Resources Tab Engagement"
+    description         = "Screenings that opened the Additional Resources tab and that count as a percentage of results-page viewers."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_resources_tab_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_scroll_depth" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Results Scroll Depth"
+    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_scroll_depth, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"  = ["Depth"]
+      "graph.metrics"     = ["Screenings"]
+      "graph.show_values" = true
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_help_by_step" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Help Clicks by Step"
+    description         = "Help-tooltip clicks by screener step and help topic, surfacing which tooltips drive the most confusion."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_help_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Step"]
+      "graph.metrics"                = ["Clicks"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_get_help_clicks" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "More Help Clicks"
+    description         = "Total clicks on the More Help / 211 call-to-action from the results page."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_get_help_clicks, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "More Help Clicks"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_errors_detail" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Validation Errors Detail"
+    description         = "Which specific validation messages fire, by screener step, top 25 by error count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_errors_detail, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Tab 7 (Sharing & Saving)
 # ══════════════════════════════════════════════════════════════════════════════
 
