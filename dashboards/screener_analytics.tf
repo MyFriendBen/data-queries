@@ -529,6 +529,256 @@ resource "metabase_card" "screener_top_resources" {
   })
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Analytics v2 cards (MFB-1306) — new event families
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Per-program conversion — table. Two conversion rates (more-info / shown and
+# apply / more-info) alongside the raw counts; multi-metric rates read best as a
+# table.
+resource "metabase_card" "screener_program_conversion" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Program Conversion"
+    description         = "Per-program funnel: shown, more-info, and applied counts with the more-info and apply conversion rates, highest more-info rate first."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_program_conversion, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Navigator engagement — table. Program x navigator x contact method with the
+# distinct-screening count.
+resource "metabase_card" "screener_navigator_engagement" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Navigator Engagement"
+    description         = "Distinct screenings that engaged a navigator, broken out by program, navigator, and contact method."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_navigator_engagement, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Additional-resource engagement — horizontal bar. Per resource, the expand
+# (more-info) count and contact clicks split by website vs phone.
+resource "metabase_card" "screener_resource_engagement" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resource Engagement"
+    description         = "Per additional resource: more-info expands and contact clicks split by website vs phone, top 20 by more-info."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_resource_engagement, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Resource"]
+      "graph.metrics"                = ["More Info", "Website", "Phone"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Additional Resources tab engagement — table. Count of screenings that opened
+# the tab plus that count as a share of results viewers (single row).
+resource "metabase_card" "screener_resources_tab_engagement" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources Tab Engagement"
+    description         = "Screenings that opened the Additional Resources tab and that count as a percentage of results-page viewers."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_resources_tab_engagement, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Results scroll depth — bar. How far screenings scroll on the results page,
+# split by tab.
+resource "metabase_card" "screener_scroll_depth" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Results Scroll Depth"
+    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_scroll_depth, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"  = ["Depth"]
+      "graph.metrics"     = ["Screenings"]
+      "graph.show_values" = true
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Help clicks by step — horizontal bar. Which help tooltips drive the most
+# clicks, by step and topic.
+resource "metabase_card" "screener_help_by_step" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Help Clicks by Step"
+    description         = "Help-tooltip clicks by screener step and help topic, surfacing which tooltips drive the most confusion."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_help_by_step, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.max_categories_enabled" = false
+      "graph.show_values"            = true
+      "graph.dimensions"             = ["Step"]
+      "graph.metrics"                = ["Clicks"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Get-help clicks — single number. Total clicks on the "More Help / 211" CTA.
+resource "metabase_card" "screener_get_help_clicks" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "More Help Clicks"
+    description         = "Total clicks on the More Help / 211 call-to-action from the results page."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_get_help_clicks, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "More Help Clicks"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Validation errors detail — table. Which specific validation messages fire, by
+# step.
+resource "metabase_card" "screener_errors_detail" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Validation Errors Detail"
+    description         = "Which specific validation messages fire, by screener step, top 25 by error count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_errors_detail, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
 # Language distribution — bar. Language changes by language from
 # mart_screener_language.
 resource "metabase_card" "screener_language_distribution" {
@@ -719,6 +969,72 @@ locals {
           series                 = []
           visualization_settings = {}
         },
+        {
+          card_id          = tonumber(metabase_card.screener_scroll_depth[key].id)
+          dashboard_tab_id = 7
+          row              = 30
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_scroll_depth[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_scroll_depth[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_help_by_step[key].id)
+          dashboard_tab_id = 7
+          row              = 30
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_errors_detail[key].id)
+          dashboard_tab_id = 7
+          row              = 38
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
       ] : []
     )
   }
@@ -831,6 +1147,116 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_top_resources[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
+          dashboard_tab_id = 8
+          row              = 28
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 36
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resource_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resource_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 36
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 44
+          col              = 0
+          size_x           = 12
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
+          dashboard_tab_id = 8
+          row              = 44
+          col              = 12
+          size_x           = 12
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

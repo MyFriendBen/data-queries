@@ -29,6 +29,9 @@ with interactions as (
             when 'screener_program_document_download' then 'document_download'
             when 'screener_required_program_click' then 'required_program_click'
             when 'screener_eligibility_tags_shown' then 'eligibility_tags_shown'
+            -- Per-program impression: the "shown" denominator for conversion
+            -- rates (more_info / apply ÷ shown).
+            when 'screener_program_shown' then 'shown'
         end as interaction_type
     from {{ ref('stg_ga_screener_program_interactions') }}
     where event_name in (
@@ -38,7 +41,8 @@ with interactions as (
         'screener_program_phone_click',
         'screener_program_document_download',
         'screener_required_program_click',
-        'screener_eligibility_tags_shown'
+        'screener_eligibility_tags_shown',
+        'screener_program_shown'
     )
     -- program_id is expected on every one of these events; guard against
     -- unmapped/legacy rows polluting the grain

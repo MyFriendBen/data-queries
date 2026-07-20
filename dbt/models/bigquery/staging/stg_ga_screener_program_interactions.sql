@@ -9,7 +9,7 @@
 -- screener_program_visit_website, screener_program_phone_click,
 -- screener_program_document_download, screener_required_program_click,
 -- screener_eligibility_tags_shown, screener_filter_engaged,
--- screener_results_tab_click
+-- screener_results_tab_click, screener_program_shown, screener_navigator_engaged
 -- Group downstream by program_id, not program_name — program_name is the
 -- English display label and can vary in spelling for the same program.
 
@@ -52,6 +52,14 @@ select
     -- screener_results_tab_click
     max(case when ep.key = 'tab_name' then ep.value.string_value end) as tab_name,
 
+    -- screener_navigator_engaged — program-page "Get Help Applying" navigators.
+    -- navigator_id is sent as a NUMBER by the FE (int_value); coalesce both types.
+    max(case when ep.key = 'navigator_id'
+        then coalesce(cast(ep.value.int_value as string), ep.value.string_value)
+    end) as navigator_id,
+    max(case when ep.key = 'navigator_name' then ep.value.string_value end) as navigator_name,
+    max(case when ep.key = 'contact_method' then ep.value.string_value end) as contact_method,
+
     -- Event timestamp
     timestamp_micros(event_timestamp) as event_datetime
 
@@ -67,7 +75,9 @@ where event_name in (
     'screener_required_program_click',
     'screener_eligibility_tags_shown',
     'screener_filter_engaged',
-    'screener_results_tab_click'
+    'screener_results_tab_click',
+    'screener_program_shown',
+    'screener_navigator_engaged'
 )
 
 group by
