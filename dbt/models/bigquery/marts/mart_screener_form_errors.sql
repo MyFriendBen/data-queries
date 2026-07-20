@@ -17,6 +17,22 @@
 -- so total_errors here counts attempts, and screenings_with_error is the distinct
 -- screenings that hit this step+message combo.
 --
+-- HUMANIZATION lives HERE (not in the dashboard card SQL) so it is defined once,
+-- tested, and reusable: the raw message reads as code and array indices explode
+-- one logical field into many rows. Two derived columns are produced —
+--   error_field_label : the field path with numeric array indices stripped
+--                       (incomeStreams.0.income -> incomeStreams.income) then
+--                       mapped to a friendly label. UNMAPPED paths fall back to
+--                       the stripped path so a NEW field never vanishes — it just
+--                       shows its raw name until a label is added here (one line).
+--   error_problem     : the zod rule normalized to a short phrase (Required /
+--                       Invalid format / Too long / Too short); anything else ->
+--                       'Invalid'. The rule set is small and closed.
+-- Grouping on these consolidates counts across array indices. The raw
+-- form_error_message is dropped from the grain (kept nowhere) since the label
+-- pair fully replaces it for reporting; add it back only if a debugging card
+-- needs the exact string.
+--
 -- Carries the session-level is_cesn flag, like the sibling mart_screener_form_funnel
 -- (errors_by_step reads that one). Both are screener_form_error surfaces, so they
 -- MUST treat CESN + null-state rows identically: the global cards use the
@@ -38,6 +54,20 @@ with errors as (
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
         and screener_step_name is not null
+),
+
+humanized as (
+    select
+        *,
+        -- field path before the first ': ', numeric array indices removed
+        case when form_error_message = '(unspecified)' then null
+            else regexp_replace(split(form_error_message, ': ')[safe_offset(0)], r'\.[0-9]+', '')
+        end as error_field_path,
+        -- reason after the first ': ', lowercased for matching
+        case when form_error_message = '(unspecified)' then null
+            else lower(trim(substr(form_error_message, instr(form_error_message, ': ') + 2)))
+        end as error_reason_raw
+    from errors
 )
 
 select
@@ -67,7 +97,41 @@ select
         else screener_step_name
     end as screener_step_label,
 
-    form_error_message,
+    -- Friendly field label; unmapped paths fall back to the raw stripped path.
+    case
+        when form_error_message = '(unspecified)' then '(unspecified)'
+        when error_field_path = 'householdSize' then 'Household size'
+        when error_field_path = 'zipcode' then 'Zip code'
+        when error_field_path = 'county' then 'County'
+        when error_field_path = 'incomeStreams.income' then 'Income amount'
+        when error_field_path = 'incomeStreams.incomeFrequency' then 'Income frequency'
+        when error_field_path like 'incomeStreams.%' then 'Income'
+        when error_field_path = 'healthInsurance' then 'Health insurance'
+        when error_field_path = 'members.birthMonth' then 'Member birth month'
+        when error_field_path = 'members.birthYear' then 'Member birth year'
+        when error_field_path = 'members.relationship' then 'Member relationship'
+        when error_field_path like 'members.%' then 'Household member'
+        when error_field_path = 'contactInfo.firstName' then 'First name'
+        when error_field_path = 'contactInfo.lastName' then 'Last name'
+        when error_field_path = 'contactInfo.email' then 'Email'
+        when error_field_path = 'contactInfo.cell' then 'Phone number'
+        when error_field_path = 'contactInfo.tcpa' then 'Consent to contact'
+        when error_field_path like 'contactInfo.%' then 'Contact info'
+        when error_field_path = 'referralSource' then 'Referral source'
+        when error_field_path = 'otherReferrer' then 'Other referral source'
+        when error_field_path like 'studentEligibility%' then 'Student eligibility'
+        else coalesce(error_field_path, '(unspecified)')
+    end as error_field_label,
+
+    -- Normalized problem phrase; anything unrecognized -> 'Invalid'.
+    case
+        when form_error_message = '(unspecified)' then '(no detail captured)'
+        when error_reason_raw like 'required%' then 'Required'
+        when error_reason_raw like '%invalid format%' or error_reason_raw like '%invalid%' then 'Invalid format'
+        when error_reason_raw like '%too long%' then 'Too long'
+        when error_reason_raw like '%too short%' then 'Too short'
+        else 'Invalid'
+    end as error_problem,
 
     count(*) as total_errors,
     count(distinct screener_uid) as screenings_with_error,
@@ -75,6 +139,8 @@ select
 
     current_timestamp() as updated_at
 
-from errors
-group by event_date, event_date_parsed, screener_state, is_cesn, screener_step_name, form_error_message
+from humanized
+group by
+    event_date, event_date_parsed, screener_state, is_cesn, screener_step_name,
+    error_field_label, error_problem
 order by event_date desc, screener_state, total_errors desc

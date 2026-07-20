@@ -18,7 +18,6 @@ with results_loaded as (
         screener_state,
         is_cesn,
         screener_uid,
-        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         program_count,
         total_estimated_value
     from {{ ref('stg_ga_screener_results_outcomes') }}
@@ -66,15 +65,11 @@ error_recoveries as (
 -- first makes every side one row per grain. Same pattern as mart_screener_saves.
 -- is_cesn is carried into every grain (session-level, so it only splits a
 -- (date, state) group into cesn / non-cesn parts). screenings_results_loaded is
--- kept as the distinct-screener_uid count (screening grain), and a parallel
--- screenings_results_loaded_by_session is added at SESSION grain so the step
--- funnel's terminal "Reached Results" bar can use a denominator comparable to
--- its session-grained step bars (the funnel mart counts distinct sessions).
+-- the distinct-screener_uid count (screening grain).
 results_loaded_summary as (
     select
         event_date, event_date_parsed, screener_state, is_cesn,
         count(distinct screener_uid) as screenings_results_loaded,
-        count(distinct session_key) as screenings_results_loaded_by_session,
         round(avg(program_count), 2) as avg_program_count,
         round(approx_quantiles(program_count, 100 ignore nulls)[offset(50)], 2) as median_program_count,
         round(avg(total_estimated_value), 2) as avg_total_estimated_value,
@@ -115,7 +110,6 @@ select
     g.is_cesn,
 
     coalesce(rl.screenings_results_loaded, 0) as screenings_results_loaded,
-    coalesce(rl.screenings_results_loaded_by_session, 0) as screenings_results_loaded_by_session,
     coalesce(ne.screenings_none_eligible, 0) as screenings_none_eligible,
     coalesce(re.screenings_results_error, 0) as screenings_results_error,
     coalesce(er.screenings_error_recovered, 0) as screenings_error_recovered,

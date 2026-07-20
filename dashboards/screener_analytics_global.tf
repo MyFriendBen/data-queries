@@ -82,8 +82,8 @@ resource "metabase_card" "global_screener_step_funnel" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Form Step Views"
-    description         = "Distinct sessions that viewed each screener step, in flow order, ending with how many reached the results page. Shown as a bar chart, not a funnel: steps can be re-viewed via back-navigation, so counts are not strictly monotonic. Referral Source is excluded (it is conditionally shown) and reported on its own card."
+    name                = "Form Step Reached"
+    description         = "Share of screening sessions that reached at least each step, in flow order through the results page. Monotonic: each bar counts every session that got this far or further, so it always decreases down the funnel. Hover a bar for the raw session count. Referral Source and Select State are excluded (conditionally shown / pre-white-label)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -113,7 +113,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
+    description         = "Total form validation errors recorded at each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -143,7 +143,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step. Shown as counts: a rate needs per-step view data that some high-back steps (Confirm Information, Member Details) do not yet emit under the standard step event."
+    description         = "Distinct screenings that navigated back from each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -287,6 +287,39 @@ resource "metabase_card" "global_screener_more_info_vs_apply" {
       "graph.show_values"            = true
       "graph.dimensions"             = ["Program"]
       "graph.metrics"                = ["More Info", "Apply"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Results revisits — how many screenings viewed results once vs. multiple times.
+# Plain state filter excludes CESN (its 'cesn' state code isn't in the non-CESN
+# list); results events have no null-state rows, matching the sibling cards.
+resource "metabase_card" "global_screener_results_revisits" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Results Views per Screening"
+    description         = "How many screenings loaded their results page once, twice, or 3+ times — a proxy for returning to a saved result. Counted per screening; the date filter selects screenings by their first results view."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_results_revisits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.show_values"       = true
+      "graph.dimensions"        = ["Times Viewed"]
+      "graph.metrics"           = ["Screenings"]
+      "graph.x_axis.title_text" = "Times Results Viewed"
     }
     parameter_mappings = []
     parameters         = []
@@ -477,7 +510,7 @@ resource "metabase_card" "global_screener_scroll_depth" {
 
   json = jsonencode({
     name                = "Results Scroll Depth"
-    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab."
+    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab. The bar is the raw count; hover to see it as a percentage of everyone who loaded a results page."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -492,7 +525,8 @@ resource "metabase_card" "global_screener_scroll_depth" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"  = ["Depth"]
+      # Depth on the x-axis, one series per Tab; `% of Results Viewers` in the hover.
+      "graph.dimensions"  = ["Depth", "Tab"]
       "graph.metrics"     = ["Screenings"]
       "graph.show_values" = true
     }
@@ -501,12 +535,12 @@ resource "metabase_card" "global_screener_scroll_depth" {
   })
 }
 
-resource "metabase_card" "global_screener_help_by_step" {
+resource "metabase_card" "global_screener_help_by_topic" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Help Clicks by Step"
-    description         = "Help-tooltip clicks by screener step and help topic, surfacing which tooltips drive the most confusion."
+    name                = "Help Clicks by Topic"
+    description         = "Help-tooltip clicks by help topic, surfacing which tooltips drive the most confusion. The click event carries only the topic (which is itself step-identifying), so there is no step breakdown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -515,7 +549,7 @@ resource "metabase_card" "global_screener_help_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_help_by_step, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_help_by_topic, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -523,7 +557,7 @@ resource "metabase_card" "global_screener_help_by_step" {
     visualization_settings = {
       "graph.max_categories_enabled" = false
       "graph.show_values"            = true
-      "graph.dimensions"             = ["Step"]
+      "graph.dimensions"             = ["Help Topic"]
       "graph.metrics"                = ["Clicks"]
     }
     parameter_mappings = []
@@ -563,7 +597,7 @@ resource "metabase_card" "global_screener_errors_detail" {
 
   json = jsonencode({
     name                = "Validation Errors Detail"
-    description         = "Which specific validation messages fire, by screener step, top 25 by error count."
+    description         = "Which fields fail validation and why, by screener step — top 25 by error count. Field and Problem are humanized from the PII-safe error code; counts are consolidated across repeated fields (e.g. all income rows roll up to Income)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

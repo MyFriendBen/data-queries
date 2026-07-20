@@ -69,18 +69,16 @@ resource "metabase_card" "screener_macro_funnel" {
 # Tab 7 (Form Journey)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Detailed per-step drop-off funnel from mart_screener_form_funnel.
-# Ordered by MIN(screener_step_number) so steps appear in true flow order rather
-# than alphabetically. CAVEAT: select-state is a pre-numbered page with a null
-# screener_step_number (see the mart header); such rows
-# sort last (NULLS LAST). The synthetic __form_start__/__form_complete__ rows are
-# excluded here since this is the step-by-step (not start-to-complete) funnel.
+# Monotonic "furthest step reached" funnel from mart_screener_furthest_step.
+# Each bar = distinct sessions that got AT LEAST this far, so the funnel can only
+# shrink down the ladder. Referral Source and Select State are excluded from the
+# ladder (conditionally shown / pre-white-label — a skip would read as drop-off).
 resource "metabase_card" "screener_step_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Form Step Views"
-    description         = "Distinct sessions that viewed each screener step, in flow order, ending with how many reached the results page. Shown as a bar chart, not a funnel: steps can be re-viewed via back-navigation, so counts are not strictly monotonic. Referral Source is excluded (it is conditionally shown) and reported on its own card."
+    name                = "Form Step Reached"
+    description         = "Share of screening sessions that reached at least each step, in flow order through the results page. Monotonic: each bar counts every session that got this far or further, so it always decreases down the funnel. Hover a bar for the raw session count. Referral Source and Select State are excluded (conditionally shown / pre-white-label)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -105,14 +103,14 @@ resource "metabase_card" "screener_step_funnel" {
   })
 }
 
-# Errors by step — horizontal bar. Raw error counts (no rate: the highest-error
-# steps lack a clean per-step view denominator — see the shared SQL comment).
+# Errors by step — horizontal bar. Raw error count is the bar; hover shows the
+# error rate (errors / step views) now that every step has a clean view count.
 resource "metabase_card" "screener_errors_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step (raw counts). A per-step error rate isn't shown because the highest-error steps don't yet emit a clean view count to divide by."
+    description         = "Total form validation errors recorded at each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -137,13 +135,14 @@ resource "metabase_card" "screener_errors_by_step" {
   })
 }
 
-# Back-navigation by step — horizontal bar (distinct screenings that navigated back).
+# Back-navigation by step — horizontal bar (distinct screenings that navigated
+# back). Bar is the raw count; hover shows it as a % of the step's views.
 resource "metabase_card" "screener_back_nav_by_step" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step. Shown as counts: a rate needs per-step view data that some high-back steps (Confirm Information, Member Details) do not yet emit under the standard step event."
+    description         = "Distinct screenings that navigated back from each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -266,6 +265,40 @@ resource "metabase_card" "screener_more_info_vs_apply" {
       "graph.show_values"            = true
       "graph.dimensions"             = ["Program"]
       "graph.metrics"                = ["More Info", "Apply"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Results revisits — bar. How many screenings loaded their results page once vs.
+# multiple times (1 / 2 / 3+), a proxy for how often people return to a saved
+# result. From mart_screener_results_revisits (one row per screening, lifetime
+# load count), bucketed and counted.
+resource "metabase_card" "screener_results_revisits" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Results Views per Screening"
+    description         = "How many screenings loaded their results page once, twice, or 3+ times — a proxy for returning to a saved result. Counted per screening; the date filter selects screenings by their first results view."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_results_revisits, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.show_values"       = true
+      "graph.dimensions"        = ["Times Viewed"]
+      "graph.metrics"           = ["Screenings"]
+      "graph.x_axis.title_text" = "Times Results Viewed"
     }
     parameter_mappings = []
     parameters         = []
@@ -665,7 +698,7 @@ resource "metabase_card" "screener_scroll_depth" {
 
   json = jsonencode({
     name                = "Results Scroll Depth"
-    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab."
+    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab. The bar is the raw count; hover to see it as a percentage of everyone who loaded a results page."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -680,7 +713,10 @@ resource "metabase_card" "screener_scroll_depth" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"  = ["Depth"]
+      # Depth on the x-axis, one series per Tab (the query returns both), so the
+      # two results tabs render side by side rather than collapsing into one bar
+      # per depth. The `% of Results Viewers` column rides along in the hover.
+      "graph.dimensions"  = ["Depth", "Tab"]
       "graph.metrics"     = ["Screenings"]
       "graph.show_values" = true
     }
@@ -689,14 +725,15 @@ resource "metabase_card" "screener_scroll_depth" {
   })
 }
 
-# Help clicks by step — horizontal bar. Which help tooltips drive the most
-# clicks, by step and topic.
-resource "metabase_card" "screener_help_by_step" {
+# Help clicks by topic — horizontal bar. Which help tooltips drive the most
+# clicks. The click event carries only the help topic (no step), so this slices
+# by topic alone.
+resource "metabase_card" "screener_help_by_topic" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Help Clicks by Step"
-    description         = "Help-tooltip clicks by screener step and help topic, surfacing which tooltips drive the most confusion."
+    name                = "Help Clicks by Topic"
+    description         = "Help-tooltip clicks by help topic, surfacing which tooltips drive the most confusion. The click event carries only the topic (which is itself step-identifying), so there is no step breakdown."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -705,7 +742,7 @@ resource "metabase_card" "screener_help_by_step" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_help_by_step, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_help_by_topic, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -713,7 +750,7 @@ resource "metabase_card" "screener_help_by_step" {
     visualization_settings = {
       "graph.max_categories_enabled" = false
       "graph.show_values"            = true
-      "graph.dimensions"             = ["Step"]
+      "graph.dimensions"             = ["Help Topic"]
       "graph.metrics"                = ["Clicks"]
     }
     parameter_mappings = []
@@ -756,7 +793,7 @@ resource "metabase_card" "screener_errors_detail" {
 
   json = jsonencode({
     name                = "Validation Errors Detail"
-    description         = "Which specific validation messages fire, by screener step, top 25 by error count."
+    description         = "Which fields fail validation and why, by screener step — top 25 by error count. Field and Problem are humanized from the PII-safe error code; counts are consolidated across repeated fields (e.g. all income rows roll up to Income)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -992,7 +1029,7 @@ locals {
           visualization_settings = {}
         },
         {
-          card_id          = tonumber(metabase_card.screener_help_by_step[key].id)
+          card_id          = tonumber(metabase_card.screener_help_by_topic[key].id)
           dashboard_tab_id = 7
           row              = 30
           col              = 12
@@ -1001,12 +1038,12 @@ locals {
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
               target       = ["variable", ["template-tag", "start_date"]]
             },
             {
               parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_help_by_step[key].id)
+              card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1103,6 +1140,28 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_more_info_vs_apply[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_results_revisits[key].id)
+          dashboard_tab_id = 8
+          row              = 12
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_results_revisits[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_results_revisits[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

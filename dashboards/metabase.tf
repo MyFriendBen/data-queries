@@ -1110,7 +1110,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_help_by_step[0].id)
+        card_id                = tonumber(metabase_card.global_screener_help_by_topic[0].id)
         dashboard_tab_id       = 5
         row                    = 27
         col                    = 12
@@ -1175,6 +1175,17 @@ resource "metabase_dashboard" "analytics" {
         dashboard_tab_id       = 6
         row                    = 14
         col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_results_revisits[0].id)
+        dashboard_tab_id       = 6
+        row                    = 14
+        col                    = 12
         size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
