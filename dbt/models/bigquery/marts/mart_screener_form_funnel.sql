@@ -174,34 +174,14 @@ select
     g.is_cesn,
     g.screener_step_name,
 
-    -- Human-readable step label for dashboard display. Maps the stable analytics
-    -- slugs (from the app) to friendly names; unmapped/future slugs fall back to
-    -- the raw slug so nothing silently disappears.
+    -- Human-readable step label for dashboard display. The step-slug -> label map
+    -- is shared via the screener_step_label macro (single source of truth). The
+    -- two synthetic funnel-shape rows are labeled here since they are sentinels
+    -- specific to this mart, not real step slugs.
     case g.screener_step_name
         when '__form_start__' then 'Started Screener'
         when '__form_complete__' then 'Reached Results'
-        when 'language' then 'Language'
-        when 'disclaimer' then 'Disclaimer'
-        when 'select-state' then 'Select State'
-        when 'zip-code' then 'Zip Code'
-        when 'household-size' then 'Household Size'
-        when 'household-basics' then 'Household Basics'
-        when 'household-members' then 'Household Members'
-        when 'member-details' then 'Member Details'
-        when 'expenses' then 'Expenses'
-        when 'assets' then 'Assets'
-        when 'current-benefits' then 'Current Benefits'
-        when 'additional-resources' then 'Additional Resources'
-        when 'referral-source' then 'Referral Source'
-        when 'sign-up' then 'Sign Up'
-        when 'confirm-information' then 'Confirm Information'
-        when 'results' then 'Results'
-        when 'cesn-electric-provider' then 'CESN Electric Provider'
-        when 'cesn-gas-provider' then 'CESN Gas Provider'
-        when 'cesn-energy-expenses' then 'CESN Energy Expenses'
-        when 'cesn-appliances' then 'CESN Appliances'
-        when 'cesn-utility-status' then 'CESN Utility Status'
-        else g.screener_step_name
+        else {{ screener_step_label('g.screener_step_name') }}
     end as screener_step_label,
 
     -- MAX step number seen for this step name (step_number is stable per step,

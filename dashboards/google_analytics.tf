@@ -76,14 +76,17 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking began **July 14, 2026**. Metrics reflect activity from that date forward."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 18, 2026** forward, the first full day the current event set was live in production."
 
-  # Analytics epoch: the date the full app-emitted screener_* event set went live.
-  # Every screener card floors on this so metrics only reflect the new pipeline —
-  # earlier data (e.g. screener_form_start firing weeks before the rest) would
-  # otherwise skew any cross-event rate. A fixed historical fact, not a moving
-  # window: intentionally hardcoded in one place and referenced everywhere.
-  screener_analytics_epoch = "2026-07-14"
+  # Analytics epoch: the first FULL day the complete app-emitted screener_* event
+  # set was live in production. Every screener card floors on this so metrics only
+  # reflect the current pipeline. Moved 07-14 → 07-18: the analytics-v2 events
+  # (program_shown, navigator, scroll, help, resource contact_method, populated
+  # form_error_message, etc.) merged 2026-07-16 and finished propagating to prod
+  # partway through 07-17, so 07-17 is a mixed partial day. Verified in BigQuery:
+  # form_error_message is ~40% (unspecified) on 07-17 but <5% from 07-18 on — 07-18
+  # is the first clean day. A fixed historical fact, not a moving window.
+  screener_analytics_epoch = "2026-07-18"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`

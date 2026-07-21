@@ -17,6 +17,22 @@
 -- so total_errors here counts attempts, and screenings_with_error is the distinct
 -- screenings that hit this step+message combo.
 --
+-- HUMANIZATION lives HERE (not in the dashboard card SQL) so it is defined once,
+-- tested, and reusable: the raw message reads as code and array indices explode
+-- one logical field into many rows. Two derived columns are produced —
+--   error_field_label : the field path with numeric array indices stripped
+--                       (incomeStreams.0.income -> incomeStreams.income) then
+--                       mapped to a friendly label. UNMAPPED paths fall back to
+--                       the stripped path so a NEW field never vanishes — it just
+--                       shows its raw name until a label is added here (one line).
+--   error_problem     : the zod rule normalized to a short phrase (Required /
+--                       Invalid format / Too long / Too short); anything else ->
+--                       'Invalid'. The rule set is small and closed.
+-- Grouping on these consolidates counts across array indices. The raw
+-- form_error_message is dropped from the grain (kept nowhere) since the label
+-- pair fully replaces it for reporting; add it back only if a debugging card
+-- needs the exact string.
+--
 -- Carries the session-level is_cesn flag, like the sibling mart_screener_form_funnel
 -- (errors_by_step reads that one). Both are screener_form_error surfaces, so they
 -- MUST treat CESN + null-state rows identically: the global cards use the
@@ -33,11 +49,44 @@ with errors as (
         screener_uid,
         -- Guard against the odd null/empty message so it groups into one bucket
         -- rather than silently dropping (a message should always be present now).
-        coalesce(nullif(trim(form_error_message), ''), '(unspecified)') as form_error_message,
-        form_error_count
+        coalesce(nullif(trim(form_error_message), ''), '(unspecified)') as form_error_message
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
         and screener_step_name is not null
+),
+
+-- One screener_form_error lists EVERY field that failed that submit, comma-joined
+-- ("field1: code1, field2: code2"). Explode to one row per "field: code" pair so
+-- each failing field is counted and labeled independently (parsing only the first
+-- pair would drop fields 2+ and mislabel field 1, whose reason would swallow the
+-- trailing ", field2: code2"). Each pair contributes 1 to the field count.
+pairs as (
+    select
+        e.* except (form_error_message),
+        e.form_error_message,
+        trim(pair) as pair
+    from errors e,
+    unnest(
+        if(e.form_error_message = '(unspecified)',
+           ['(unspecified)'],
+           split(e.form_error_message, ', '))
+    ) as pair
+),
+
+humanized as (
+    select
+        * except (pair),
+        -- field path before the first ': ', numeric array indices removed
+        case when pair = '(unspecified)' then null
+            else regexp_replace(split(pair, ': ')[safe_offset(0)], r'\.[0-9]+', '')
+        end as error_field_path,
+        -- reason after the first ': ': a stable rule code post MFB-1348 (e.g.
+        -- 'select_one'), or a localized English phrase on older rows. Lowercased
+        -- (harmless for codes) so the fallback prose matching is case-insensitive.
+        case when pair = '(unspecified)' then null
+            else lower(trim(substr(pair, instr(pair, ': ') + 2)))
+        end as error_reason_raw
+    from pairs
 )
 
 select
@@ -46,35 +95,81 @@ select
     screener_state,
     is_cesn,
 
-    -- Human-readable step label, mirroring mart_screener_form_funnel's mapping so
-    -- cards read consistently across the Form Journey tab.
-    case screener_step_name
-        when 'language' then 'Language'
-        when 'disclaimer' then 'Disclaimer'
-        when 'select-state' then 'Select State'
-        when 'zip-code' then 'Zip Code'
-        when 'household-size' then 'Household Size'
-        when 'household-basics' then 'Household Basics'
-        when 'household-members' then 'Household Members'
-        when 'member-details' then 'Member Details'
-        when 'expenses' then 'Expenses'
-        when 'assets' then 'Assets'
-        when 'current-benefits' then 'Current Benefits'
-        when 'additional-resources' then 'Additional Resources'
-        when 'referral-source' then 'Referral Source'
-        when 'sign-up' then 'Sign Up'
-        when 'confirm-information' then 'Confirm Information'
-        else screener_step_name
-    end as screener_step_label,
+    -- Human-readable step label (shared screener_step_label macro — single source
+    -- of truth across the Form Journey marts).
+    {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
-    form_error_message,
+    -- Friendly field label; unmapped paths fall back to the raw stripped path.
+    case
+        when form_error_message = '(unspecified)' then '(unspecified)'
+        when error_field_path = 'householdSize' then 'Household size'
+        when error_field_path = 'zipcode' then 'Zip code'
+        when error_field_path = 'county' then 'County'
+        when error_field_path = 'incomeStreams.income' then 'Income amount'
+        when error_field_path = 'incomeStreams.incomeFrequency' then 'Income frequency'
+        when error_field_path like 'incomeStreams.%' then 'Income'
+        when error_field_path = 'healthInsurance' then 'Health insurance'
+        when error_field_path = 'members.birthMonth' then 'Member birth month'
+        when error_field_path = 'members.birthYear' then 'Member birth year'
+        when error_field_path = 'members.relationship' then 'Member relationship'
+        when error_field_path like 'members.%' then 'Household member'
+        when error_field_path = 'contactInfo.firstName' then 'First name'
+        when error_field_path = 'contactInfo.lastName' then 'Last name'
+        when error_field_path = 'contactInfo.email' then 'Email'
+        when error_field_path = 'contactInfo.cell' then 'Phone number'
+        when error_field_path = 'contactInfo.tcpa' then 'Consent to contact'
+        when error_field_path like 'contactInfo.%' then 'Contact info'
+        when error_field_path = 'referralSource' then 'Referral source'
+        when error_field_path = 'otherReferrer' then 'Other referral source'
+        when error_field_path like 'studentEligibility%' then 'Student eligibility'
+        else coalesce(error_field_path, '(unspecified)')
+    end as error_field_label,
 
+    -- Normalized problem phrase. The FE (MFB-1348) emits a stable rule CODE after
+    -- the "field: " prefix (e.g. "healthInsurance: select_one"); map those to the
+    -- same labels the FE's RULE_LABELS uses so both sides read identically and it's
+    -- locale-safe. Rows from before MFB-1348 shipped carry a localized English
+    -- phrase instead — the trailing branches label those.
+    -- KEEP the fallback as long as the epoch (2026-07-18) predates MFB-1348: a
+    -- dashboard date filter can select those pre-MFB-1348 days at any time, so
+    -- removing it would relabel every old error row as 'Invalid'. It only becomes
+    -- removable if the epoch is moved past the MFB-1348 cutover.
+    -- Unknown -> 'Invalid'.
+    case
+        when form_error_message = '(unspecified)' then '(no detail captured)'
+        -- stable rule codes (post MFB-1348)
+        when error_reason_raw in ('required', 'too_small', 'invalid_type') then 'Required'
+        when error_reason_raw = 'too_big' then 'Too long'
+        when error_reason_raw in ('invalid_string', 'invalid_format') then 'Invalid format'
+        when error_reason_raw in ('invalid_enum_value', 'invalid_selection') then 'Invalid selection'
+        when error_reason_raw = 'select_one' then 'Must select an option'
+        when error_reason_raw = 'none_exclusive' then "Can't combine None with others"
+        when error_reason_raw = 'invalid_amount' then 'Invalid amount'
+        when error_reason_raw = 'hours_required' then 'Enter hours worked'
+        when error_reason_raw = 'future_date' then "Date can't be in the future"
+        when error_reason_raw = 'incomplete' then 'Answer all questions'
+        when error_reason_raw = 'consent_required' then 'Consent required'
+        when error_reason_raw = 'phone_format' then 'Must be 10 digits'
+        when error_reason_raw = 'out_of_area' then 'Not in service area'
+        when error_reason_raw = 'must_agree' then 'Must be checked to continue'
+        -- legacy English-message fallback (pre MFB-1348 rows only)
+        when error_reason_raw like 'required%' then 'Required'
+        when error_reason_raw like '%invalid format%' or error_reason_raw like '%invalid%' then 'Invalid format'
+        when error_reason_raw like '%too long%' then 'Too long'
+        when error_reason_raw like '%too short%' then 'Too short'
+        else 'Invalid'
+    end as error_problem,
+
+    -- one exploded row per (attempt x failed field), so count(*) is the field-level
+    -- error total for this (step, field, problem) — no longer over-attributed to
+    -- field #1 as when the whole message was parsed as one row.
     count(*) as total_errors,
     count(distinct screener_uid) as screenings_with_error,
-    sum(form_error_count) as total_error_fields,
 
     current_timestamp() as updated_at
 
-from errors
-group by event_date, event_date_parsed, screener_state, is_cesn, screener_step_name, form_error_message
+from humanized
+group by
+    event_date, event_date_parsed, screener_state, is_cesn, screener_step_name,
+    error_field_label, error_problem
 order by event_date desc, screener_state, total_errors desc

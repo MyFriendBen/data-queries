@@ -79,174 +79,100 @@ locals {
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
-  # Per-step view counts (form steps), capped with a terminal "Reached Results"
-  # bar so the chart shows how many screenings actually reached the results page.
+  # "Furthest step reached" funnel: each bar counts sessions that got AT LEAST as
+  # far as that step, so it's monotonic by construction. mart_screener_furthest_step
+  # is session-grain (one deepest rank per session), so the dashboard date filter
+  # applies before the reached>=N expansion.
   #
-  # Results is a destination, not a form step, so no 'results' step-view event is
-  # emitted — the results page fires its own screener_results_loaded event. We
-  # read that terminal count from mart_screener_results_outcomes (the SAME source
-  # as the Overview funnel's "Saw Results" stage), at SESSION grain so it's
-  # comparable to the session-counted step bars above.
+  # The ranked ladder comes from mart_screener_step_ladder (funnel_rank not null) —
+  # the single source of truth (screener_step_ladder macro), so this card, the
+  # int model, and every label stay in sync. Off-ladder steps (referral, select-
+  # state, member-basics, cesn-*) have null funnel_rank and are excluded here.
   #
-  # Referral Source is EXCLUDED: it is conditionally shown (auto-skipped when the
-  # entry URL carries a referral parameter), so its view count is lower than the
-  # steps around it for reasons unrelated to drop-off. Leaving it in would break
-  # the monotonic funnel shape and corrupt any step-to-step drop-off percentage
-  # (a skip would read as attrition). Its completion is reported on its own card
-  # (screener_sql_referral_source_completion) against the population actually
-  # shown the step.
-  #
-  # Both synthetic mart rows ('__form_start__' / '__form_complete__') are excluded
-  # from the form-step side. The results row carries a large sort key so it lands
-  # last regardless of step numbering.
-  # Select State is EXCLUDED alongside Referral Source: it is a pre-white-label
-  # global page (bare-domain entry), so its view count is a small unrelated
-  # population that doesn't belong in the drop-off sequence.
-  #
-  # A "% of Started" column is added: each stage as a share of the funnel's entry
-  # (first) stage, so the drop-off reads as percentages, not just raw counts.
+  # Plotted metric is "% of Started" (bar N ÷ first/largest bar); raw session count
+  # rides along as `Screenings`.
   screener_sql_step_funnel = <<-SQL
-    WITH steps AS (
-      SELECT
-        screener_step_label,
-        -- Coalesce to a large-but-below-terminal sentinel so null-numbered form
-        -- steps (or any future unmapped step) sort near the end of the form yet
-        -- still BEFORE the "Reached Results" terminal bar (999999). A bare
-        -- MIN(step_number) with NULLS LAST would drop them after the terminal,
-        -- putting the destination in the middle of the flow.
-        COALESCE(MIN(screener_step_number), 99999) AS sort_key,
-        SUM(screenings_viewed_step) AS screenings
-      FROM `${local.bq_dataset}.mart_screener_form_funnel`
-      WHERE __STATE_FILTER__
-        AND screener_step_name NOT IN ('__form_start__', '__form_complete__', 'referral-source', 'select-state')
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY screener_step_label
+    WITH step_ranks AS (
+      SELECT funnel_rank AS step_rank, screener_step_label
+      FROM `${local.bq_dataset}.mart_screener_step_ladder`
+      WHERE funnel_rank IS NOT NULL
     ),
-    reached_results AS (
-      -- SESSION grain (screenings_results_loaded_by_session), NOT the uid-grain
-      -- screenings_results_loaded, so this terminal bar is comparable to the
-      -- step bars above — every one of which is a distinct-SESSION count from
-      -- the funnel mart. Using the uid count here would silently mix grains.
-      SELECT
-        'Reached Results' AS screener_step_label,
-        999999 AS sort_key,
-        SUM(screenings_results_loaded_by_session) AS screenings
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+    sessions AS (
+      SELECT session_key, furthest_step_rank
+      FROM `${local.bq_dataset}.mart_screener_furthest_step`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
-    combined AS (
-      SELECT * FROM steps UNION ALL SELECT * FROM reached_results
+    -- Monotonic by construction: a session contributes to rank N iff it reached at
+    -- least N, so reached(N) >= reached(N+1) always.
+    funnel AS (
+      SELECT
+        r.step_rank,
+        r.screener_step_label,
+        COUNT(DISTINCT s.session_key) AS screenings
+      FROM step_ranks r
+      LEFT JOIN sessions s ON s.furthest_step_rank >= r.step_rank
+      GROUP BY r.step_rank, r.screener_step_label
     ),
-    -- Anchor the % denominator to the ACTUAL entry step (lowest sort_key), not
-    -- MAX(screenings). Counts aren't strictly monotonic (back-navigation re-views
-    -- a step), so MAX() could pick a later step and make earlier stages read
-    -- >100% of something that isn't "Started". FIRST_VALUE by sort_key is the
-    -- true first step everyone sees.
+    -- Denominator = the first (rank 1) stage: the population that entered the funnel.
     entry AS (
-      SELECT screenings AS entry_screenings
-      FROM combined
-      WHERE screenings > 0
-      ORDER BY sort_key
-      LIMIT 1
+      SELECT screenings AS entry_screenings FROM funnel WHERE step_rank = 1
     )
     SELECT
       screener_step_label,
-      -- % of the entry step is the PLOTTED metric (the funnel drop-off reads as a
-      -- percentage); the raw count rides along as `Screenings` for the tooltip.
       ROUND(screenings * 100.0 / NULLIF((SELECT entry_screenings FROM entry), 0), 1) AS `% of Started`,
       screenings AS `Screenings`
-    FROM combined
+    FROM funnel
     WHERE screenings > 0
-    ORDER BY sort_key, screener_step_label
-  SQL
-
-  # ── Tab 7 (Form Journey): Referral Source completion (reported separately) ───
-  # Referral Source is conditionally shown — it is auto-skipped when the entry
-  # URL carries a referral parameter — so it is pulled out of the main step
-  # funnel (a skip there would masquerade as drop-off and corrupt the cross-step
-  # percentages). It is reported HERE against its own honest denominator: of the
-  # sessions that were actually SHOWN the step (viewed it), how many completed it
-  # vs dropped. "Shown" = viewed, so a session that never saw the step (referral
-  # skip) is excluded from both the numerator and the denominator — the drop-off
-  # % reflects only people who were genuinely asked.
-  #
-  # Shown and Completed are aggregated per (event_date, state, step) in the mart,
-  # so they align on the same day: a step's view and its completion fire seconds
-  # apart, effectively always within one calendar day. Across a multi-day window
-  # both sums therefore count the same cohort of sessions. GREATEST(..., 0) floors
-  # the drop at zero to defend against the pathological case of a session that
-  # viewed just before midnight of the window's start and completed just after —
-  # which would otherwise let Completed exceed Shown and yield a nonsensical
-  # negative drop. Clamping keeps the reported figure sane without a session-level
-  # cohort join (the per-step mart grain does not expose session keys downstream).
-  screener_sql_referral_source_completion = <<-SQL
-    SELECT
-      SUM(screenings_viewed_step) AS `Shown`,
-      SUM(screenings_completed_step) AS `Completed`,
-      GREATEST(SUM(screenings_viewed_step) - SUM(screenings_completed_step), 0) AS `Dropped`,
-      ROUND(
-        GREATEST(SUM(screenings_viewed_step) - SUM(screenings_completed_step), 0) * 100.0
-        / NULLIF(SUM(screenings_viewed_step), 0), 1
-      ) AS `Drop-off %`
-    FROM `${local.bq_dataset}.mart_screener_form_funnel`
-    WHERE __STATE_FILTER__
-      AND screener_step_name = 'referral-source'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ORDER BY step_rank
   SQL
 
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
-  # Raw error COUNTS (no rate) — deliberately, and for the SAME reason as back-nav
-  # below: an error rate needs a per-step view denominator, but the highest-error
-  # steps (member-details, household-basics) emit their view under a nonstandard
-  # event name, so screenings_viewed_step = 0 for them and a rate would be NULL on
-  # exactly the biggest bars. Verified in BigQuery: member-details ~322 errors /
-  # 0 views, household-basics ~97 errors / 0 views. Once the frontend normalizes
-  # those view events, this can move to an "errors per 100 views" rate.
+  # The PLOTTED bar is "% of Viewers with 1+ Errors" — of the DISTINCT sessions
+  # that viewed the step, the share that hit at least one error on it. Reads the
+  # session-grain mart_screener_step_facts (one row per session x step, deduped
+  # across days), so both numerator and denominator are exact distinct-session
+  # counts over the window — no multi-day double-count. Normalizes for traffic so
+  # steps are comparable by error-proneness, not volume. Total error EVENTS (raw
+  # attempts, inflated by retries) ride along for the hover. NULLIF guards a step
+  # with errors but no captured view.
   screener_sql_errors_by_step = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      SUM(total_error_count) AS `Total Errors`
-    FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      ROUND(COUNTIF(errored) * 100.0 / NULLIF(COUNTIF(viewed), 0), 1) AS `% of Viewers with 1+ Errors`,
+      COUNTIF(errored) AS `Screenings with an Error`,
+      SUM(error_events) AS `Total Errors`
+    FROM `${local.bq_dataset}.mart_screener_step_facts`
     WHERE __STATE_FILTER__
-      AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    HAVING SUM(total_error_count) > 0
-    ORDER BY `Total Errors` DESC
+    HAVING COUNTIF(errored) > 0
+    ORDER BY `% of Viewers with 1+ Errors` DESC
   SQL
 
   # ── Tab 7 (Form Journey): back navigation by step ───────────────────────────
-  # Raw counts (no rate) — deliberately. A back-nav RATE needs a per-step view
-  # denominator, but the steps with the MOST back-nav (confirm-information,
-  # member-details, household-basics) currently emit their view under a
-  # nonstandard event name (screener_step_* / screener_form_step_*) instead of
-  # the clean screener_form_step/view the mart counts, so their view count is 0
-  # and a rate would be NULL exactly on the biggest bars. Once the frontend
-  # normalizes those view events, this can move to a rate (see the errors card,
-  # whose steps all have clean views, for the pattern). confirm-information IS a
-  # real step and is kept.
+  # The PLOTTED bar is "% of Viewers who Went Back" — of the DISTINCT sessions that
+  # viewed the step, the share that navigated back from it. Session-grain source
+  # (mart_screener_step_facts, deduped across days) so both sides are exact
+  # distinct-session counts over the window. Normalized for traffic like the errors
+  # card. Raw back-nav count on hover. confirm-information IS a real step and kept.
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      SUM(screenings_navigated_back) AS `Back-Nav Screenings`
-    FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      ROUND(COUNTIF(navigated_back) * 100.0 / NULLIF(COUNTIF(viewed), 0), 1) AS `% of Viewers who Went Back`,
+      COUNTIF(navigated_back) AS `Back-Nav Screenings`
+    FROM `${local.bq_dataset}.mart_screener_step_facts`
     WHERE __STATE_FILTER__
-      AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    HAVING SUM(screenings_navigated_back) > 0
-    ORDER BY `Back-Nav Screenings` DESC
+    HAVING COUNTIF(navigated_back) > 0
+    ORDER BY `% of Viewers who Went Back` DESC
   SQL
 
   # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
@@ -299,11 +225,51 @@ locals {
     ORDER BY (more_info - apply) DESC
   SQL
 
+  # ── Tab 8 (Results): results revisits distribution ──────────────────────────
+  # How many screenings loaded their results page once vs. multiple times.
+  # mart_screener_results_revisits is one row per screening with its lifetime
+  # results-load count; this buckets that count into 1x / 2x / 3+ and counts the
+  # screenings in each bucket. The date filter is on the screening's FIRST
+  # results-load date, so the window selects a cohort of screenings first seen in
+  # it. A sort_key keeps the buckets in order (Metabase would otherwise sort the
+  # string labels alphabetically, putting "3+ times" first).
+  screener_sql_results_revisits = <<-SQL
+    SELECT
+      CASE
+        WHEN results_load_count = 1 THEN '1 time'
+        WHEN results_load_count = 2 THEN '2 times'
+        ELSE '3+ times'
+      END AS `Times Viewed`,
+      MIN(LEAST(results_load_count, 3)) AS sort_key,
+      COUNT(*) AS `Screenings`
+    FROM `${local.bq_dataset}.mart_screener_results_revisits`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY `Times Viewed`
+    ORDER BY sort_key
+  SQL
+
   # ── Tab 8 (Results): results outcome KPIs ───────────────────────────────────
+  # "Results Viewed" comes from mart_screener_results_revisits (screening-grain,
+  # one row per screener_uid) via COUNT(*), so a screening that loads results on
+  # >1 day isn't double-counted — summing the per-day screenings_results_loaded
+  # would inflate it. The other outcome counts (none-eligible, errors) and the avg
+  # columns stay on the outcomes mart; none-eligible/errors are rare terminal
+  # states (a screening lands in one once), so their per-day sum is effectively
+  # screening-grain already.
   screener_sql_results_outcome_kpis = <<-SQL
-    WITH agg AS (
+    WITH viewed AS (
+      SELECT COUNT(*) AS results_viewed
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    agg AS (
       SELECT
-        SUM(screenings_results_loaded) AS results_viewed,
         SUM(screenings_none_eligible)  AS none_eligible,
         SUM(screenings_results_error)  AS results_errors,
         -- avg_* columns are daily averages in the mart; average them across
@@ -317,9 +283,9 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      results_viewed AS `Results Viewed`,
+      (SELECT results_viewed FROM viewed) AS `Results Viewed`,
       none_eligible AS `None Eligible`,
-      ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS `% None Eligible`,
+      ROUND(none_eligible * 100.0 / NULLIF((SELECT results_viewed FROM viewed) + none_eligible, 0), 1) AS `% None Eligible`,
       avg_program_count AS `Avg Programs`,
       avg_total_estimated_value AS `Avg Est Value`,
       results_errors AS `Results Errors`
@@ -468,8 +434,12 @@ locals {
       GROUP BY tab_label
     ),
     results_viewers AS (
-      SELECT SUM(screenings_results_loaded) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      -- Screening-grain (one row per screener_uid, deduped across days) so a
+      -- multi-day window doesn't double-count a screening that loaded results on
+      -- more than one day — which SUM(screenings_results_loaded) over the per-day
+      -- results-outcomes mart would.
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
@@ -596,8 +566,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     viewers AS (
-      SELECT SUM(screenings_results_loaded) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      -- Screening-grain (deduped across days) — see screener_sql_tab_split. Carries
+      -- is_cesn, so the CESN-aware sentinel still applies for the global card.
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
@@ -608,30 +580,69 @@ locals {
       ROUND((SELECT n FROM tab) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`
   SQL
 
-  # ── Form Journey: results scroll depth (funnel by tab) ──────────────────────────
+  # ── Form Journey: results scroll depth (distribution by tab) ────────────────────
+  # mart_screener_scroll_depth is the FURTHEST depth each screening reached per tab
+  # (a partition — every scroller lands in exactly one depth bucket). The PLOTTED
+  # metric is "% of Tab Scrollers": of the screenings that scrolled AT ALL on a
+  # tab, the share whose deepest scroll was this bucket. It's the bar (not a side
+  # column) because Metabase won't show an extra column in a multi-series tooltip;
+  # the raw screening count rides along for the hover.
+  #
+  # Denominator = total scrollers on that TAB (sum of the tab's buckets), via a
+  # window SUM over the same filtered rows — NOT results_loaded, which is a
+  # different cohort (a screening can scroll on a different day than it loaded
+  # results, or load results before the epoch, pushing the ratio past 100%). By
+  # construction each tab's buckets now sum to ~100%.
+  #
+  # The Depth axis is labeled with NUMBERED PAGE-FRACTION WORDS ("1. Quarter Page"
+  # … "4. Full Page"), not "25%…100%", so the depth buckets can't be visually
+  # confused with the "% of Tab Scrollers" measure. The leading "N." is a sort key:
+  # Metabase sorts a bar chart's category axis ALPHABETICALLY (it ignores SQL row
+  # order and does not honor graph.x_axis.scale = "ordinal" for this in v0.56), so
+  # the numeric prefix is what forces Quarter -> Full order.
   screener_sql_scroll_depth = <<-SQL
+    WITH by_bucket AS (
+      SELECT
+        depth,
+        tab_name,
+        SUM(screenings_reached_depth) AS screenings
+      FROM `${local.bq_dataset}.mart_screener_scroll_depth`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY depth, tab_name
+    )
     SELECT
-      CAST(depth AS STRING) || '%' AS `Depth`,
+      CASE depth
+        WHEN 25 THEN '1. Quarter Page'
+        WHEN 50 THEN '2. Half Page'
+        WHEN 75 THEN '3. Three-Quarter Page'
+        WHEN 100 THEN '4. Full Page'
+        ELSE CAST(depth AS STRING) || '%'
+      END AS `Depth`,
       CASE tab_name
         WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
         WHEN 'additional_resources' THEN 'Additional Resources'
         ELSE COALESCE(tab_name, '(unknown)')
       END AS `Tab`,
-      SUM(screenings_reached_depth) AS `Screenings`
-    FROM `${local.bq_dataset}.mart_screener_scroll_depth`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY depth, `Tab`
+      ROUND(screenings * 100.0 / NULLIF(SUM(screenings) OVER (PARTITION BY tab_name), 0), 1) AS `% of Tab Scrollers`,
+      screenings AS `Screenings`
+    FROM by_bucket
     ORDER BY depth, `Tab`
   SQL
 
-  # ── Form Journey: help-tooltip clicks by step (which tooltips drive confusion) ──
-  screener_sql_help_by_step = <<-SQL
+  # ── Form Journey: help-tooltip clicks by TOPIC (which tooltips drive confusion) ──
+  # Sliced by help_topic (itself step-identifying, e.g. "income", "household
+  # assets"). MFB-1348 adds screener_step_name to screener_help_click, which will
+  # enable a per-step help RATE (clicks ÷ step viewers) in a follow-up; until that
+  # data is flowing, grouping by topic is the available cut.
+  screener_sql_help_by_topic = <<-SQL
     SELECT
-      COALESCE(screener_step_label, '(no step)') AS `Step`,
-      dimension AS `Help Topic`,
+      -- Humanize the kebab-case help_topic slug generically (dash -> space,
+      -- Title Case) so any current OR future topic reads cleanly without a
+      -- hardcoded map: 'household-assets' -> 'Household Assets'.
+      INITCAP(REPLACE(dimension, '-', ' ')) AS `Help Topic`,
       SUM(total_clicks) AS `Clicks`
     FROM `${local.bq_dataset}.mart_screener_help`
     WHERE __STATE_FILTER__
@@ -639,8 +650,52 @@ locals {
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Step`, `Help Topic`
+    GROUP BY `Help Topic`
     ORDER BY `Clicks` DESC
+  SQL
+
+  # ── Form Journey: household-member add/edit/delete actions ──────────────────────
+  # How people build their household on the member step. Bar = distinct screenings
+  # per action; total events on hover. The numeric sort_key orders add->edit->delete
+  # (Metabase sorts the category axis alphabetically otherwise).
+  # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
+  # screening-grain, deduped across days, so this is correct over any window). Total
+  # events (additive) on hover. sort_key orders add->edit->delete.
+  screener_sql_household_member_engagement = <<-SQL
+    SELECT `Action`, `Screenings`, `Total Actions` FROM (
+      SELECT
+        CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
+        INITCAP(action) AS `Action`,
+        COUNT(DISTINCT screener_uid) AS `Screenings`,
+        SUM(total_actions) AS `Total Actions`
+      FROM `${local.bq_dataset}.mart_screener_section_engagement`
+      WHERE __STATE_FILTER__
+        AND section = 'Household Members'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY action, sort_key
+    )
+    ORDER BY sort_key
+  SQL
+
+  # ── Form Journey: income-source add/delete actions ──────────────────────────────
+  screener_sql_income_source_engagement = <<-SQL
+    SELECT `Action`, `Screenings`, `Total Actions` FROM (
+      SELECT
+        CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
+        INITCAP(action) AS `Action`,
+        COUNT(DISTINCT screener_uid) AS `Screenings`,
+        SUM(total_actions) AS `Total Actions`
+      FROM `${local.bq_dataset}.mart_screener_section_engagement`
+      WHERE __STATE_FILTER__
+        AND section = 'Income Sources'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY action, sort_key
+    )
+    ORDER BY sort_key
   SQL
 
   # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────
@@ -655,19 +710,23 @@ locals {
   SQL
 
   # ── Form Journey: which validation errors, by step ──────────────────────────────
+  # Reads the humanized error columns produced in mart_screener_form_errors
+  # (error_field_label / error_problem) — the raw "field:rule" parsing + friendly
+  # labeling lives in the mart, so this card is a plain GROUP BY. Adding a friendly
+  # label for a new field is a one-line change in the mart, not here.
   screener_sql_errors_detail = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      form_error_message AS `Validation`,
+      error_field_label AS `Field`,
+      error_problem AS `Problem`,
       SUM(total_errors) AS `Errors`
     FROM `${local.bq_dataset}.mart_screener_form_errors`
     WHERE __STATE_FILTER__
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Step`, `Validation`
+    GROUP BY `Step`, `Field`, `Problem`
     ORDER BY `Errors` DESC
-    LIMIT 25
   SQL
 
   # ── Tab 10 (Overview): language distribution ────────────────────────────────
