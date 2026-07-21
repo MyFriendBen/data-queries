@@ -14,9 +14,11 @@
 --                                 sent, it's PII)
 --   screener_nps_score_submitted / _reason_submitted / _reason_skipped — NPS
 --   screener_feedback_click     — feedback CTA (channel: survey | email)
---   screener_link_click         — a content/footer link (link_name, url, step)
+--   screener_link_click         — a content/footer link (link_name, step)
 --   screener_logo_click         — logo (location: header | footer)
---   screener_language_changed   — header language switch (language_name)
+--   screener_language_changed   — header language switch (as a boolean "a switch
+--                                 happened" signal; the by-language distribution is
+--                                 modeled separately from stg_ga_screener_step_interactions)
 --   screener_social_click       — footer social icon (social_network: linkedin |
 --                                 facebook | instagram)
 -- screener_state / screener_uid arrive as params.
@@ -47,12 +49,8 @@ select
     end) as nps_score,
     max(case when ep.key = 'channel' then ep.value.string_value end) as feedback_channel,
     max(case when ep.key = 'link_name' then ep.value.string_value end) as link_name,
-    max(case when ep.key = 'url' then ep.value.string_value end) as url,
     max(case when ep.key = 'location' then ep.value.string_value end) as location,
-    max(case when ep.key = 'language_name' then ep.value.string_value end) as language_name,
-    max(case when ep.key = 'network' then ep.value.string_value end) as social_network,
-
-    timestamp_micros(event_timestamp) as event_datetime
+    max(case when ep.key = 'network' then ep.value.string_value end) as social_network
 
 from {{ source('google_analytics', 'events_*') }}
 cross join unnest(event_params) as ep

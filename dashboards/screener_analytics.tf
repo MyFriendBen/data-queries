@@ -1022,7 +1022,7 @@ resource "metabase_card" "screener_public_charge_click_rate" {
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field"  = "% of Disclaimer Viewers"
+      "scalar.field"    = "% of Disclaimer Viewers"
       "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
