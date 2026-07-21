@@ -63,7 +63,9 @@ humanized as (
         case when form_error_message = '(unspecified)' then null
             else regexp_replace(split(form_error_message, ': ')[safe_offset(0)], r'\.[0-9]+', '')
         end as error_field_path,
-        -- reason after the first ': ', lowercased for matching
+        -- reason after the first ': ': a stable rule code post MFB-1348 (e.g.
+        -- 'select_one'), or a localized English phrase on older rows. Lowercased
+        -- (harmless for codes) so the fallback prose matching is case-insensitive.
         case when form_error_message = '(unspecified)' then null
             else lower(trim(substr(form_error_message, instr(form_error_message, ': ') + 2)))
         end as error_reason_raw
@@ -106,9 +108,30 @@ select
         else coalesce(error_field_path, '(unspecified)')
     end as error_field_label,
 
-    -- Normalized problem phrase; anything unrecognized -> 'Invalid'.
+    -- Normalized problem phrase. The FE (MFB-1348) emits a stable rule CODE after
+    -- the "field: " prefix (e.g. "healthInsurance: select_one"); map those to the
+    -- same labels the FE's RULE_LABELS uses so both sides read identically and it's
+    -- locale-safe. Rows from before that shipped carry a localized English phrase
+    -- instead — the trailing branches parse those as a transition fallback (drop
+    -- them once no pre-MFB-1348 rows remain in-window). Unknown -> 'Invalid'.
     case
         when form_error_message = '(unspecified)' then '(no detail captured)'
+        -- stable rule codes (post MFB-1348)
+        when error_reason_raw in ('required', 'too_small', 'invalid_type') then 'Required'
+        when error_reason_raw = 'too_big' then 'Too long'
+        when error_reason_raw in ('invalid_string', 'invalid_format') then 'Invalid format'
+        when error_reason_raw in ('invalid_enum_value', 'invalid_selection') then 'Invalid selection'
+        when error_reason_raw = 'select_one' then 'Must select an option'
+        when error_reason_raw = 'none_exclusive' then "Can't combine None with others"
+        when error_reason_raw = 'invalid_amount' then 'Invalid amount'
+        when error_reason_raw = 'hours_required' then 'Enter hours worked'
+        when error_reason_raw = 'future_date' then "Date can't be in the future"
+        when error_reason_raw = 'incomplete' then 'Answer all questions'
+        when error_reason_raw = 'consent_required' then 'Consent required'
+        when error_reason_raw = 'phone_format' then 'Must be 10 digits'
+        when error_reason_raw = 'out_of_area' then 'Not in service area'
+        when error_reason_raw = 'must_agree' then 'Must be checked to continue'
+        -- legacy English-message fallback (pre MFB-1348 rows only)
         when error_reason_raw like 'required%' then 'Required'
         when error_reason_raw like '%invalid format%' or error_reason_raw like '%invalid%' then 'Invalid format'
         when error_reason_raw like '%too long%' then 'Too long'

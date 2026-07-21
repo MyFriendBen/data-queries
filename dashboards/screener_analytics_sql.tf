@@ -81,32 +81,21 @@ locals {
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
   # "Furthest step reached" funnel: each bar counts sessions that got AT LEAST as
   # far as that step, so it's monotonic by construction. mart_screener_furthest_step
-  # is session-grain (one deepest rank per session) rather than pre-aggregated, so
-  # the dashboard date filter applies before the reached>=N expansion.
+  # is session-grain (one deepest rank per session), so the dashboard date filter
+  # applies before the reached>=N expansion.
   #
-  # Ladder ranks live in the step_ranks CTE (in sync with int_screener_furthest_step).
-  # "Reached Results" is the terminal rank. Referral Source and Select State are
-  # absent from the ladder — both are conditionally shown / pre-white-label, so a
-  # skip would masquerade as drop-off.
+  # The ranked ladder comes from mart_screener_step_ladder (funnel_rank not null) —
+  # the single source of truth (screener_step_ladder macro), so this card, the
+  # int model, and every label stay in sync. Off-ladder steps (referral, select-
+  # state, member-basics, cesn-*) have null funnel_rank and are excluded here.
   #
-  # The plotted metric is "% of Started" (bar N ÷ the first, largest bar); the raw
-  # session count rides along as `Screenings` for the tooltip.
+  # Plotted metric is "% of Started" (bar N ÷ first/largest bar); raw session count
+  # rides along as `Screenings`.
   screener_sql_step_funnel = <<-SQL
     WITH step_ranks AS (
-      SELECT  1 AS step_rank, 'Language'             AS screener_step_label UNION ALL
-      SELECT  2, 'Disclaimer'            UNION ALL
-      SELECT  3, 'Zip Code'              UNION ALL
-      SELECT  4, 'Household Size'        UNION ALL
-      SELECT  5, 'Household Basics'      UNION ALL
-      SELECT  6, 'Household Members'     UNION ALL
-      SELECT  7, 'Member Details'        UNION ALL
-      SELECT  8, 'Expenses'              UNION ALL
-      SELECT  9, 'Assets'                UNION ALL
-      SELECT 10, 'Current Benefits'      UNION ALL
-      SELECT 11, 'Additional Resources'  UNION ALL
-      SELECT 12, 'Sign Up'               UNION ALL
-      SELECT 13, 'Confirm Information'   UNION ALL
-      SELECT 14, 'Reached Results'
+      SELECT funnel_rank AS step_rank, screener_step_label
+      FROM `${local.bq_dataset}.mart_screener_step_ladder`
+      WHERE funnel_rank IS NOT NULL
     ),
     sessions AS (
       SELECT session_key, furthest_step_rank
@@ -648,10 +637,10 @@ locals {
   SQL
 
   # ── Form Journey: help-tooltip clicks by TOPIC (which tooltips drive confusion) ──
-  # The screener_help_click event carries only help_topic — the topic string is
-  # itself step-identifying (e.g. "income", "household size"), and the leaf tooltip
-  # component can't cheaply resolve its owning form step — so there is no step
-  # dimension to slice by. Grouping by topic alone is the honest cut.
+  # Sliced by help_topic (itself step-identifying, e.g. "income", "household
+  # assets"). MFB-1348 adds screener_step_name to screener_help_click, which will
+  # enable a per-step help RATE (clicks ÷ step viewers) in a follow-up; until that
+  # data is flowing, grouping by topic is the available cut.
   screener_sql_help_by_topic = <<-SQL
     SELECT
       -- Humanize the kebab-case help_topic slug generically (dash -> space,
