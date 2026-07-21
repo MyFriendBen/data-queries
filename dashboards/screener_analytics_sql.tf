@@ -914,32 +914,6 @@ locals {
       COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
   SQL
 
-  # Other State Options link, shown on the Zip Code step.
-  screener_sql_other_state_click_rate = <<-SQL
-    WITH viewers AS (
-      SELECT COUNT(DISTINCT session_key) AS n
-      FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE __STATE_FILTER__
-        AND screener_step_name = 'zip-code'
-        AND viewed
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    clicks AS (
-      SELECT SUM(total_clicks) AS c
-      FROM `${local.bq_dataset}.mart_screener_link_clicks`
-      WHERE __STATE_FILTER__
-        AND link_label = 'Other State Options'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    )
-    SELECT
-      ROUND(COALESCE((SELECT c FROM clicks), 0) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Zip Code Viewers`,
-      COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
-  SQL
-
   # ── Results: "edit Additional Resources" from the results Needs section ───────
   # Clicks on the "edit your selections" link in the results Needs section, which
   # sends people back to the Additional Resources step to change what they picked.
@@ -991,13 +965,15 @@ locals {
   # language selector. This is header-selector engagement, NOT "language the
   # household speaks" (that intake answer lives on the Households tab). Deduped
   # per session.
+  # GLOBAL-only + no state filter: language-switch events fire without screener_state
+  # (stateless chrome, often pre-white-label), so a state IN(...) filter drops 100% of
+  # rows. Per-tenant version is blocked on the FE attaching state (FE gaps ticket).
   screener_sql_language_distribution = <<-SQL
     SELECT
       language_name AS `Switched To`,
       SUM(distinct_screenings) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_language`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name

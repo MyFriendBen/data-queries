@@ -865,37 +865,9 @@ resource "metabase_card" "screener_errors_detail" {
   })
 }
 
-# Language distribution — bar. Language changes by language from
-# mart_screener_language.
-resource "metabase_card" "screener_language_distribution" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "Header Language Switches"
-    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement — NOT the language the household speaks, which is on the Households tab). Deduped per session."
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "bar"
-    visualization_settings = {
-      "graph.dimensions"      = ["Switched To"]
-      "graph.metrics"         = ["Sessions"]
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Sessions" = { color = "#edc948" } }
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
+# NOTE: "Header Language Switches" is GLOBAL-only — language-change events fire
+# without screener_state, so it can't be attributed per tenant (see the FE gaps
+# ticket). The card lives in screener_analytics_global.tf.
 
 # ── Previously-untracked screener_* events ──────────────────────────────────────
 
@@ -1058,35 +1030,6 @@ resource "metabase_card" "screener_public_charge_click_rate" {
   })
 }
 
-# Other State Options link click rate — scalar. % of Zip Code-step viewers who
-# clicked the Other State Options link.
-resource "metabase_card" "screener_other_state_click_rate" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "Other State Options Link — Click Rate"
-    description         = "Of the sessions that viewed the Zip Code step, the % that clicked the Other State Options link."
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_other_state_click_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "scalar"
-    visualization_settings = {
-      "scalar.field"  = "% of Zip Code Viewers"
-      "column_settings" = { "[\"name\",\"% of Zip Code Viewers\"]" = { suffix = "%" } }
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
 
 # Additional Resources edits — scalar. Clicks on the results-page "edit your
 # selections" link that sends people back to the Additional Resources step.
@@ -1153,28 +1096,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_macro_funnel[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
-          dashboard_tab_id = 10
-          row              = 8
-          col              = 0
-          size_x           = 24
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1407,28 +1328,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_other_state_click_rate[key].id)
-          dashboard_tab_id = 7
-          row              = 58
-          col              = 6
-          size_x           = 6
-          size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_other_state_click_rate[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_other_state_click_rate[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

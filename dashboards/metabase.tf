@@ -1201,17 +1201,6 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      {
-        card_id                = tonumber(metabase_card.global_screener_other_state_click_rate[0].id)
-        dashboard_tab_id       = 5
-        row                    = 60
-        col                    = 6
-        size_x                 = 6
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
     ] : [],
     # -------------------------------------------------------------------------
     # Tab 6: Results Page Activity (all-states screener)

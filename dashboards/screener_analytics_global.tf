@@ -60,7 +60,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = local.screener_sql_language_distribution
         template-tags = local.ga_date_tags
       }
     }
@@ -1061,33 +1061,6 @@ resource "metabase_card" "global_screener_public_charge_click_rate" {
   })
 }
 
-resource "metabase_card" "global_screener_other_state_click_rate" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Other State Options Link — Click Rate"
-    description         = "Of the sessions that viewed the Zip Code step, the % that clicked the Other State Options link."
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_other_state_click_rate, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "scalar"
-    visualization_settings = {
-      "scalar.field"    = "% of Zip Code Viewers"
-      "column_settings" = { "[\"name\",\"% of Zip Code Viewers\"]" = { suffix = "%" } }
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
 
 resource "metabase_card" "global_screener_additional_resources_edits" {
   count = var.bigquery_enabled ? 1 : 0
