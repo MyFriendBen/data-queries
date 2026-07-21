@@ -767,9 +767,9 @@ resource "metabase_card" "screener_household_member_engagement" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions"  = ["Action"]
-      "graph.metrics"     = ["% of Member-Step Viewers"]
+      "graph.metrics"     = ["% of Household-Step Viewers"]
       "graph.show_values" = true
-      "series_settings"   = { "% of Member-Step Viewers" = { color = "#499894" } }
+      "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -782,7 +782,7 @@ resource "metabase_card" "screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Source Actions"
-    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each. (A per-member-page rate needs a FE page index — tracked separately.)"
+    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -899,14 +899,14 @@ resource "metabase_card" "screener_language_distribution" {
 
 # ── MFB-1349: previously-untracked screener_* events ────────────────────────────
 
-# Confirmation-page edits by section — bar. Which review-page sections people jump
-# back to before submitting.
+# Confirmation-page edits by section — horizontal (row) bar. Row layout keeps
+# section labels readable as more sections accumulate over time.
 resource "metabase_card" "screener_confirmation_edits" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Confirmation Edits by Section"
-    description         = "On the review/confirmation page, which sections screenings go back to edit before submitting. Distinct screenings per section."
+    description         = "Of the screenings that reached the confirmation page, the % that went back to edit each section before submitting. Hover for the raw screening count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -919,12 +919,11 @@ resource "metabase_card" "screener_confirmation_edits" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "row"
     visualization_settings = {
-      "graph.dimensions"      = ["Section"]
-      "graph.metrics"         = ["Screenings"]
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#4e79a7" } }
+      "graph.dimensions" = ["Section"]
+      "graph.metrics"    = ["% of Confirmation Viewers"]
+      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
     }
     parameter_mappings = []
     parameters         = []

@@ -661,7 +661,7 @@ locals {
   # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
   # screening-grain, deduped across days, so this is correct over any window). Total
   # events (additive) on hover. sort_key orders add->edit->delete.
-  # The PLOTTED bar is "% of Member-Step Viewers" — of the screenings that viewed
+  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that viewed
   # the roster page (member-basics, where members are added/edited/deleted), the
   # share that took each action. Denominator = distinct screenings that viewed
   # member-basics (session-grain step-facts, deduped across days). Raw count + total
@@ -677,11 +677,11 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT `Action`, `% of Member-Step Viewers`, `Screenings`, `Total Actions` FROM (
+    SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
       SELECT
         CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
         INITCAP(action) AS `Action`,
-        ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Member-Step Viewers`,
+        ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Household-Step Viewers`,
         COUNT(DISTINCT screener_uid) AS `Screenings`,
         SUM(total_actions) AS `Total Actions`
       FROM `${local.bq_dataset}.mart_screener_section_engagement`
@@ -719,17 +719,32 @@ locals {
   SQL
 
   # ── Form Journey: confirmation-page edits by section (MFB-1349) ─────────────────
-  # Which review-page sections people go back to change before submitting.
+  # Which review-page sections people go back to change before submitting, as a % of
+  # the screenings that reached the confirmation page (confirm-information step —
+  # session-grain step-facts, deduped across days). Raw screening count on hover.
   screener_sql_confirmation_edits = <<-SQL
-    SELECT
-      section_label AS `Section`,
-      SUM(screenings) AS `Screenings`
-    FROM `${local.bq_dataset}.mart_screener_confirmation_edits`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY section_label
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'confirm-information'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT `Section`, `% of Confirmation Viewers`, `Screenings` FROM (
+      SELECT
+        section_label AS `Section`,
+        ROUND(SUM(screenings) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Confirmation Viewers`,
+        SUM(screenings) AS `Screenings`
+      FROM `${local.bq_dataset}.mart_screener_confirmation_edits`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY section_label
+    )
     ORDER BY `Screenings` DESC
   SQL
 
