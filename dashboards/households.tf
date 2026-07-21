@@ -99,7 +99,7 @@ resource "metabase_card" "tenant_median_monthly_expenses" {
   }))
 }
 
-# --- Demographic percentage scorecards (MFB-1202) ---
+# --- Demographic percentage scorecards ---
 # Shown only on tenants with has_demographics_card = true. Denominator is
 # individual household members matching the active filters (partner = unique
 # link, county, date, UTM), joined to the filtered screener set.
@@ -886,7 +886,7 @@ locals {
           visualization_settings = {}
         },
       ] : [],
-      # Row 36: Demographic percentage scorecards (MFB-1202) — tenants with the flag only
+      # Row 36: Demographic percentage scorecards — tenants with the flag only
       local.tenant_features[k].has_demographics_card ? [
         {
           card_id          = tonumber(metabase_card.tenant_pct_young_adults[k].id)

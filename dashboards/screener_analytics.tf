@@ -541,7 +541,7 @@ resource "metabase_card" "screener_top_resources" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Analytics v2 cards (MFB-1306) — new event families
+# Analytics v2 cards — new event families
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Per-program conversion — table. Two conversion rates (more-info / shown and
@@ -751,7 +751,7 @@ resource "metabase_card" "screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people build their household on the member step: distinct screenings that added, edited, or deleted a member. Hover for total action counts."
+    description         = "Of the screenings that reached the member step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -766,11 +766,10 @@ resource "metabase_card" "screener_household_member_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#499894" } }
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["% of Household-Step Viewers"]
+      "graph.show_values" = true
+      "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -783,7 +782,7 @@ resource "metabase_card" "screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Source Actions"
-    description         = "How people report income on the member step: distinct screenings that added or deleted an income source. Hover for total action counts."
+    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -798,11 +797,10 @@ resource "metabase_card" "screener_income_source_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#d37295" } }
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["Total Actions"]
+      "graph.show_values" = true
+      "series_settings"   = { "Total Actions" = { color = "#d37295" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -867,14 +865,20 @@ resource "metabase_card" "screener_errors_detail" {
   })
 }
 
-# Language distribution — bar. Language changes by language from
-# mart_screener_language.
-resource "metabase_card" "screener_language_distribution" {
+# NOTE: "Header Language Switches" is GLOBAL-only — language-change events fire
+# without screener_state, so it can't be attributed per tenant (see the FE gaps
+# ticket). The card lives in screener_analytics_global.tf.
+
+# ── Previously-untracked screener_* events ──────────────────────────────────────
+
+# Confirmation-page edits by section — horizontal (row) bar. Row layout keeps
+# section labels readable as more sections accumulate over time.
+resource "metabase_card" "screener_confirmation_edits" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Header Language Switches"
-    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement — NOT the language the household speaks, which is on the Households tab). Deduped per session."
+    name                = "Confirmation Edits by Section"
+    description         = "Of the screenings that reached the confirmation page, the % that went back to edit each section before submitting. Hover for the raw screening count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -883,16 +887,173 @@ resource "metabase_card" "screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions" = ["Section"]
+      "graph.metrics"    = ["% of Confirmation Viewers"]
+      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Sign-up consent opt-in rates — bar. Of completed sign-ups, the % opting into SMS
+# vs email contact.
+resource "metabase_card" "screener_signup_consent" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Sign-up Consent Rates"
+    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact. Hover for the opt-in count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_signup_consent, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Switched To"]
-      "graph.metrics"         = ["Sessions"]
+      "graph.dimensions"  = ["Channel"]
+      "graph.metrics"     = ["% Opted In"]
+      "graph.show_values" = true
+      "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Citizenship filter usage — scalar. Distinct screenings that engaged the results
+# citizenship filter (chosen option not captured — PII).
+resource "metabase_card" "screener_filter_usage" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Citizenship Filter Usage"
+    description         = "Distinct screenings that used the results citizenship filter. The chosen option isn't captured, so this is a yes/no engagement count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Filtered Screenings"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# NPS distribution — bar. Submitted NPS scores bucketed Detractor / Passive /
+# Promoter.
+resource "metabase_card" "screener_nps_distribution" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "NPS Score Distribution"
+    description         = "Submitted results-page NPS scores, bucketed Detractor (0-6), Passive (7-8), Promoter (9-10)."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_nps_distribution, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Category"]
+      "graph.metrics"         = ["Responses"]
       "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Sessions" = { color = "#edc948" } }
+      "series_settings"       = { "Responses" = { color = "#af7aa1" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# NOTE: the footer / site-chrome cards (chrome nav, social, feedback & share) are
+# GLOBAL-only — site chrome fires without screener_state, so it can't be attributed
+# per tenant. They live in screener_analytics_global.tf. Per-tenant versions are
+# blocked on the FE attaching state (see the FE gaps ticket).
+
+# Public Charge link click rate — scalar. % of Disclaimer-step viewers who clicked
+# the Public Charge link. Raw click count as the scalar's secondary value.
+resource "metabase_card" "screener_public_charge_click_rate" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Public Charge Link — Click Rate"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_public_charge_click_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Disclaimer Viewers"
+      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+
+# Additional Resources edits — scalar. Clicks on the results-page "edit your
+# selections" link that sends people back to the Additional Resources step.
+resource "metabase_card" "screener_additional_resources_edits" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources Edits (from Results)"
+    description         = "Clicks on the results-page link that sends people back to the Additional Resources step to change their selections. Distinct from confirmation-page edits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Additional Resource Edits"
     }
     parameter_mappings = []
     parameters         = []
@@ -935,28 +1096,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_macro_funnel[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
-          dashboard_tab_id = 10
-          row              = 8
-          col              = 0
-          size_x           = 24
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1120,6 +1259,75 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_income_source_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # confirmation-page edits by section
+          card_id          = tonumber(metabase_card.screener_confirmation_edits[key].id)
+          dashboard_tab_id = 7
+          row              = 50
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # sign-up consent opt-in rates
+          card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
+          dashboard_tab_id = 7
+          row              = 50
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # in-step content-link click rates — per-step engagement, so on this tab
+          card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+          dashboard_tab_id = 7
+          row              = 58
+          col              = 0
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1394,6 +1602,75 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_scroll_depth[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # citizenship filter usage (scalar)
+          card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
+          dashboard_tab_id = 8
+          row              = 56
+          col              = 0
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # NPS score distribution
+          card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
+          dashboard_tab_id = 8
+          row              = 56
+          col              = 8
+          size_x           = 16
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_nps_distribution[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_nps_distribution[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # edit-nav from the results Needs section back to Additional Resources
+          card_id          = tonumber(metabase_card.screener_additional_resources_edits[key].id)
+          dashboard_tab_id = 8
+          row              = 64
+          col              = 0
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

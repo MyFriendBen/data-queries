@@ -51,7 +51,7 @@ resource "metabase_card" "global_screener_language_distribution" {
 
   json = jsonencode({
     name                = "Header Language Switches"
-    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Deduped per session."
+    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Counted per session per language — a session that switches to more than one language is counted under each, so these won't sum to the 'Changed Language' total on the Header & Footer Links card."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -60,7 +60,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = local.screener_sql_language_distribution
         template-tags = local.ga_date_tags
       }
     }
@@ -365,7 +365,7 @@ resource "metabase_card" "global_screener_top_resources" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Analytics v2 cards (MFB-1306) — new event families
+# Analytics v2 cards — new event families
 # ══════════════════════════════════════════════════════════════════════════════
 
 resource "metabase_card" "global_screener_program_conversion" {
@@ -563,7 +563,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people build their household on the member step: distinct screenings that added, edited, or deleted a member. Hover for total action counts."
+    description         = "How people build their household: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -578,11 +578,10 @@ resource "metabase_card" "global_screener_household_member_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#499894" } }
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["% of Household-Step Viewers"]
+      "graph.show_values" = true
+      "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -594,7 +593,7 @@ resource "metabase_card" "global_screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Source Actions"
-    description         = "How people report income on the member step: distinct screenings that added or deleted an income source. Hover for total action counts."
+    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -610,10 +609,10 @@ resource "metabase_card" "global_screener_income_source_engagement" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
+      "graph.metrics"         = ["Total Actions"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#d37295" } }
+      "series_settings"       = { "Total Actions" = { color = "#d37295" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -817,6 +816,273 @@ resource "metabase_card" "global_screener_saves_by_channel" {
       "graph.metrics"         = ["Total Saves"]
       "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
       "graph.y_axis.decimals" = 0
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# ── Previously-untracked screener_* events (global) ─────────────────────────────
+
+resource "metabase_card" "global_screener_confirmation_edits" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Confirmation Edits by Section"
+    description         = "Of the screenings that reached the confirmation page, the % that went back to edit each section before submitting. Hover for the raw screening count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions" = ["Section"]
+      "graph.metrics"    = ["% of Confirmation Viewers"]
+      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_signup_consent" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Sign-up Consent Rates"
+    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact. Hover for the opt-in count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_signup_consent, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Channel"]
+      "graph.metrics"         = ["% Opted In"]
+      "graph.show_values"     = true
+      "graph.tooltip_columns" = ["Opt-Ins"]
+      "series_settings"       = { "% Opted In" = { color = "#59a14f" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_filter_usage" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Citizenship Filter Usage"
+    description         = "Distinct screenings that used the results citizenship filter. The chosen option isn't captured, so this is a yes/no engagement count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Filtered Screenings"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_nps_distribution" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "NPS Score Distribution"
+    description         = "Submitted results-page NPS scores, bucketed Detractor (0-6), Passive (7-8), Promoter (9-10)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_nps_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Category"]
+      "graph.metrics"         = ["Responses"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Responses" = { color = "#af7aa1" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Footer / site-chrome cards (GLOBAL-only — chrome fires without state). Each reads
+# the session-grain mart_screener_footer_engagement and plots "% of sessions".
+resource "metabase_card" "global_screener_chrome_nav" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Header & Footer Links"
+    description         = "Of all sessions, the % that used each persistent header/footer element: the logo, the footer About/Privacy/Terms links, and the language switcher. Hover for the session count. (All states — these aren't attributed to a single state.)"
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.screener_sql_chrome_nav
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Element"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#76b7b2" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_social_clicks" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Social Link Clicks"
+    description         = "Of all sessions, the % that clicked a footer social icon, by network. Hover for the session count. (All states — chrome isn't attributed to a single state.)"
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.screener_sql_social_clicks
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Network"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#b07aa1" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_footer_feedback_share" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Footer Feedback & Share"
+    description         = "Of all sessions, the % that clicked a footer support/share action: Report a Bug, Contact Us, or Share. Share is explored in depth on the Sharing & Saving tab. Hover for the session count. (All states — chrome isn't attributed to a single state.)"
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.screener_sql_footer_feedback_share
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Action"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#f28e2b" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_public_charge_click_rate" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Public Charge Link — Click Rate"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_public_charge_click_rate, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Disclaimer Viewers"
+      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+
+resource "metabase_card" "global_screener_additional_resources_edits" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Additional Resources Edits (from Results)"
+    description         = "Clicks on the results-page link that sends people back to the Additional Resources step to change their selections. Distinct from confirmation-page edits."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Additional Resource Edits"
     }
     parameter_mappings = []
     parameters         = []

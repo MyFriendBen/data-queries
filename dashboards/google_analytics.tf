@@ -76,17 +76,17 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 18, 2026** forward, the first full day the current event set was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 22, 2026** forward, the first full day the current analytics event tracking was live in production."
 
-  # Analytics epoch: the first FULL day the complete app-emitted screener_* event
-  # set was live in production. Every screener card floors on this so metrics only
-  # reflect the current pipeline. Moved 07-14 → 07-18: the analytics-v2 events
-  # (program_shown, navigator, scroll, help, resource contact_method, populated
-  # form_error_message, etc.) merged 2026-07-16 and finished propagating to prod
-  # partway through 07-17, so 07-17 is a mixed partial day. Verified in BigQuery:
-  # form_error_message is ~40% (unspecified) on 07-17 but <5% from 07-18 on — 07-18
-  # is the first clean day. A fixed historical fact, not a moving window.
-  screener_analytics_epoch = "2026-07-18"
+  # Analytics epoch: the first FULL day the current app-emitted screener_* event
+  # CONTRACT was live in production. Every screener card floors on this so metrics
+  # reflect one contract. The contract (stable per-rule error codes, member-basics/
+  # member-details sub-step slugs, results-as-step, help step context) shipped to prod
+  # on 2026-07-21, a partial/mixed day; 07-22 is the first full day with no pre-cutover
+  # rows. Flooring at 07-22 means the cards use the new contract only — no legacy
+  # English error messages or parent household-members slug — which is why the error
+  # mart safely drops its legacy English-message fallback. A fixed historical fact.
+  screener_analytics_epoch = "2026-07-22"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`

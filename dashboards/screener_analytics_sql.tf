@@ -469,7 +469,7 @@ locals {
   SQL
 
   # ══════════════════════════════════════════════════════════════════════════════
-  # Analytics v2 cards (MFB-1306) — new event families
+  # Analytics v2 cards — new event families
   # ══════════════════════════════════════════════════════════════════════════════
 
   # ── Results: per-program conversion (more-info ÷ shown, apply ÷ more-info) ──────
@@ -634,9 +634,10 @@ locals {
 
   # ── Form Journey: help-tooltip clicks by TOPIC (which tooltips drive confusion) ──
   # Sliced by help_topic (itself step-identifying, e.g. "income", "household
-  # assets"). MFB-1348 adds screener_step_name to screener_help_click, which will
-  # enable a per-step help RATE (clicks ÷ step viewers) in a follow-up; until that
-  # data is flowing, grouping by topic is the available cut.
+  # assets"). The current event contract adds screener_step_name to
+  # screener_help_click, which will enable a per-step help RATE (clicks ÷ step
+  # viewers) in a follow-up; until that data is flowing, grouping by topic is the
+  # available cut.
   screener_sql_help_by_topic = <<-SQL
     SELECT
       -- Humanize the kebab-case help_topic slug generically (dash -> space,
@@ -661,11 +662,27 @@ locals {
   # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
   # screening-grain, deduped across days, so this is correct over any window). Total
   # events (additive) on hover. sort_key orders add->edit->delete.
+  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that viewed
+  # the roster page (member-basics, where members are added/edited/deleted), the
+  # share that took each action. Denominator = distinct screenings that viewed
+  # member-basics (session-grain step-facts, deduped across days). Raw count + total
+  # events on hover. sort_key orders add->edit->delete.
   screener_sql_household_member_engagement = <<-SQL
-    SELECT `Action`, `Screenings`, `Total Actions` FROM (
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'member-basics'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
       SELECT
         CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
         INITCAP(action) AS `Action`,
+        ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Household-Step Viewers`,
         COUNT(DISTINCT screener_uid) AS `Screenings`,
         SUM(total_actions) AS `Total Actions`
       FROM `${local.bq_dataset}.mart_screener_section_engagement`
@@ -680,6 +697,10 @@ locals {
   SQL
 
   # ── Form Journey: income-source add/delete actions ──────────────────────────────
+  # Raw screening + action counts (no % denominator). A per-page rate ("% of member
+  # detail pages that added income") is the meaningful metric here but needs a FE
+  # member/page index the income event doesn't yet carry — tracked on the standing
+  # FE analytics-gaps ticket. Until then, counts answer "does income entry happen".
   screener_sql_income_source_engagement = <<-SQL
     SELECT `Action`, `Screenings`, `Total Actions` FROM (
       SELECT
@@ -696,6 +717,216 @@ locals {
       GROUP BY action, sort_key
     )
     ORDER BY sort_key
+  SQL
+
+  # ── Form Journey: confirmation-page edits by section ─────────────────
+  # Which review-page sections people go back to change before submitting, as a % of
+  # the screenings that reached the confirmation page (confirm-information step —
+  # session-grain step-facts, deduped across days). Raw screening count on hover.
+  screener_sql_confirmation_edits = <<-SQL
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'confirm-information'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT `Section`, `% of Confirmation Viewers`, `Screenings` FROM (
+      SELECT
+        section_label AS `Section`,
+        ROUND(SUM(screenings) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Confirmation Viewers`,
+        SUM(screenings) AS `Screenings`
+      FROM `${local.bq_dataset}.mart_screener_confirmation_edits`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY section_label
+    )
+    ORDER BY `Screenings` DESC
+  SQL
+
+  # ── Form Journey: sign-up consent opt-in rates ───────────────────────
+  # Of screenings that completed sign-up, the % opting into SMS vs email contact.
+  screener_sql_signup_consent = <<-SQL
+    WITH agg AS (
+      SELECT
+        SUM(signups) AS signups,
+        SUM(sms_opt_ins) AS sms,
+        SUM(email_opt_ins) AS email
+      FROM `${local.bq_dataset}.mart_screener_signup_consent`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT `Channel`, `% Opted In`, `Opt-Ins` FROM (
+      SELECT 1 AS sort_key, 'SMS' AS `Channel`,
+        ROUND(sms * 100.0 / NULLIF(signups, 0), 1) AS `% Opted In`, sms AS `Opt-Ins` FROM agg
+      UNION ALL
+      SELECT 2, 'Email',
+        ROUND(email * 100.0 / NULLIF(signups, 0), 1), email FROM agg
+    )
+    ORDER BY sort_key
+  SQL
+
+  # ── Results: citizenship filter usage ────────────────────────────────
+  # Distinct screenings that engaged the results filter. Only the citizenship
+  # filter exists, and the chosen option is never captured (PII) — this is a
+  # yes/no engagement count, not a breakdown.
+  screener_sql_filter_usage = <<-SQL
+    SELECT SUM(screenings_engaged) AS `Filtered Screenings`
+    FROM `${local.bq_dataset}.mart_screener_filter_usage`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
+  # ── Results: NPS score distribution ──────────────────────────────────
+  # Count of submitted NPS scores by category (Detractor 0-6 / Passive 7-8 /
+  # Promoter 9-10). Response follow-through (reasons, feedback clicks) is on the
+  # detail mart if needed later.
+  screener_sql_nps_distribution = <<-SQL
+    SELECT
+      `Category`, `Responses` FROM (
+        SELECT
+          CASE nps_category WHEN 'Detractor' THEN 1 WHEN 'Passive' THEN 2 WHEN 'Promoter' THEN 3 ELSE 4 END AS sort_key,
+          nps_category AS `Category`,
+          SUM(scores_submitted) AS `Responses`
+        FROM `${local.bq_dataset}.mart_screener_nps`
+        WHERE __STATE_FILTER__
+          AND nps_category IS NOT NULL
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        GROUP BY nps_category, sort_key
+      )
+    WHERE `Responses` > 0
+    ORDER BY sort_key
+  SQL
+
+  # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────
+  # Site chrome fires largely without screener_state, so these three cards live only
+  # on the global dashboard and do NOT use the __STATE_FILTER__ sentinel. Each reads
+  # the session-grain mart_screener_footer_engagement and reports "% of sessions that
+  # clicked X" — denominator = distinct sessions in the window (from the session-grain
+  # step-facts), so the rate is exact (no multi-day double-count). Raw session count
+  # on hover. element_group selects which card. Attaching state on the FE (tracked on
+  # the FE gaps ticket) will later enable per-tenant versions.
+  #
+  # A shared session denominator CTE is spliced into each card via __SESSIONS_CTE__.
+  _footer_sessions_cte = <<-SQL
+    sessions AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+  SQL
+
+  # Card 1 — Site Chrome Navigation: logo, About/Privacy/Terms, "Changed Language".
+  screener_sql_chrome_nav = <<-SQL
+    WITH ${local._footer_sessions_cte}
+    SELECT
+      element AS `Element`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'nav'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # Card 2 — Social Link Clicks: LinkedIn / Facebook / Instagram.
+  screener_sql_social_clicks = <<-SQL
+    WITH ${local._footer_sessions_cte}
+    SELECT
+      element AS `Network`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'social'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # Card 3 — Footer Feedback & Share: Report a Bug, Contact Us, Share.
+  screener_sql_footer_feedback_share = <<-SQL
+    WITH ${local._footer_sessions_cte}
+    SELECT
+      element AS `Action`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'feedback_share'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # ── In-step content-link click rates ─────────────────────────────────────────
+  # Each in-step content link fires from exactly one step, so it reads best as a
+  # standalone rate: of the sessions that viewed that step, the % that clicked the
+  # link (raw click count on hover). Denominator = distinct sessions that viewed the
+  # step (session-grain step-facts, deduped across days). One local per link/step.
+  #
+  # FUTURE (blocked on FE link_location param — FE gaps ticket #3): the Disclaimer
+  # step actually has THREE links (Public Charge + Privacy + Terms). Once the FE
+  # tags link source, replace the single Public Charge scalar with one Disclaimer
+  # bar chart showing all three by-link click rates.
+  #
+  # Public Charge link, shown on the Disclaimer step.
+  screener_sql_public_charge_click_rate = <<-SQL
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'disclaimer'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    clicks AS (
+      SELECT SUM(total_clicks) AS c
+      FROM `${local.bq_dataset}.mart_screener_link_clicks`
+      WHERE __STATE_FILTER__
+        AND link_label = 'Public Charge'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT c FROM clicks), 0) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Disclaimer Viewers`,
+      COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
+  SQL
+
+  # ── Results: "edit Additional Resources" from the results Needs section ───────
+  # Clicks on the "edit your selections" link in the results Needs section, which
+  # sends people back to the Additional Resources step to change what they picked.
+  # Distinct from Confirmation Edits (that's the review-page edit path); this is the
+  # results-page nudge. Uses the 'edit_nav' link group.
+  screener_sql_additional_resources_edits = <<-SQL
+    SELECT SUM(total_clicks) AS `Additional Resource Edits`
+    FROM `${local.bq_dataset}.mart_screener_link_clicks`
+    WHERE __STATE_FILTER__
+      AND link_group = 'edit_nav'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
   SQL
 
   # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────
@@ -734,13 +965,15 @@ locals {
   # language selector. This is header-selector engagement, NOT "language the
   # household speaks" (that intake answer lives on the Households tab). Deduped
   # per session.
+  # GLOBAL-only + no state filter: language-switch events fire without screener_state
+  # (stateless chrome, often pre-white-label), so a state IN(...) filter drops 100% of
+  # rows. Per-tenant version is blocked on the FE attaching state (FE gaps ticket).
   screener_sql_language_distribution = <<-SQL
     SELECT
       language_name AS `Switched To`,
       SUM(distinct_screenings) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_language`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name

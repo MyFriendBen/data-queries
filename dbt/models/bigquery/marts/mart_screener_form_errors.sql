@@ -128,16 +128,11 @@ select
     -- Normalized problem phrase. The FE (MFB-1348) emits a stable rule CODE after
     -- the "field: " prefix (e.g. "healthInsurance: select_one"); map those to the
     -- same labels the FE's RULE_LABELS uses so both sides read identically and it's
-    -- locale-safe. Rows from before MFB-1348 shipped carry a localized English
-    -- phrase instead — the trailing branches label those.
-    -- KEEP the fallback as long as the epoch (2026-07-18) predates MFB-1348: a
-    -- dashboard date filter can select those pre-MFB-1348 days at any time, so
-    -- removing it would relabel every old error row as 'Invalid'. It only becomes
-    -- removable if the epoch is moved past the MFB-1348 cutover.
-    -- Unknown -> 'Invalid'.
+    -- locale-safe. The analytics epoch (2026-07-22) is the first full day after the
+    -- MFB-1348 cutover, so every row here carries a stable code — no legacy
+    -- English-message fallback is needed. Unknown code -> 'Invalid'.
     case
         when form_error_message = '(unspecified)' then '(no detail captured)'
-        -- stable rule codes (post MFB-1348)
         when error_reason_raw in ('required', 'too_small', 'invalid_type') then 'Required'
         when error_reason_raw = 'too_big' then 'Too long'
         when error_reason_raw in ('invalid_string', 'invalid_format') then 'Invalid format'
@@ -152,11 +147,6 @@ select
         when error_reason_raw = 'phone_format' then 'Must be 10 digits'
         when error_reason_raw = 'out_of_area' then 'Not in service area'
         when error_reason_raw = 'must_agree' then 'Must be checked to continue'
-        -- legacy English-message fallback (pre MFB-1348 rows only)
-        when error_reason_raw like 'required%' then 'Required'
-        when error_reason_raw like '%invalid format%' or error_reason_raw like '%invalid%' then 'Invalid format'
-        when error_reason_raw like '%too long%' then 'Too long'
-        when error_reason_raw like '%too short%' then 'Too short'
         else 'Invalid'
     end as error_problem,
 
