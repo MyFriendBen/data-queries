@@ -150,52 +150,47 @@ locals {
   # cohort join (the per-step mart grain does not expose session keys downstream).
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
   # The PLOTTED bar is "% of Viewers with 1+ Errors" — of the DISTINCT sessions
-  # that viewed the step, the share that hit at least one error on it
-  # (screenings_with_error ÷ screenings_viewed_step, both distinct-session, same
-  # grain, bounded 0-100). This normalizes for traffic so steps are comparable by
-  # how error-prone they are, not just by volume. The raw distinct-session count
-  # (Screenings with an Error) and the total error EVENTS (raw attempts, inflated
-  # by retries) ride along for the hover. Every step emits a clean view so the
-  # denominator is populated for all bars, incl. the consolidated
-  # "Household & Member Details" view. NULLIF guards a step with errors but no view.
+  # that viewed the step, the share that hit at least one error on it. Reads the
+  # session-grain mart_screener_step_facts (one row per session x step, deduped
+  # across days), so both numerator and denominator are exact distinct-session
+  # counts over the window — no multi-day double-count. Normalizes for traffic so
+  # steps are comparable by error-proneness, not volume. Total error EVENTS (raw
+  # attempts, inflated by retries) ride along for the hover. NULLIF guards a step
+  # with errors but no captured view.
   screener_sql_errors_by_step = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      ROUND(SUM(screenings_with_error) * 100.0 / NULLIF(SUM(screenings_viewed_step), 0), 1) AS `% of Viewers with 1+ Errors`,
-      SUM(screenings_with_error) AS `Screenings with an Error`,
-      SUM(total_error_count) AS `Total Errors`
-    FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      ROUND(COUNTIF(errored) * 100.0 / NULLIF(COUNTIF(viewed), 0), 1) AS `% of Viewers with 1+ Errors`,
+      COUNTIF(errored) AS `Screenings with an Error`,
+      SUM(error_events) AS `Total Errors`
+    FROM `${local.bq_dataset}.mart_screener_step_facts`
     WHERE __STATE_FILTER__
-      AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    HAVING SUM(screenings_with_error) > 0
+    HAVING COUNTIF(errored) > 0
     ORDER BY `% of Viewers with 1+ Errors` DESC
   SQL
 
   # ── Tab 7 (Form Journey): back navigation by step ───────────────────────────
   # The PLOTTED bar is "% of Viewers who Went Back" — of the DISTINCT sessions that
-  # viewed the step, the share that navigated back from it. Normalized for traffic
-  # (matching the errors card) so steps are comparable by how often they send
-  # people back, not by volume. Both are distinct-session counts at the same
-  # (date, state, step) grain (screenings_navigated_back / screenings_viewed_step),
-  # bounded 0-100. The raw back-nav count rides along for the hover. confirm-
-  # information IS a real step and is kept.
+  # viewed the step, the share that navigated back from it. Session-grain source
+  # (mart_screener_step_facts, deduped across days) so both sides are exact
+  # distinct-session counts over the window. Normalized for traffic like the errors
+  # card. Raw back-nav count on hover. confirm-information IS a real step and kept.
   screener_sql_back_nav_by_step = <<-SQL
     SELECT
       screener_step_label AS `Step`,
-      ROUND(SUM(screenings_navigated_back) * 100.0 / NULLIF(SUM(screenings_viewed_step), 0), 1) AS `% of Viewers who Went Back`,
-      SUM(screenings_navigated_back) AS `Back-Nav Screenings`
-    FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      ROUND(COUNTIF(navigated_back) * 100.0 / NULLIF(COUNTIF(viewed), 0), 1) AS `% of Viewers who Went Back`,
+      COUNTIF(navigated_back) AS `Back-Nav Screenings`
+    FROM `${local.bq_dataset}.mart_screener_step_facts`
     WHERE __STATE_FILTER__
-      AND screener_step_name NOT IN ('__form_start__', '__form_complete__')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY screener_step_label
-    HAVING SUM(screenings_navigated_back) > 0
+    HAVING COUNTIF(navigated_back) > 0
     ORDER BY `% of Viewers who Went Back` DESC
   SQL
 
@@ -444,8 +439,12 @@ locals {
       GROUP BY tab_label
     ),
     results_viewers AS (
-      SELECT SUM(screenings_results_loaded) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      -- Screening-grain (one row per screener_uid, deduped across days) so a
+      -- multi-day window doesn't double-count a screening that loaded results on
+      -- more than one day — which SUM(screenings_results_loaded) over the per-day
+      -- results-outcomes mart would.
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
@@ -572,8 +571,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     viewers AS (
-      SELECT SUM(screenings_results_loaded) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      -- Screening-grain (deduped across days) — see screener_sql_tab_split. Carries
+      -- is_cesn, so the CESN-aware sentinel still applies for the global card.
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]

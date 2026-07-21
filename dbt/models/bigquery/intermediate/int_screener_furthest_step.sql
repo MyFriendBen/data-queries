@@ -66,14 +66,19 @@ reached as (
 )
 
 -- One row per session: the deepest rank reached, plus a stable date/state for
--- windowing (session's last-active day). is_cesn / state via ANY_VALUE (constant
--- per session by construction).
+-- windowing (session's last-active day).
+-- screener_state via MAX, NOT ANY_VALUE: a session can carry both a null-state
+-- pre-state row (language/select-state) and a later real-state row. ANY_VALUE is
+-- non-deterministic and could resolve to NULL, silently dropping the session from
+-- a tenant funnel (which filters screener_state IN (...)). MAX ignores NULLs, so
+-- it deterministically picks the real state whenever the session reached one.
+-- is_cesn is already session-constant upstream (window fn), so MAX is exact there.
 select
     session_key,
     max(step_rank) as furthest_step_rank,
     max(event_date) as event_date,
     max(event_date_parsed) as event_date_parsed,
-    any_value(screener_state) as screener_state,
+    max(screener_state) as screener_state,
     max(is_cesn) as is_cesn
 from reached
 group by session_key
