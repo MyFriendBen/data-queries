@@ -1381,6 +1381,29 @@ locals {
           series                 = []
           visualization_settings = {}
         },
+        {
+          # in-step content links (table) — per-step engagement, so on this tab
+          card_id          = tonumber(metabase_card.screener_in_step_links[key].id)
+          dashboard_tab_id = 7
+          row              = 58
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
       ] : []
     )
   }
@@ -1695,29 +1718,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_nps_distribution[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # in-step content links (table)
-          card_id          = tonumber(metabase_card.screener_in_step_links[key].id)
-          dashboard_tab_id = 8
-          row              = 64
-          col              = 0
-          size_x           = 24
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

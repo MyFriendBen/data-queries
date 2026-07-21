@@ -1166,6 +1166,18 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # in-step content links — per-step engagement, so on this tab
+      {
+        card_id                = tonumber(metabase_card.global_screener_in_step_links[0].id)
+        dashboard_tab_id       = 5
+        row                    = 60
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
     ] : [],
     # -------------------------------------------------------------------------
     # Tab 6: Results Page Activity (all-states screener)
@@ -1318,7 +1330,7 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # citizenship filter usage + NPS + in-step links
+      # citizenship filter usage + NPS
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
@@ -1336,17 +1348,6 @@ resource "metabase_dashboard" "analytics" {
         row                    = 58
         col                    = 8
         size_x                 = 16
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_screener_in_step_links[0].id)
-        dashboard_tab_id       = 6
-        row                    = 66
-        col                    = 0
-        size_x                 = 24
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
