@@ -1036,6 +1036,18 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # MFB-1349: header/footer chrome links
+      {
+        card_id                = tonumber(metabase_card.global_screener_chrome_links[0].id)
+        dashboard_tab_id       = 4
+        row                    = 18
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
     ] : [],
     # -------------------------------------------------------------------------
     # Tab 5: Form Journey (all-states screener)
@@ -1124,6 +1136,29 @@ resource "metabase_dashboard" "analytics" {
         card_id                = tonumber(metabase_card.global_screener_income_source_engagement[0].id)
         dashboard_tab_id       = 5
         row                    = 44
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # MFB-1349: confirmation-page edits + sign-up consent
+      {
+        card_id                = tonumber(metabase_card.global_screener_confirmation_edits[0].id)
+        dashboard_tab_id       = 5
+        row                    = 52
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_signup_consent[0].id)
+        dashboard_tab_id       = 5
+        row                    = 52
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1276,6 +1311,40 @@ resource "metabase_dashboard" "analytics" {
         card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
         dashboard_tab_id       = 6
         row                    = 50
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # MFB-1349: citizenship filter usage + NPS + in-step links
+      {
+        card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
+        dashboard_tab_id       = 6
+        row                    = 58
+        col                    = 0
+        size_x                 = 8
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
+        dashboard_tab_id       = 6
+        row                    = 58
+        col                    = 8
+        size_x                 = 16
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_in_step_links[0].id)
+        dashboard_tab_id       = 6
+        row                    = 66
         col                    = 0
         size_x                 = 24
         size_y                 = 8

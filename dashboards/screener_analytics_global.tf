@@ -563,7 +563,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people build their household on the member step: distinct screenings that added, edited, or deleted a member. Hover for total action counts."
+    description         = "How people build their household: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -578,11 +578,10 @@ resource "metabase_card" "global_screener_household_member_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#499894" } }
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["% of Member-Step Viewers"]
+      "graph.show_values" = true
+      "series_settings"   = { "% of Member-Step Viewers" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -594,7 +593,7 @@ resource "metabase_card" "global_screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Source Actions"
-    description         = "How people report income on the member step: distinct screenings that added or deleted an income source. Hover for total action counts."
+    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each. (A per-member-page rate needs a FE page index — tracked separately.)"
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -610,10 +609,10 @@ resource "metabase_card" "global_screener_income_source_engagement" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Screenings"]
+      "graph.metrics"         = ["Total Actions"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Screenings" = { color = "#d37295" } }
+      "series_settings"       = { "Total Actions" = { color = "#d37295" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -817,6 +816,183 @@ resource "metabase_card" "global_screener_saves_by_channel" {
       "graph.metrics"         = ["Total Saves"]
       "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
       "graph.y_axis.decimals" = 0
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# ── MFB-1349: previously-untracked screener_* events (global) ───────────────────
+
+resource "metabase_card" "global_screener_confirmation_edits" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Confirmation Edits by Section"
+    description         = "On the review/confirmation page, which sections screenings go back to edit before submitting. Distinct screenings per section."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Section"]
+      "graph.metrics"         = ["Screenings"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Screenings" = { color = "#4e79a7" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_signup_consent" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Sign-up Consent Rates"
+    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact. Hover for the opt-in count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_signup_consent, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"  = ["Channel"]
+      "graph.metrics"     = ["% Opted In"]
+      "graph.show_values" = true
+      "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_filter_usage" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Citizenship Filter Usage"
+    description         = "Distinct screenings that used the results citizenship filter. The chosen option isn't captured, so this is a yes/no engagement count."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Filtered Screenings"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_nps_distribution" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "NPS Score Distribution"
+    description         = "Submitted results-page NPS scores, bucketed Detractor (0-6), Passive (7-8), Promoter (9-10)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_nps_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Category"]
+      "graph.metrics"         = ["Responses"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Responses" = { color = "#af7aa1" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_chrome_links" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Header / Footer Links"
+    description         = "Clicks on persistent site chrome: logo (header/footer), header language switch, and footer legal/about links. Step is irrelevant (chrome is on every page)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_chrome_links, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Link"]
+      "graph.metrics"         = ["Clicks"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Clicks" = { color = "#76b7b2" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_in_step_links" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "In-Step Links"
+    description         = "External/redirect links clicked inside a step's body (e.g. Public Charge on Disclaimer, Other State Options on Zip Code), by link and the step it was on."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_in_step_links, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
     }
     parameter_mappings = []
     parameters         = []
