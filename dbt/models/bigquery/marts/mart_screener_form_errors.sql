@@ -111,9 +111,13 @@ select
     -- Normalized problem phrase. The FE (MFB-1348) emits a stable rule CODE after
     -- the "field: " prefix (e.g. "healthInsurance: select_one"); map those to the
     -- same labels the FE's RULE_LABELS uses so both sides read identically and it's
-    -- locale-safe. Rows from before that shipped carry a localized English phrase
-    -- instead — the trailing branches parse those as a transition fallback (drop
-    -- them once no pre-MFB-1348 rows remain in-window). Unknown -> 'Invalid'.
+    -- locale-safe. Rows from before MFB-1348 shipped carry a localized English
+    -- phrase instead — the trailing branches label those.
+    -- KEEP the fallback as long as the epoch (2026-07-18) predates MFB-1348: a
+    -- dashboard date filter can select those pre-MFB-1348 days at any time, so
+    -- removing it would relabel every old error row as 'Invalid'. It only becomes
+    -- removable if the epoch is moved past the MFB-1348 cutover.
+    -- Unknown -> 'Invalid'.
     case
         when form_error_message = '(unspecified)' then '(no detail captured)'
         -- stable rule codes (post MFB-1348)
