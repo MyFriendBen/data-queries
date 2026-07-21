@@ -129,25 +129,6 @@ locals {
     ORDER BY step_rank
   SQL
 
-  # ── Tab 7 (Form Journey): Referral Source completion (reported separately) ───
-  # Referral Source is conditionally shown — it is auto-skipped when the entry
-  # URL carries a referral parameter — so it is pulled out of the main step
-  # funnel (a skip there would masquerade as drop-off and corrupt the cross-step
-  # percentages). It is reported HERE against its own honest denominator: of the
-  # sessions that were actually SHOWN the step (viewed it), how many completed it
-  # vs dropped. "Shown" = viewed, so a session that never saw the step (referral
-  # skip) is excluded from both the numerator and the denominator — the drop-off
-  # % reflects only people who were genuinely asked.
-  #
-  # Shown and Completed are aggregated per (event_date, state, step) in the mart,
-  # so they align on the same day: a step's view and its completion fire seconds
-  # apart, effectively always within one calendar day. Across a multi-day window
-  # both sums therefore count the same cohort of sessions. GREATEST(..., 0) floors
-  # the drop at zero to defend against the pathological case of a session that
-  # viewed just before midnight of the window's start and completed just after —
-  # which would otherwise let Completed exceed Shown and yield a nonsensical
-  # negative drop. Clamping keeps the reported figure sane without a session-level
-  # cohort join (the per-step mart grain does not expose session keys downstream).
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
   # The PLOTTED bar is "% of Viewers with 1+ Errors" — of the DISTINCT sessions
   # that viewed the step, the share that hit at least one error on it. Reads the
@@ -271,10 +252,24 @@ locals {
   SQL
 
   # ── Tab 8 (Results): results outcome KPIs ───────────────────────────────────
+  # "Results Viewed" comes from mart_screener_results_revisits (screening-grain,
+  # one row per screener_uid) via COUNT(*), so a screening that loads results on
+  # >1 day isn't double-counted — summing the per-day screenings_results_loaded
+  # would inflate it. The other outcome counts (none-eligible, errors) and the avg
+  # columns stay on the outcomes mart; none-eligible/errors are rare terminal
+  # states (a screening lands in one once), so their per-day sum is effectively
+  # screening-grain already.
   screener_sql_results_outcome_kpis = <<-SQL
-    WITH agg AS (
+    WITH viewed AS (
+      SELECT COUNT(*) AS results_viewed
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    agg AS (
       SELECT
-        SUM(screenings_results_loaded) AS results_viewed,
         SUM(screenings_none_eligible)  AS none_eligible,
         SUM(screenings_results_error)  AS results_errors,
         -- avg_* columns are daily averages in the mart; average them across
@@ -288,9 +283,9 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      results_viewed AS `Results Viewed`,
+      (SELECT results_viewed FROM viewed) AS `Results Viewed`,
       none_eligible AS `None Eligible`,
-      ROUND(none_eligible * 100.0 / NULLIF(results_viewed + none_eligible, 0), 1) AS `% None Eligible`,
+      ROUND(none_eligible * 100.0 / NULLIF((SELECT results_viewed FROM viewed) + none_eligible, 0), 1) AS `% None Eligible`,
       avg_program_count AS `Avg Programs`,
       avg_total_estimated_value AS `Avg Est Value`,
       results_errors AS `Results Errors`
@@ -663,12 +658,15 @@ locals {
   # How people build their household on the member step. Bar = distinct screenings
   # per action; total events on hover. The numeric sort_key orders add->edit->delete
   # (Metabase sorts the category axis alphabetically otherwise).
+  # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
+  # screening-grain, deduped across days, so this is correct over any window). Total
+  # events (additive) on hover. sort_key orders add->edit->delete.
   screener_sql_household_member_engagement = <<-SQL
     SELECT `Action`, `Screenings`, `Total Actions` FROM (
       SELECT
         CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
         INITCAP(action) AS `Action`,
-        SUM(screenings) AS `Screenings`,
+        COUNT(DISTINCT screener_uid) AS `Screenings`,
         SUM(total_actions) AS `Total Actions`
       FROM `${local.bq_dataset}.mart_screener_section_engagement`
       WHERE __STATE_FILTER__
@@ -687,7 +685,7 @@ locals {
       SELECT
         CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
         INITCAP(action) AS `Action`,
-        SUM(screenings) AS `Screenings`,
+        COUNT(DISTINCT screener_uid) AS `Screenings`,
         SUM(total_actions) AS `Total Actions`
       FROM `${local.bq_dataset}.mart_screener_section_engagement`
       WHERE __STATE_FILTER__

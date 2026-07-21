@@ -49,27 +49,44 @@ with errors as (
         screener_uid,
         -- Guard against the odd null/empty message so it groups into one bucket
         -- rather than silently dropping (a message should always be present now).
-        coalesce(nullif(trim(form_error_message), ''), '(unspecified)') as form_error_message,
-        form_error_count
+        coalesce(nullif(trim(form_error_message), ''), '(unspecified)') as form_error_message
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
         and screener_step_name is not null
 ),
 
+-- One screener_form_error lists EVERY field that failed that submit, comma-joined
+-- ("field1: code1, field2: code2"). Explode to one row per "field: code" pair so
+-- each failing field is counted and labeled independently (parsing only the first
+-- pair would drop fields 2+ and mislabel field 1, whose reason would swallow the
+-- trailing ", field2: code2"). Each pair contributes 1 to the field count.
+pairs as (
+    select
+        e.* except (form_error_message),
+        e.form_error_message,
+        trim(pair) as pair
+    from errors e,
+    unnest(
+        if(e.form_error_message = '(unspecified)',
+           ['(unspecified)'],
+           split(e.form_error_message, ', '))
+    ) as pair
+),
+
 humanized as (
     select
-        *,
+        * except (pair),
         -- field path before the first ': ', numeric array indices removed
-        case when form_error_message = '(unspecified)' then null
-            else regexp_replace(split(form_error_message, ': ')[safe_offset(0)], r'\.[0-9]+', '')
+        case when pair = '(unspecified)' then null
+            else regexp_replace(split(pair, ': ')[safe_offset(0)], r'\.[0-9]+', '')
         end as error_field_path,
         -- reason after the first ': ': a stable rule code post MFB-1348 (e.g.
         -- 'select_one'), or a localized English phrase on older rows. Lowercased
         -- (harmless for codes) so the fallback prose matching is case-insensitive.
-        case when form_error_message = '(unspecified)' then null
-            else lower(trim(substr(form_error_message, instr(form_error_message, ': ') + 2)))
+        case when pair = '(unspecified)' then null
+            else lower(trim(substr(pair, instr(pair, ': ') + 2)))
         end as error_reason_raw
-    from errors
+    from pairs
 )
 
 select
@@ -143,9 +160,11 @@ select
         else 'Invalid'
     end as error_problem,
 
+    -- one exploded row per (attempt x failed field), so count(*) is the field-level
+    -- error total for this (step, field, problem) — no longer over-attributed to
+    -- field #1 as when the whole message was parsed as one row.
     count(*) as total_errors,
     count(distinct screener_uid) as screenings_with_error,
-    sum(form_error_count) as total_error_fields,
 
     current_timestamp() as updated_at
 

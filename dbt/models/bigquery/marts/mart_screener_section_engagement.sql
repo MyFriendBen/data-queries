@@ -4,17 +4,20 @@
   )
 }}
 
--- Household-member and income-source section engagement - daily grain by state,
--- section, and action. Powers the "how do people edit their household / income"
--- cards on the Form Journey tab.
+-- Household-member and income-source section engagement, at SCREENING x section x
+-- action grain (one row per screener_uid that took an action, deduped across all
+-- days). This grain lets the cards COUNT(DISTINCT screener_uid) for a correct
+-- across-window screening count — summing a per-day distinct count would
+-- double-count a screening that acted on more than one calendar day. Same pattern
+-- as mart_screener_step_facts.
 --
--- `section` is 'Household Members' or 'Income Sources' (from event_name). `action`
--- is add / edit / delete. total_actions counts events; screenings is the distinct
--- screenings that took the action (uid grain — these fire post step 3).
+-- `section` is 'Household Members' or 'Income Sources' (from event_name); `action`
+-- is add / edit / delete (or '(unknown)'). total_actions is the raw event count
+-- (additive by design — keep it a SUM in the card); event_date_parsed is the
+-- screening's last day taking this action, for windowing.
 
 with engagement as (
     select
-        event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
@@ -25,20 +28,19 @@ with engagement as (
         end as section,
         coalesce(action, '(unknown)') as action
     from {{ ref('stg_ga_screener_section_engagement') }}
+    where screener_uid is not null
 )
 
 select
-    event_date,
-    event_date_parsed,
-    screener_state,
+    screener_uid,
     section,
     action,
-
+    max(screener_state) as screener_state,
+    max(event_date_parsed) as event_date_parsed,
     count(*) as total_actions,
-    count(distinct screener_uid) as screenings,
 
     current_timestamp() as updated_at
 
 from engagement
-group by event_date, event_date_parsed, screener_state, section, action
-order by event_date desc, screener_state, section, total_actions desc
+group by screener_uid, section, action
+order by section, action
