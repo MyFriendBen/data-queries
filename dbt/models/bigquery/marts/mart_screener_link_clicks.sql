@@ -4,17 +4,21 @@
   )
 }}
 
--- Link / navigation clicks, classified into two groups the cards split on:
---   'chrome'  — site chrome present on every page: logo (header/footer), header
---               language switch, and the footer legal/about links. Answers "which
---               persistent nav do people use".
---   'in_step' — content links inside a specific step's body (e.g. Public Charge on
---               disclaimer, Other State Options on zip-code). Answers "which
---               external/redirect links get clicked, and from which step".
+-- Link / navigation clicks, classified into three groups the cards split on:
+--   'chrome'   — site chrome present on every page: logo (header/footer), header
+--                language switch, and the footer legal/about links. Answers "which
+--                persistent nav do people use".
+--   'in_step'  — external/redirect content links inside a specific step's body
+--                (Public Charge on disclaimer, Other State Options on zip-code).
+--                Answers "which content links get clicked, and from which step".
+--   'edit_nav' — internal go-back-to-edit links (e.g. "Additional Resources — Edit
+--                Step" from the results Needs section, url = /{state}/{uid}/...).
+--                These are edit BEHAVIOR, not content; kept out of the in_step card
+--                and surfaced as their own stat.
 --
--- link_click carries both footer (About/Privacy/Terms) and in-step content links,
--- distinguished only by link_name — so the classification is a link_name CASE.
--- logo_click / language_changed are their own events, always chrome.
+-- link_click carries footer legal links, in-step content links, AND internal
+-- edit-navigation links, distinguished only by link_name — so the classification is
+-- a link_name CASE. logo_click / language_changed are their own events, always chrome.
 --
 -- link_label is the display name; screener_step_name is meaningful only for
 -- in_step rows (chrome links inherit whatever step happened to be showing, so the
@@ -41,8 +45,10 @@ classified as (
         case
             when event_name = 'screener_logo_click' then 'chrome'
             when event_name = 'screener_language_changed' then 'chrome'
-            -- footer legal/about links are chrome; other named links are in-step content
+            -- footer legal/about links are chrome
             when link_name in ('About Us', 'Privacy Policy', 'Terms and Conditions') then 'chrome'
+            -- internal go-back-to-edit links (edit behavior, not content)
+            when link_name = 'Additional Resources — Edit Step' then 'edit_nav'
             else 'in_step'
         end as link_group,
         case

@@ -1023,14 +1023,19 @@ resource "metabase_card" "screener_nps_distribution" {
   })
 }
 
-# Header/footer chrome links — bar. Persistent site-chrome clicks (logo, language
-# switch, footer legal/about links).
-resource "metabase_card" "screener_chrome_links" {
+# NOTE: the footer / site-chrome cards (chrome nav, social, feedback & share) are
+# GLOBAL-only — site chrome fires without screener_state, so it can't be attributed
+# per tenant. They live in screener_analytics_global.tf. Per-tenant versions are
+# blocked on the FE attaching state (see the FE gaps ticket).
+
+# Public Charge link click rate — scalar. % of Disclaimer-step viewers who clicked
+# the Public Charge link. Raw click count as the scalar's secondary value.
+resource "metabase_card" "screener_public_charge_click_rate" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Header / Footer Links"
-    description         = "Clicks on persistent site chrome: logo (header/footer), header language switch, and footer legal/about links. Step is irrelevant (chrome is on every page)."
+    name                = "Public Charge Link — Click Rate"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1039,30 +1044,28 @@ resource "metabase_card" "screener_chrome_links" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_chrome_links, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_public_charge_click_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "scalar"
     visualization_settings = {
-      "graph.dimensions"      = ["Link"]
-      "graph.metrics"         = ["Clicks"]
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Clicks" = { color = "#76b7b2" } }
+      "scalar.field"  = "% of Disclaimer Viewers"
+      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# In-step content links — table. External/redirect links clicked inside a step's
-# body, by link + the step it was on.
-resource "metabase_card" "screener_in_step_links" {
+# Other State Options link click rate — scalar. % of Zip Code-step viewers who
+# clicked the Other State Options link.
+resource "metabase_card" "screener_other_state_click_rate" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "In-Step Links"
-    description         = "External/redirect links clicked inside a step's body (e.g. Public Charge on Disclaimer, Other State Options on Zip Code), by link and the step it was on."
+    name                = "Other State Options Link — Click Rate"
+    description         = "Of the sessions that viewed the Zip Code step, the % that clicked the Other State Options link."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1071,14 +1074,43 @@ resource "metabase_card" "screener_in_step_links" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_in_step_links, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_other_state_click_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "scalar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "scalar.field"  = "% of Zip Code Viewers"
+      "column_settings" = { "[\"name\",\"% of Zip Code Viewers\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Additional Resources edits — scalar. Clicks on the results-page "edit your
+# selections" link that sends people back to the Additional Resources step.
+resource "metabase_card" "screener_additional_resources_edits" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources Edits (from Results)"
+    description         = "Clicks on the results-page link that sends people back to the Additional Resources step to change their selections. Distinct from confirmation-page edits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Additional Resource Edits"
     }
     parameter_mappings = []
     parameters         = []
@@ -1143,29 +1175,6 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # header/footer chrome links
-          card_id          = tonumber(metabase_card.screener_chrome_links[key].id)
-          dashboard_tab_id = 10
-          row              = 16
-          col              = 0
-          size_x           = 24
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_chrome_links[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_chrome_links[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1382,22 +1391,44 @@ locals {
           visualization_settings = {}
         },
         {
-          # in-step content links (table) — per-step engagement, so on this tab
-          card_id          = tonumber(metabase_card.screener_in_step_links[key].id)
+          # in-step content-link click rates — per-step engagement, so on this tab
+          card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
           dashboard_tab_id = 7
           row              = 58
           col              = 0
-          size_x           = 24
-          size_y           = 8
+          size_x           = 6
+          size_y           = 4
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
+              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
               target       = ["variable", ["template-tag", "start_date"]]
             },
             {
               parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_in_step_links[key].id)
+              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_other_state_click_rate[key].id)
+          dashboard_tab_id = 7
+          row              = 58
+          col              = 6
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_other_state_click_rate[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_other_state_click_rate[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1718,6 +1749,29 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_nps_distribution[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # edit-nav from the results Needs section back to Additional Resources
+          card_id          = tonumber(metabase_card.screener_additional_resources_edits[key].id)
+          dashboard_tab_id = 8
+          row              = 64
+          col              = 0
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

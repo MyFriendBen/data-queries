@@ -809,39 +809,145 @@ locals {
     ORDER BY sort_key
   SQL
 
-  # ── Nav: header/footer chrome links ──────────────────────────────────
-  # Persistent site-chrome clicks: logo (header/footer), header language switch,
-  # footer legal/about links. Step is irrelevant here (chrome is on every page).
-  screener_sql_chrome_links = <<-SQL
-    SELECT
-      link_label AS `Link`,
-      SUM(total_clicks) AS `Clicks`
-    FROM `${local.bq_dataset}.mart_screener_link_clicks`
-    WHERE __STATE_FILTER__
-      AND link_group = 'chrome'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY link_label
-    ORDER BY `Clicks` DESC
+  # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────
+  # Site chrome fires largely without screener_state, so these three cards live only
+  # on the global dashboard and do NOT use the __STATE_FILTER__ sentinel. Each reads
+  # the session-grain mart_screener_footer_engagement and reports "% of sessions that
+  # clicked X" — denominator = distinct sessions in the window (from the session-grain
+  # step-facts), so the rate is exact (no multi-day double-count). Raw session count
+  # on hover. element_group selects which card. Attaching state on the FE (tracked on
+  # the FE gaps ticket) will later enable per-tenant versions.
+  #
+  # A shared session denominator CTE is spliced into each card via __SESSIONS_CTE__.
+  _footer_sessions_cte = <<-SQL
+    sessions AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
   SQL
 
-  # ── Nav: in-step content links ───────────────────────────────────────
-  # External/redirect links clicked inside a step's body (e.g. Public Charge on
-  # Disclaimer, Other State Options on Zip Code), by link + the step it was on.
-  screener_sql_in_step_links = <<-SQL
+  # Card 1 — Site Chrome Navigation: logo, About/Privacy/Terms, "Changed Language".
+  screener_sql_chrome_nav = <<-SQL
+    WITH ${local._footer_sessions_cte}
     SELECT
-      link_label AS `Link`,
-      screener_step_label AS `Step`,
-      SUM(total_clicks) AS `Clicks`
-    FROM `${local.bq_dataset}.mart_screener_link_clicks`
-    WHERE __STATE_FILTER__
-      AND link_group = 'in_step'
+      element AS `Element`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'nav'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY link_label, screener_step_label
-    ORDER BY `Clicks` DESC
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # Card 2 — Social Link Clicks: LinkedIn / Facebook / Instagram.
+  screener_sql_social_clicks = <<-SQL
+    WITH ${local._footer_sessions_cte}
+    SELECT
+      element AS `Network`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'social'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # Card 3 — Footer Feedback & Share: Report a Bug, Contact Us, Share.
+  screener_sql_footer_feedback_share = <<-SQL
+    WITH ${local._footer_sessions_cte}
+    SELECT
+      element AS `Action`,
+      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      COUNT(DISTINCT session_key) AS `Sessions`
+    FROM `${local.bq_dataset}.mart_screener_footer_engagement`
+    WHERE element_group = 'feedback_share'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY element
+    ORDER BY `% of Sessions` DESC
+  SQL
+
+  # ── In-step content-link click rates ─────────────────────────────────────────
+  # Each in-step content link fires from exactly one step, so it reads best as a
+  # standalone rate: of the sessions that viewed that step, the % that clicked the
+  # link (raw click count on hover). Denominator = distinct sessions that viewed the
+  # step (session-grain step-facts, deduped across days). One local per link/step.
+  #
+  # Public Charge link, shown on the Disclaimer step.
+  screener_sql_public_charge_click_rate = <<-SQL
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'disclaimer'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    clicks AS (
+      SELECT SUM(total_clicks) AS c
+      FROM `${local.bq_dataset}.mart_screener_link_clicks`
+      WHERE __STATE_FILTER__
+        AND link_label = 'Public Charge'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT c FROM clicks), 0) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Disclaimer Viewers`,
+      COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
+  SQL
+
+  # Other State Options link, shown on the Zip Code step.
+  screener_sql_other_state_click_rate = <<-SQL
+    WITH viewers AS (
+      SELECT COUNT(DISTINCT session_key) AS n
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND screener_step_name = 'zip-code'
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    clicks AS (
+      SELECT SUM(total_clicks) AS c
+      FROM `${local.bq_dataset}.mart_screener_link_clicks`
+      WHERE __STATE_FILTER__
+        AND link_label = 'Other State Options'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT c FROM clicks), 0) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Zip Code Viewers`,
+      COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
+  SQL
+
+  # ── Results: "edit Additional Resources" from the results Needs section ───────
+  # Clicks on the "edit your selections" link in the results Needs section, which
+  # sends people back to the Additional Resources step to change what they picked.
+  # Distinct from Confirmation Edits (that's the review-page edit path); this is the
+  # results-page nudge. Uses the 'edit_nav' link group.
+  screener_sql_additional_resources_edits = <<-SQL
+    SELECT SUM(total_clicks) AS `Additional Resource Edits`
+    FROM `${local.bq_dataset}.mart_screener_link_clicks`
+    WHERE __STATE_FILTER__
+      AND link_group = 'edit_nav'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
   SQL
 
   # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────

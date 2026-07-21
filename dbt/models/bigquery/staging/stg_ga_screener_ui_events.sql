@@ -17,6 +17,8 @@
 --   screener_link_click         — a content/footer link (link_name, url, step)
 --   screener_logo_click         — logo (location: header | footer)
 --   screener_language_changed   — header language switch (language_name)
+--   screener_social_click       — footer social icon (social_network: linkedin |
+--                                 facebook | instagram)
 -- screener_state / screener_uid arrive as params.
 
 select
@@ -48,6 +50,7 @@ select
     max(case when ep.key = 'url' then ep.value.string_value end) as url,
     max(case when ep.key = 'location' then ep.value.string_value end) as location,
     max(case when ep.key = 'language_name' then ep.value.string_value end) as language_name,
+    max(case when ep.key = 'network' then ep.value.string_value end) as social_network,
 
     timestamp_micros(event_timestamp) as event_datetime
 
@@ -64,7 +67,8 @@ where event_name in (
     'screener_feedback_click',
     'screener_link_click',
     'screener_logo_click',
-    'screener_language_changed'
+    'screener_language_changed',
+    'screener_social_click'
 )
 
 group by

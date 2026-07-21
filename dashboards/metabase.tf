@@ -1036,14 +1036,37 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # header/footer chrome links
+      # footer / site-chrome cards (global-only): chrome nav (full width),
+      # then social + feedback/share sharing a row below it
       {
-        card_id                = tonumber(metabase_card.global_screener_chrome_links[0].id)
+        card_id                = tonumber(metabase_card.global_screener_chrome_nav[0].id)
         dashboard_tab_id       = 4
         row                    = 18
         col                    = 0
         size_x                 = 24
         size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_social_clicks[0].id)
+        dashboard_tab_id       = 4
+        row                    = 26
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_footer_feedback_share[0].id)
+        dashboard_tab_id       = 4
+        row                    = 26
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 6
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1166,14 +1189,25 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # in-step content links — per-step engagement, so on this tab
+      # in-step content-link click rates — per-step engagement, so on this tab
       {
-        card_id                = tonumber(metabase_card.global_screener_in_step_links[0].id)
+        card_id                = tonumber(metabase_card.global_screener_public_charge_click_rate[0].id)
         dashboard_tab_id       = 5
         row                    = 60
         col                    = 0
-        size_x                 = 24
-        size_y                 = 8
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_other_state_click_rate[0].id)
+        dashboard_tab_id       = 5
+        row                    = 60
+        col                    = 6
+        size_x                 = 6
+        size_y                 = 4
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1349,6 +1383,18 @@ resource "metabase_dashboard" "analytics" {
         col                    = 8
         size_x                 = 16
         size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # edit-nav from the results Needs section back to Additional Resources
+      {
+        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
+        dashboard_tab_id       = 6
+        row                    = 66
+        col                    = 0
+        size_x                 = 8
+        size_y                 = 4
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
