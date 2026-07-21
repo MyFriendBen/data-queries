@@ -51,7 +51,7 @@ resource "metabase_card" "global_screener_language_distribution" {
 
   json = jsonencode({
     name                = "Header Language Switches"
-    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Deduped per session."
+    description         = "Which languages sessions switch TO via the header language selector (header-selector engagement, NOT the language the household speaks). Counted per session per language — a session that switches to more than one language is counted under each, so these won't sum to the 'Changed Language' total on the Header & Footer Links card."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
