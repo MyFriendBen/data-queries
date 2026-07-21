@@ -883,6 +883,11 @@ locals {
   # link (raw click count on hover). Denominator = distinct sessions that viewed the
   # step (session-grain step-facts, deduped across days). One local per link/step.
   #
+  # FUTURE (blocked on FE link_location param — FE gaps ticket #3): the Disclaimer
+  # step actually has THREE links (Public Charge + Privacy + Terms). Once the FE
+  # tags link source, replace the single Public Charge scalar with one Disclaimer
+  # bar chart showing all three by-link click rates.
+  #
   # Public Charge link, shown on the Disclaimer step.
   screener_sql_public_charge_click_rate = <<-SQL
     WITH viewers AS (
