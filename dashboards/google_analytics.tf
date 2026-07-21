@@ -76,17 +76,15 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 22, 2026** forward, the first full day the current event contract (MFB-1348) was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 21, 2026** forward, the day the current event contract (MFB-1348) went live in production."
 
-  # Analytics epoch: the first FULL day the current app-emitted screener_* event
-  # CONTRACT was live in production. Every screener card floors on this so metrics
-  # reflect one contract. Moved 07-18 → 07-22: MFB-1348 (stable per-rule error
-  # codes, member-basics/member-details sub-step slugs, results-as-step, help step
-  # context) shipped to prod 2026-07-21; with GA4's ~1-day export lag, 07-22 is the
-  # first full day that data is in BigQuery. Flooring here means the cards use the
-  # new contract only — no legacy English error messages or parent household-members
-  # slug — so no transition fallbacks are needed. A fixed historical fact.
-  screener_analytics_epoch = "2026-07-22"
+  # Analytics epoch: the day the current app-emitted screener_* event CONTRACT went
+  # live in production. Every screener card floors on this so metrics reflect one
+  # contract. MFB-1348 (stable per-rule error codes, member-basics/member-details
+  # sub-step slugs, results-as-step, help step context) shipped to prod 2026-07-21;
+  # flooring here means the cards use the new contract only — no legacy English error
+  # messages or parent household-members slug. A fixed historical fact.
+  screener_analytics_epoch = "2026-07-21"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`

@@ -730,7 +730,6 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY section_label
-    HAVING SUM(screenings) > 0
     ORDER BY `Screenings` DESC
   SQL
 
@@ -808,7 +807,6 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY link_label
-    HAVING SUM(total_clicks) > 0
     ORDER BY `Clicks` DESC
   SQL
 
@@ -827,7 +825,6 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY link_label, screener_step_label
-    HAVING SUM(total_clicks) > 0
     ORDER BY `Clicks` DESC
   SQL
 
