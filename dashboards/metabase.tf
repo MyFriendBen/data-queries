@@ -1065,46 +1065,13 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_referral_source_completion[0].id)
-        dashboard_tab_id       = 5
-        row                    = 14
-        col                    = 0
-        size_x                 = 24
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_screener_errors_by_step[0].id)
-        dashboard_tab_id       = 5
-        row                    = 18
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 9
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
+        # Back Nav + Help Clicks share a row; Form Errors (full-width) sits below.
         card_id                = tonumber(metabase_card.global_screener_back_nav_by_step[0].id)
         dashboard_tab_id       = 5
         row                    = 18
-        col                    = 12
-        size_x                 = 12
-        size_y                 = 9
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # Analytics v2 (MFB-1306) — Form-Journey cards
-      {
-        card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
-        dashboard_tab_id       = 5
-        row                    = 27
         col                    = 0
         size_x                 = 12
-        size_y                 = 8
+        size_y                 = 9
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1112,10 +1079,21 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_help_by_topic[0].id)
         dashboard_tab_id       = 5
-        row                    = 27
+        row                    = 18
         col                    = 12
         size_x                 = 12
-        size_y                 = 8
+        size_y                 = 9
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_errors_by_step[0].id)
+        dashboard_tab_id       = 5
+        row                    = 27
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 9
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1123,9 +1101,31 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_errors_detail[0].id)
         dashboard_tab_id       = 5
-        row                    = 35
+        row                    = 36
         col                    = 0
         size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_household_member_engagement[0].id)
+        dashboard_tab_id       = 5
+        row                    = 44
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_income_source_engagement[0].id)
+        dashboard_tab_id       = 5
+        row                    = 44
+        col                    = 12
+        size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1266,6 +1266,19 @@ resource "metabase_dashboard" "analytics" {
         col                    = 12
         size_x                 = 12
         size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Scroll depth is results-page behavior. Kept last in the tab-6 group so the
+      # card array matches Metabase's returned order (the provider diffs it).
+      {
+        card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
+        dashboard_tab_id       = 6
+        row                    = 50
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}

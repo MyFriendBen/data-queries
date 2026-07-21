@@ -55,25 +55,9 @@ select
     dimension,
 
     -- Human-readable step label for the help_click drill-down (null for the 211
-    -- CTA, which isn't step-scoped). Mirrors the Form Journey step mapping.
-    case screener_step_name
-        when 'language' then 'Language'
-        when 'disclaimer' then 'Disclaimer'
-        when 'select-state' then 'Select State'
-        when 'zip-code' then 'Zip Code'
-        when 'household-size' then 'Household Size'
-        when 'household-basics' then 'Household Basics'
-        when 'household-members' then 'Household Members'
-        when 'member-details' then 'Member Details'
-        when 'expenses' then 'Expenses'
-        when 'assets' then 'Assets'
-        when 'current-benefits' then 'Current Benefits'
-        when 'additional-resources' then 'Additional Resources'
-        when 'referral-source' then 'Referral Source'
-        when 'sign-up' then 'Sign Up'
-        when 'confirm-information' then 'Confirm Information'
-        else screener_step_name
-    end as screener_step_label,
+    -- CTA, which isn't step-scoped — a null slug returns null from the macro).
+    -- Shared screener_step_label macro (single source of truth).
+    {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
     count(*) as total_clicks,
     count(distinct screener_uid) as distinct_screenings,

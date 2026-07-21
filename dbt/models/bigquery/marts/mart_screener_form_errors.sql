@@ -76,26 +76,9 @@ select
     screener_state,
     is_cesn,
 
-    -- Human-readable step label, mirroring mart_screener_form_funnel's mapping so
-    -- cards read consistently across the Form Journey tab.
-    case screener_step_name
-        when 'language' then 'Language'
-        when 'disclaimer' then 'Disclaimer'
-        when 'select-state' then 'Select State'
-        when 'zip-code' then 'Zip Code'
-        when 'household-size' then 'Household Size'
-        when 'household-basics' then 'Household Basics'
-        when 'household-members' then 'Household Members'
-        when 'member-details' then 'Member Details'
-        when 'expenses' then 'Expenses'
-        when 'assets' then 'Assets'
-        when 'current-benefits' then 'Current Benefits'
-        when 'additional-resources' then 'Additional Resources'
-        when 'referral-source' then 'Referral Source'
-        when 'sign-up' then 'Sign Up'
-        when 'confirm-information' then 'Confirm Information'
-        else screener_step_name
-    end as screener_step_label,
+    -- Human-readable step label (shared screener_step_label macro — single source
+    -- of truth across the Form Journey marts).
+    {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
     -- Friendly field label; unmapped paths fall back to the raw stripped path.
     case

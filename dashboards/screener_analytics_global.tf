@@ -66,8 +66,10 @@ resource "metabase_card" "global_screener_language_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["Switched To"]
-      "graph.metrics"    = ["Sessions"]
+      "graph.dimensions"      = ["Switched To"]
+      "graph.metrics"         = ["Sessions"]
+      "series_settings"       = { "Sessions" = { color = "#edc948" } }
+      "graph.y_axis.decimals" = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -100,6 +102,7 @@ resource "metabase_card" "global_screener_step_funnel" {
     visualization_settings = {
       "graph.dimensions"        = ["screener_step_label"]
       "graph.metrics"           = ["% of Started"]
+      "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
     }
@@ -113,7 +116,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Total form validation errors recorded at each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
+    description         = "Of the screenings that viewed each step, the % that hit at least one validation error on it — normalized for traffic so steps are comparable by how error-prone they are. Hover for the raw screening count and total error events (attempts, inflated by retries)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -129,9 +132,11 @@ resource "metabase_card" "global_screener_errors_by_step" {
     display = "row"
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
-      "graph.metrics"           = ["Total Errors"]
+      "graph.metrics"           = ["% of Viewers with 1+ Errors"]
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
+      # Red = the "problem" metric (errors); distinct from Back Nav (blue) / Help (amber).
+      "series_settings" = { "% of Viewers with 1+ Errors" = { color = "#d64550" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -143,7 +148,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Distinct screenings that navigated back from each screener step. The bar is the raw count; hover to see it as a percentage of the sessions that viewed the step."
+    description         = "Of the screenings that viewed each step, the % that navigated back from it — normalized for traffic so steps are comparable by how often they send people back. Hover for the raw back-navigation count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -159,47 +164,17 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
     display = "row"
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
-      "graph.metrics"           = ["Back-Nav Screenings"]
+      "graph.metrics"           = ["% of Viewers who Went Back"]
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
+      # Blue = neutral navigation behavior (distinct from the red errors bar).
+      "series_settings" = { "% of Viewers who Went Back" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Referral Source completion — reported separately from the step funnel because
-# the step is conditionally shown (auto-skipped for referral-link entry traffic),
-# so it can't sit in the drop-off funnel without corrupting the shape and the
-# cross-step percentages. Measured against its own denominator: of sessions
-# actually shown the step, how many completed vs dropped, plus the drop-off %.
-resource "metabase_card" "global_screener_referral_source_completion" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Referral Source Completion"
-    description         = "Referral Source is auto-skipped when the entry URL carries a referral parameter, so it is excluded from the step funnel (a skip there would look like drop-off). Reported here against its own denominator: of the sessions actually shown the step, how many completed it vs dropped, with the drop-off %."
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_referral_source_completion, "__STATE_FILTER__", local.all_screener_global_predicate)
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "table"
-    visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Tab 6 (Results Page Activity)
@@ -320,6 +295,8 @@ resource "metabase_card" "global_screener_results_revisits" {
       "graph.dimensions"        = ["Times Viewed"]
       "graph.metrics"           = ["Screenings"]
       "graph.x_axis.title_text" = "Times Results Viewed"
+      "graph.y_axis.decimals"   = 0
+      "series_settings"         = { "Screenings" = { color = "#af7aa1" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -379,6 +356,8 @@ resource "metabase_card" "global_screener_top_resources" {
       "graph.show_values"            = true
       "graph.dimensions"             = ["Resource"]
       "graph.metrics"                = ["Clicks"]
+      "graph.y_axis.decimals"        = 0
+      "series_settings"              = { "Clicks" = { color = "#9c755f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -469,6 +448,7 @@ resource "metabase_card" "global_screener_resource_engagement" {
       "graph.show_values"            = true
       "graph.dimensions"             = ["Resource"]
       "graph.metrics"                = ["More Info", "Website", "Phone"]
+      "graph.y_axis.decimals"        = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -510,7 +490,7 @@ resource "metabase_card" "global_screener_scroll_depth" {
 
   json = jsonencode({
     name                = "Results Scroll Depth"
-    description         = "Distinct screenings that reached each scroll depth on the results page, split by tab. The bar is the raw count; hover to see it as a percentage of everyone who loaded a results page."
+    description         = "Of the screenings that scrolled a results tab, how far the deepest scroll got (each screening counted once, in its furthest bucket). Bars are the % of that tab's scrollers; hover for the raw count. Split by tab."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -525,10 +505,18 @@ resource "metabase_card" "global_screener_scroll_depth" {
     }
     display = "bar"
     visualization_settings = {
-      # Depth on the x-axis, one series per Tab; `% of Results Viewers` in the hover.
+      # Depth on the x-axis, one series per Tab; bar height is % of that tab's
+      # scrollers whose furthest scroll was this depth (multi-series can't show a
+      # side column on hover). Count on hover. Depth labels are numeric-prefixed
+      # ("1. Quarter Page" ...) so Metabase's alphabetical axis sort yields
+      # Quarter -> Full.
       "graph.dimensions"  = ["Depth", "Tab"]
-      "graph.metrics"     = ["Screenings"]
+      "graph.metrics"     = ["% of Tab Scrollers"]
       "graph.show_values" = true
+      "series_settings" = {
+        "Long-Term Benefits"   = { color = "#4e79a7" }
+        "Additional Resources" = { color = "#59a14f" }
+      }
     }
     parameter_mappings = []
     parameters         = []
@@ -559,6 +547,73 @@ resource "metabase_card" "global_screener_help_by_topic" {
       "graph.show_values"            = true
       "graph.dimensions"             = ["Help Topic"]
       "graph.metrics"                = ["Clicks"]
+      # Amber = help/info (distinct from red errors + blue back-nav).
+      "series_settings" = { "Clicks" = { color = "#e8a33d" } }
+      # Whole-number clicks; force integer axis ticks (no 0.2/0.4 gridlines).
+      "graph.y_axis.decimals" = 0
+      "column_settings"       = { "[\"name\",\"Clicks\"]" = { number_style = "decimal", decimals = 0 } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_household_member_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Household Member Actions"
+    description         = "How people build their household on the member step: distinct screenings that added, edited, or deleted a member. Hover for total action counts."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_household_member_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Action"]
+      "graph.metrics"         = ["Screenings"]
+      "graph.show_values"     = true
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Screenings" = { color = "#499894" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_income_source_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Income Source Actions"
+    description         = "How people report income on the member step: distinct screenings that added or deleted an income source. Hover for total action counts."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_income_source_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Action"]
+      "graph.metrics"         = ["Screenings"]
+      "graph.show_values"     = true
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Screenings" = { color = "#d37295" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -597,7 +652,7 @@ resource "metabase_card" "global_screener_errors_detail" {
 
   json = jsonencode({
     name                = "Validation Errors Detail"
-    description         = "Which fields fail validation and why, by screener step — top 25 by error count. Field and Problem are humanized from the PII-safe error code; counts are consolidated across repeated fields (e.g. all income rows roll up to Income)."
+    description         = "Which fields fail validation and why, by screener step, ordered by error count. Field and Problem are humanized from the PII-safe error code; counts are consolidated across repeated fields (e.g. all income rows roll up to Income)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -700,8 +755,10 @@ resource "metabase_card" "global_screener_shares_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["Share Channel"]
-      "graph.metrics"    = ["Total Shares"]
+      "graph.dimensions"      = ["Share Channel"]
+      "graph.metrics"         = ["Total Shares"]
+      "series_settings"       = { "Total Shares" = { color = "#76b7b2" } }
+      "graph.y_axis.decimals" = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -756,8 +813,10 @@ resource "metabase_card" "global_screener_saves_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions" = ["Save Channel"]
-      "graph.metrics"    = ["Total Saves"]
+      "graph.dimensions"      = ["Save Channel"]
+      "graph.metrics"         = ["Total Saves"]
+      "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
+      "graph.y_axis.decimals" = 0
     }
     parameter_mappings = []
     parameters         = []
