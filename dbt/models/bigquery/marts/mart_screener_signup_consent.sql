@@ -15,6 +15,8 @@ with signups as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        -- FE emits these as the STRINGS 'true'/'false' (verified against raw GA:
+        -- string_value populated, int_value empty), so a string compare is correct.
         sms_consent = 'true' as sms_opt_in,
         email_consent = 'true' as email_opt_in
     from {{ ref('stg_ga_screener_ui_events') }}

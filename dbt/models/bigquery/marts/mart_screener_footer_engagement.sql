@@ -28,7 +28,8 @@ with ui_events as (
         event_name,
         link_name,
         location,
-        feedback_channel
+        feedback_channel,
+        social_network
     from {{ ref('stg_ga_screener_ui_events') }}
     where event_name in (
         'screener_logo_click',
@@ -64,6 +65,7 @@ classified as (
             when event_name = 'screener_logo_click'
                 then concat('Logo (', coalesce(location, 'unknown'), ')')
             when event_name = 'screener_language_changed' then 'Changed Language'
+            when event_name = 'screener_social_click' then initcap(social_network)
             when event_name = 'screener_feedback_click' and feedback_channel = 'survey' then 'Report a Bug'
             when event_name = 'screener_feedback_click' and feedback_channel = 'email' then 'Contact Us'
             when link_name in ('About Us', 'Privacy Policy', 'Terms and Conditions') then link_name
