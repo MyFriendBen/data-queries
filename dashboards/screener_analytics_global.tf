@@ -365,7 +365,7 @@ resource "metabase_card" "global_screener_top_resources" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Analytics v2 cards (MFB-1306) — new event families
+# Analytics v2 cards — new event families
 # ══════════════════════════════════════════════════════════════════════════════
 
 resource "metabase_card" "global_screener_program_conversion" {
@@ -822,7 +822,7 @@ resource "metabase_card" "global_screener_saves_by_channel" {
   })
 }
 
-# ── MFB-1349: previously-untracked screener_* events (global) ───────────────────
+# ── Previously-untracked screener_* events (global) ─────────────────────────────
 
 resource "metabase_card" "global_screener_confirmation_edits" {
   count = var.bigquery_enabled ? 1 : 0

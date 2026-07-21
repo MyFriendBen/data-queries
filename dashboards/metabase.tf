@@ -43,7 +43,7 @@ resource "metabase_database" "postgres" {
 # Tenant-specific PostgreSQL data sources (RLS filtered access)
 # Each connection sets app.white_label_id via JDBC options so the STABLE
 # mfb_current_white_label_id() function returns the tenant's ID, enabling
-# Postgres to use the white_label_id index instead of seq-scanning (MFB-975).
+# Postgres to use the white_label_id index instead of seq-scanning.
 resource "metabase_database" "tenant_postgres" {
   for_each = var.tenants
 
@@ -1036,7 +1036,7 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # MFB-1349: header/footer chrome links
+      # header/footer chrome links
       {
         card_id                = tonumber(metabase_card.global_screener_chrome_links[0].id)
         dashboard_tab_id       = 4
@@ -1143,7 +1143,7 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # MFB-1349: confirmation-page edits + sign-up consent
+      # confirmation-page edits + sign-up consent
       {
         card_id                = tonumber(metabase_card.global_screener_confirmation_edits[0].id)
         dashboard_tab_id       = 5
@@ -1249,7 +1249,7 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Analytics v2 (MFB-1306) — Results-tab cards
+      # Analytics v2 — Results-tab cards
       {
         card_id                = tonumber(metabase_card.global_screener_program_conversion[0].id)
         dashboard_tab_id       = 6
@@ -1318,7 +1318,7 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # MFB-1349: citizenship filter usage + NPS + in-step links
+      # citizenship filter usage + NPS + in-step links
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6

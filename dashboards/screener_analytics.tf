@@ -541,7 +541,7 @@ resource "metabase_card" "screener_top_resources" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Analytics v2 cards (MFB-1306) — new event families
+# Analytics v2 cards — new event families
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Per-program conversion — table. Two conversion rates (more-info / shown and
@@ -897,7 +897,7 @@ resource "metabase_card" "screener_language_distribution" {
   })
 }
 
-# ── MFB-1349: previously-untracked screener_* events ────────────────────────────
+# ── Previously-untracked screener_* events ──────────────────────────────────────
 
 # Confirmation-page edits by section — horizontal (row) bar. Row layout keeps
 # section labels readable as more sections accumulate over time.
@@ -1150,7 +1150,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: header/footer chrome links
+          # header/footer chrome links
           card_id          = tonumber(metabase_card.screener_chrome_links[key].id)
           dashboard_tab_id = 10
           row              = 16
@@ -1336,7 +1336,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: confirmation-page edits by section
+          # confirmation-page edits by section
           card_id          = tonumber(metabase_card.screener_confirmation_edits[key].id)
           dashboard_tab_id = 7
           row              = 50
@@ -1359,7 +1359,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: sign-up consent opt-in rates
+          # sign-up consent opt-in rates
           card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
           dashboard_tab_id = 7
           row              = 50
@@ -1656,7 +1656,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: citizenship filter usage (scalar)
+          # citizenship filter usage (scalar)
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
           row              = 56
@@ -1679,7 +1679,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: NPS score distribution
+          # NPS score distribution
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
           row              = 56
@@ -1702,7 +1702,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # MFB-1349: in-step content links (table)
+          # in-step content links (table)
           card_id          = tonumber(metabase_card.screener_in_step_links[key].id)
           dashboard_tab_id = 8
           row              = 64

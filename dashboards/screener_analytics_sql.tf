@@ -469,7 +469,7 @@ locals {
   SQL
 
   # ══════════════════════════════════════════════════════════════════════════════
-  # Analytics v2 cards (MFB-1306) — new event families
+  # Analytics v2 cards — new event families
   # ══════════════════════════════════════════════════════════════════════════════
 
   # ── Results: per-program conversion (more-info ÷ shown, apply ÷ more-info) ──────
@@ -634,9 +634,10 @@ locals {
 
   # ── Form Journey: help-tooltip clicks by TOPIC (which tooltips drive confusion) ──
   # Sliced by help_topic (itself step-identifying, e.g. "income", "household
-  # assets"). MFB-1348 adds screener_step_name to screener_help_click, which will
-  # enable a per-step help RATE (clicks ÷ step viewers) in a follow-up; until that
-  # data is flowing, grouping by topic is the available cut.
+  # assets"). The current event contract adds screener_step_name to
+  # screener_help_click, which will enable a per-step help RATE (clicks ÷ step
+  # viewers) in a follow-up; until that data is flowing, grouping by topic is the
+  # available cut.
   screener_sql_help_by_topic = <<-SQL
     SELECT
       -- Humanize the kebab-case help_topic slug generically (dash -> space,
@@ -718,7 +719,7 @@ locals {
     ORDER BY sort_key
   SQL
 
-  # ── Form Journey: confirmation-page edits by section (MFB-1349) ─────────────────
+  # ── Form Journey: confirmation-page edits by section ─────────────────
   # Which review-page sections people go back to change before submitting, as a % of
   # the screenings that reached the confirmation page (confirm-information step —
   # session-grain step-facts, deduped across days). Raw screening count on hover.
@@ -748,7 +749,7 @@ locals {
     ORDER BY `Screenings` DESC
   SQL
 
-  # ── Form Journey: sign-up consent opt-in rates (MFB-1349) ───────────────────────
+  # ── Form Journey: sign-up consent opt-in rates ───────────────────────
   # Of screenings that completed sign-up, the % opting into SMS vs email contact.
   screener_sql_signup_consent = <<-SQL
     WITH agg AS (
@@ -772,7 +773,7 @@ locals {
     ORDER BY sort_key
   SQL
 
-  # ── Results: citizenship filter usage (MFB-1349) ────────────────────────────────
+  # ── Results: citizenship filter usage ────────────────────────────────
   # Distinct screenings that engaged the results filter. Only the citizenship
   # filter exists, and the chosen option is never captured (PII) — this is a
   # yes/no engagement count, not a breakdown.
@@ -785,7 +786,7 @@ locals {
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
   SQL
 
-  # ── Results: NPS score distribution (MFB-1349) ──────────────────────────────────
+  # ── Results: NPS score distribution ──────────────────────────────────
   # Count of submitted NPS scores by category (Detractor 0-6 / Passive 7-8 /
   # Promoter 9-10). Response follow-through (reasons, feedback clicks) is on the
   # detail mart if needed later.
@@ -808,7 +809,7 @@ locals {
     ORDER BY sort_key
   SQL
 
-  # ── Nav: header/footer chrome links (MFB-1349) ──────────────────────────────────
+  # ── Nav: header/footer chrome links ──────────────────────────────────
   # Persistent site-chrome clicks: logo (header/footer), header language switch,
   # footer legal/about links. Step is irrelevant here (chrome is on every page).
   screener_sql_chrome_links = <<-SQL
@@ -825,7 +826,7 @@ locals {
     ORDER BY `Clicks` DESC
   SQL
 
-  # ── Nav: in-step content links (MFB-1349) ───────────────────────────────────────
+  # ── Nav: in-step content links ───────────────────────────────────────
   # External/redirect links clicked inside a step's body (e.g. Public Charge on
   # Disclaimer, Other State Options on Zip Code), by link + the step it was on.
   screener_sql_in_step_links = <<-SQL
