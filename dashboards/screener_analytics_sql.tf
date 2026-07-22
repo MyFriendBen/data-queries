@@ -662,21 +662,37 @@ locals {
   # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
   # screening-grain, deduped across days, so this is correct over any window). Total
   # events (additive) on hover. sort_key orders add->edit->delete.
-  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that viewed
-  # the roster page (member-basics, where members are added/edited/deleted), the
-  # share that took each action. Denominator = distinct screenings that viewed
-  # member-basics (session-grain step-facts, deduped across days). Raw count + total
+  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that engaged
+  # the roster step, the share that took each action. BOTH numerator and denominator
+  # count distinct screener_uid (screening grain) so the ratio is valid — a
+  # session-keyed denominator would mix grains and exceed 100% (one browser session
+  # can run multiple screenings). Denominator = screenings that VIEWED the member step
+  # OR took a member action (union), from the screening-keyed views mart + the section
+  # mart. The union guarantees every actor is in the denominator, so the bar can never
+  # exceed 100% even at a window's start edge (where an action's paired view may fall
+  # just below the date floor). Spans both the new 'member-basics' slug and the
+  # pre-MFB-1348 'household-members' slug for cutover coverage. Raw count + total
   # events on hover. sort_key orders add->edit->delete.
   screener_sql_household_member_engagement = <<-SQL
     WITH viewers AS (
-      SELECT COUNT(DISTINCT session_key) AS n
-      FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE __STATE_FILTER__
-        AND screener_step_name = 'member-basics'
-        AND viewed
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      SELECT COUNT(DISTINCT screener_uid) AS n FROM (
+        SELECT screener_uid
+        FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
+        WHERE __STATE_FILTER__
+          AND screener_step_name IN ('member-basics', 'household-members')
+          AND viewed
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        UNION DISTINCT
+        SELECT screener_uid
+        FROM `${local.bq_dataset}.mart_screener_section_engagement`
+        WHERE __STATE_FILTER__
+          AND section = 'Household Members'
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      )
     )
     SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
       SELECT
