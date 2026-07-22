@@ -25,9 +25,12 @@
 --                       mapped to a friendly label. UNMAPPED paths fall back to
 --                       the stripped path so a NEW field never vanishes — it just
 --                       shows its raw name until a label is added here (one line).
---   error_problem     : the zod rule normalized to a short phrase (Required /
---                       Invalid format / Too long / Too short); anything else ->
---                       'Invalid'. The rule set is small and closed.
+--   error_problem     : the FE-emitted rule LABEL, passed through verbatim. The FE
+--                       (collectFieldErrors + RULE_LABELS in errorLabels.ts) owns the
+--                       code->label mapping and sends the label, so dbt does not
+--                       re-derive it. Missing/malformed reasons fall back to
+--                       '(no detail captured)'; the FE's own unknown-code fallback is
+--                       already the literal 'Invalid'.
 -- Grouping on these consolidates counts across array indices. The raw
 -- form_error_message is dropped from the grain (kept nowhere) since the label
 -- pair fully replaces it for reporting; add it back only if a debugging card
@@ -83,12 +86,14 @@ humanized as (
         -- reason after the first ': '. The FE (collectFieldErrors + RULE_LABELS)
         -- already maps each rule code to a friendly, PII-safe LABEL before emitting
         -- (e.g. "income: Invalid amount"), so this is a display-ready string — we
-        -- pass it through rather than re-deriving from a code. A pair with no ': '
-        -- is a malformed fragment (FE message-delimiter bug — see FE gaps ticket);
-        -- null it so it rolls into '(unspecified)' instead of a garbage reason.
+        -- pass it through rather than re-deriving from a code. A pair with no ': ',
+        -- or an empty reason after it ("field: "), is a malformed fragment (FE
+        -- message-delimiter/truncation bug — see FE gaps ticket); null it so it
+        -- rolls into the '(no detail captured)' fallback instead of a blank/garbage
+        -- reason.
         case when pair = '(unspecified)' then null
             when instr(pair, ': ') = 0 then null
-            else trim(substr(pair, instr(pair, ': ') + 2))
+            else nullif(trim(substr(pair, instr(pair, ': ') + 2)), '')
         end as error_reason_raw
     from pairs
 )
