@@ -1218,6 +1218,7 @@ resource "metabase_dashboard" "analytics" {
       visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
     }] : [],
     var.bigquery_enabled ? [
+      # ── (1) OVERVIEW ──────────────────────────────────────────────────────
       {
         card_id                = tonumber(metabase_card.global_screener_results_outcome_kpis[0].id)
         dashboard_tab_id       = 6
@@ -1230,9 +1231,32 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_apply_conversion_rate[0].id)
+        card_id                = tonumber(metabase_card.global_screener_results_revisits[0].id)
         dashboard_tab_id       = 6
         row                    = 6
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
+        dashboard_tab_id       = 6
+        row                    = 6
+        col                    = 12
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # ── (2) PROGRAMS (eligible-programs list + CTAs) ──────────────────────
+      {
+        card_id                = tonumber(metabase_card.global_screener_program_conversion[0].id)
+        dashboard_tab_id       = 6
+        row                    = 14
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1243,28 +1267,6 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_info_vs_apply[0].id)
         dashboard_tab_id       = 6
-        row                    = 14
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_screener_results_revisits[0].id)
-        dashboard_tab_id       = 6
-        row                    = 14
-        col                    = 12
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
-        dashboard_tab_id       = 6
         row                    = 22
         col                    = 0
         size_x                 = 12
@@ -1274,7 +1276,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_top_resources[0].id)
+        card_id                = tonumber(metabase_card.global_screener_apply_conversion_rate[0].id)
         dashboard_tab_id       = 6
         row                    = 22
         col                    = 12
@@ -1284,13 +1286,25 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Analytics v2 — Results-tab cards
+      # ── (3) RESULTS FILTER ────────────────────────────────────────────────
       {
-        card_id                = tonumber(metabase_card.global_screener_program_conversion[0].id)
+        card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
         row                    = 30
         col                    = 0
-        size_x                 = 24
+        size_x                 = 8
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # ── (4) ADDITIONAL RESOURCES section ──────────────────────────────────
+      {
+        card_id                = tonumber(metabase_card.global_screener_top_resources[0].id)
+        dashboard_tab_id       = 6
+        row                    = 34
+        col                    = 0
+        size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1299,18 +1313,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_resource_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
-        card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
-        dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 34
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1321,7 +1324,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 46
+        row                    = 42
         col                    = 0
         size_x                 = 12
         size_y                 = 4
@@ -1330,9 +1333,9 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
+        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
         dashboard_tab_id       = 6
-        row                    = 46
+        row                    = 42
         col                    = 12
         size_x                 = 12
         size_y                 = 4
@@ -1340,24 +1343,34 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Scroll depth is results-page behavior. Kept last in the tab-6 group so the
-      # card array matches Metabase's returned order (the provider diffs it).
       {
-        card_id                = tonumber(metabase_card.global_screener_scroll_depth[0].id)
+        card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 50
+        row                    = 46
         col                    = 0
-        size_x                 = 24
+        size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
       },
-      # citizenship filter usage + NPS
+      # ── (5) NAV BETWEEN RESULTS TABS ──────────────────────────────────────
       {
-        card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
+        card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 54
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # ── (6) HELP & FEEDBACK ───────────────────────────────────────────────
+      {
+        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
+        dashboard_tab_id       = 6
+        row                    = 62
         col                    = 0
         size_x                 = 8
         size_y                 = 4
@@ -1368,22 +1381,10 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 62
         col                    = 8
         size_x                 = 16
         size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # edit-nav from the results Needs section back to Additional Resources
-      {
-        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
-        dashboard_tab_id       = 6
-        row                    = 66
-        col                    = 0
-        size_x                 = 8
-        size_y                 = 4
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
