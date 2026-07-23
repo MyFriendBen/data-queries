@@ -268,8 +268,12 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
+    -- GREATEST(..., 0) clamps the numerator: `viewed` is lifetime-distinct (revisits
+    -- mart) while `ne` is a daily-grain SUM, so a screening none-eligible across
+    -- multiple days could in theory over-subtract to a small negative. Bounded and
+    -- tiny in practice, but the clamp guarantees a non-negative rate.
     SELECT ROUND(
-      ((SELECT n FROM viewed) - COALESCE((SELECT n FROM ne), 0)) * 100.0
+      GREATEST((SELECT n FROM viewed) - COALESCE((SELECT n FROM ne), 0), 0) * 100.0
       / NULLIF((SELECT n FROM viewed), 0), 1
     ) AS `% Eligible for 1+ Program`
   SQL
@@ -482,16 +486,19 @@ locals {
   # Bounded to 15 so the chart stays readable AND to sidestep Metabase 0.56's "Other"
   # bucketing (a ~115-row bar chart buckets the tail; a top-N never trips it). The full
   # per-program counts live in the Conversion Rates table below.
+  # Group by program_id (the stable key, consistent with the mart), carrying
+  # MAX(program_name) as the display label — so two programs never merge on a shared
+  # display name and a name that drifts across the window doesn't split one program.
   screener_sql_program_most_shown = <<-SQL
     SELECT
-      program_name AS `Program`,
+      MAX(program_name) AS `Program`,
       SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
     FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY program_name
+    GROUP BY program_id
     HAVING `Shown` > 0
     ORDER BY `Shown` DESC
     LIMIT 15
@@ -505,7 +512,8 @@ locals {
   screener_sql_program_engagement = <<-SQL
     WITH per_program AS (
       SELECT
-        program_name,
+        program_id,
+        MAX(program_name) AS program_name,
         SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
@@ -513,7 +521,7 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_name
+      GROUP BY program_id
     )
     SELECT
       program_name AS `Program`,
@@ -534,7 +542,8 @@ locals {
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
-        program_name,
+        program_id,
+        MAX(program_name) AS program_name,
         SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
@@ -543,7 +552,7 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_name
+      GROUP BY program_id
     )
     SELECT
       program_name AS `Program`,
