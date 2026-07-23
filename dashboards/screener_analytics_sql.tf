@@ -147,8 +147,9 @@ locals {
   # session-grain mart_screener_step_facts (one row per session x step, deduped
   # across days), so both numerator and denominator are exact distinct-session
   # counts over the window — no multi-day double-count. Normalizes for traffic so
-  # steps are comparable by error-proneness, not volume. Total error EVENTS (raw
-  # attempts, inflated by retries) ride along for the hover. NULLIF guards a step
+  # steps are comparable by error-proneness, not volume. Total error EVENTS (one
+  # per failed field per submit, FE #2163) ride along for the hover — a field-level
+  # error count, so a submit failing 3 fields contributes 3. NULLIF guards a step
   # with errors but no captured view.
   screener_sql_errors_by_step = <<-SQL
     SELECT
@@ -1122,9 +1123,11 @@ locals {
 
   # ── Form Journey: which validation errors, by step ──────────────────────────────
   # Reads the humanized error columns produced in mart_screener_form_errors
-  # (error_field_label / error_problem) — the raw "field:rule" parsing + friendly
-  # labeling lives in the mart, so this card is a plain GROUP BY. Adding a friendly
-  # label for a new field is a one-line change in the mart, not here.
+  # (error_field_label / error_problem). The FE now emits per-field errors
+  # (form_field_name + form_error_reason, FE #2163); the mart maps the canonical
+  # field path to a friendly label and passes the FE's reason label through, so this
+  # card is a plain GROUP BY. Adding a friendly label for a new field is a one-line
+  # change in the mart, not here.
   screener_sql_errors_detail = <<-SQL
     SELECT
       screener_step_label AS `Step`,

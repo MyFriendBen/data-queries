@@ -4,37 +4,29 @@
   )
 }}
 
--- Screener form errors detail - daily grain by state, step, and error message.
+-- Screener form errors detail - daily grain by state, step, field, and problem.
 -- Powers the "which validations trip people up" card on the Form Journey tab.
 -- The form-funnel mart (mart_screener_form_funnel) carries error COUNTS at the
--- (date, state, step) grain; this mart adds the form_error_message dimension so
--- the specific failing field:rule pairs are visible per step.
+-- (date, state, step) grain; this mart adds the field + problem dimensions so the
+-- specific failing field and reason are visible per step.
 --
--- form_error_message is a PII-safe "field: rule" list (e.g. "zipcode: Required")
--- built on the FE from the field name + zod issue code — never the entered value
--- or localized message. One screener_form_error event fires per failed submit
--- attempt and its form_error_message lists every field that failed that attempt,
--- so total_errors here counts attempts, and screenings_with_error is the distinct
--- screenings that hit this step+message combo.
+-- CONTRACT (FE #2163, per-field events): screener_form_error fires ONCE PER FAILED
+-- FIELD, carrying two PII-safe params built on the FE from the field name + zod
+-- issue code (never the entered value or localized message):
+--   form_field_name  : canonical field path, numeric array indices already stripped
+--                      on the FE (members.0.birthYear -> members.birthYear), so one
+--                      logical field is one path (no explode/regex needed here).
+--   form_error_reason: the friendly rule LABEL (collectFieldErrors + RULE_LABELS in
+--                      errorLabels.ts), e.g. "Invalid amount" — display-ready.
+-- So total_errors counts field-level error events and screenings_with_error is the
+-- distinct screenings that hit this (step, field, problem) combo.
 --
--- HUMANIZATION lives HERE (not in the dashboard card SQL) so it is defined once,
--- tested, and reusable: the raw message reads as code and array indices explode
--- one logical field into many rows. Two derived columns are produced —
---   error_field_label : the field path with numeric array indices stripped
---                       (incomeStreams.0.income -> incomeStreams.income) then
---                       mapped to a friendly label. UNMAPPED paths fall back to
---                       the stripped path so a NEW field never vanishes — it just
---                       shows its raw name until a label is added here (one line).
---   error_problem     : the FE-emitted rule LABEL, passed through verbatim. The FE
---                       (collectFieldErrors + RULE_LABELS in errorLabels.ts) owns the
---                       code->label mapping and sends the label, so dbt does not
---                       re-derive it. Missing/malformed reasons fall back to
---                       '(no detail captured)'; the FE's own unknown-code fallback is
---                       already the literal 'Invalid'.
--- Grouping on these consolidates counts across array indices. The raw
--- form_error_message is dropped from the grain (kept nowhere) since the label
--- pair fully replaces it for reporting; add it back only if a debugging card
--- needs the exact string.
+-- HUMANIZATION of the FIELD lives HERE (not in the card SQL) so it is defined once,
+-- tested, and reusable: form_field_name is a code-y path, mapped below to a friendly
+-- label. UNMAPPED paths fall back to the raw path so a NEW field never vanishes — it
+-- just shows its raw name until a label is added here (one line). The PROBLEM label
+-- is the FE's own (RULE_LABELS), passed through verbatim — dbt does not maintain a
+-- parallel code->label map that would drift from the FE.
 --
 -- Carries the session-level is_cesn flag, like the sibling mart_screener_form_funnel
 -- (errors_by_step reads that one). Both are screener_form_error surfaces, so they
@@ -42,7 +34,7 @@
 -- all_screener_global_predicate (NOT is_cesn AND (state IN codes OR state IS NULL))
 -- so pre-white-label errors are included and CESN excluded, consistently.
 
-with errors as (
+with humanized as (
     select
         event_date,
         event_date_parsed,
@@ -50,52 +42,14 @@ with errors as (
         is_cesn,
         screener_step_name,
         screener_uid,
-        -- Guard against the odd null/empty message so it groups into one bucket
-        -- rather than silently dropping (a message should always be present now).
-        coalesce(nullif(trim(form_error_message), ''), '(unspecified)') as form_error_message
+        -- Canonical field path (indices already stripped on the FE). Guard the odd
+        -- null/empty so it groups into one bucket rather than dropping.
+        nullif(trim(form_field_name), '') as error_field_path,
+        -- Friendly reason label, passed through verbatim; null/empty -> fallback.
+        nullif(trim(form_error_reason), '') as error_reason_raw
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
         and screener_step_name is not null
-),
-
--- One screener_form_error lists EVERY field that failed that submit, comma-joined
--- ("field1: code1, field2: code2"). Explode to one row per "field: code" pair so
--- each failing field is counted and labeled independently (parsing only the first
--- pair would drop fields 2+ and mislabel field 1, whose reason would swallow the
--- trailing ", field2: code2"). Each pair contributes 1 to the field count.
-pairs as (
-    select
-        e.* except (form_error_message),
-        e.form_error_message,
-        trim(pair) as pair
-    from errors e,
-    unnest(
-        if(e.form_error_message = '(unspecified)',
-           ['(unspecified)'],
-           split(e.form_error_message, ', '))
-    ) as pair
-),
-
-humanized as (
-    select
-        * except (pair),
-        -- field path before the first ': ', numeric array indices removed
-        case when pair = '(unspecified)' then null
-            else regexp_replace(split(pair, ': ')[safe_offset(0)], r'\.[0-9]+', '')
-        end as error_field_path,
-        -- reason after the first ': '. The FE (collectFieldErrors + RULE_LABELS)
-        -- already maps each rule code to a friendly, PII-safe LABEL before emitting
-        -- (e.g. "income: Invalid amount"), so this is a display-ready string — we
-        -- pass it through rather than re-deriving from a code. A pair with no ': ',
-        -- or an empty reason after it ("field: "), is a malformed fragment (FE
-        -- message-delimiter/truncation bug — see FE gaps ticket); null it so it
-        -- rolls into the '(no detail captured)' fallback instead of a blank/garbage
-        -- reason.
-        case when pair = '(unspecified)' then null
-            when instr(pair, ': ') = 0 then null
-            else nullif(trim(substr(pair, instr(pair, ': ') + 2)), '')
-        end as error_reason_raw
-    from pairs
 )
 
 select
@@ -108,9 +62,9 @@ select
     -- of truth across the Form Journey marts).
     {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
-    -- Friendly field label; unmapped paths fall back to the raw stripped path.
+    -- Friendly field label; unmapped paths fall back to the raw path.
     case
-        when form_error_message = '(unspecified)' then '(unspecified)'
+        when error_field_path is null then '(unspecified)'
         when error_field_path = 'householdSize' then 'Household size'
         when error_field_path = 'zipcode' then 'Zip code'
         when error_field_path = 'county' then 'County'
@@ -135,16 +89,15 @@ select
     end as error_field_label,
 
     -- Problem phrase. The FE owns the rule-code -> friendly-label mapping (its
-    -- RULE_LABELS in errorLabels.ts) and emits the LABEL directly in
-    -- form_error_message, so dbt passes it through verbatim rather than maintaining
-    -- a parallel code->label map that would drift from the FE. Missing/fragment
-    -- reasons (null error_reason_raw) surface as '(no detail captured)'. The FE's
-    -- own unknown-code fallback is already the literal 'Invalid'.
+    -- RULE_LABELS in errorLabels.ts) and emits the LABEL directly as
+    -- form_error_reason, so dbt passes it through verbatim rather than maintaining
+    -- a parallel code->label map that would drift from the FE. Missing reasons
+    -- (null) surface as '(no detail captured)'. The FE's own unknown-code fallback
+    -- is already the literal 'Invalid'.
     coalesce(error_reason_raw, '(no detail captured)') as error_problem,
 
-    -- one exploded row per (attempt x failed field), so count(*) is the field-level
-    -- error total for this (step, field, problem) — no longer over-attributed to
-    -- field #1 as when the whole message was parsed as one row.
+    -- one row per field-level error event (the FE now fires one per failed field),
+    -- so count(*) is the field-level error total for this (step, field, problem).
     count(*) as total_errors,
     count(distinct screener_uid) as screenings_with_error,
 

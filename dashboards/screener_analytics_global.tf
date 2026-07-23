@@ -116,7 +116,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Of the screenings that viewed each step, the % that hit at least one validation error there — so steps are comparable regardless of traffic. Hover for the screening count and total error attempts."
+    description         = "Of the screenings that viewed each step, the % that hit at least one validation error there — so steps are comparable regardless of traffic. Hover for the screening count and total field-level errors (a submit failing multiple fields counts each field)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

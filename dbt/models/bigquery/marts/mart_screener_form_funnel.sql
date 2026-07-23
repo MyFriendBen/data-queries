@@ -104,8 +104,7 @@ form_errors as (
         screener_state,
         is_cesn,
         screener_step_name,
-        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
-        form_error_count
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key
     from {{ ref('stg_ga_screener_form_funnel') }}
     where event_name = 'screener_form_error'
 ),
@@ -113,7 +112,7 @@ form_errors as (
 -- Pre-aggregate each event source to the (date, state, step) grain BEFORE
 -- joining. Joining the raw per-event CTEs directly would fan out (cartesian
 -- product per grain group): the COUNT(DISTINCT session_key) measures survive
--- that (DISTINCT collapses dupes) but SUM(form_error_count) would be inflated
+-- that (DISTINCT collapses dupes) but the error-event COUNT(*) would be inflated
 -- by (views x completes x backs). Aggregating first makes every side one row
 -- per grain, so the join can't multiply. Same pattern as mart_screener_saves.
 -- is_cesn is carried into every summary grain. It is session-level (constant
@@ -150,7 +149,10 @@ form_errors_summary as (
     select
         event_date, screener_state, is_cesn, screener_step_name,
         count(distinct session_key) as screenings_with_error,
-        sum(form_error_count) as total_error_count
+        -- Count of field-level error events (FE #2163 fires one screener_form_error
+        -- per failed field). Replaces SUM(form_error_count), which counted top-level
+        -- RHF keys and is now emitted per-field (would double-count).
+        count(*) as total_error_count
     from form_errors
     group by event_date, screener_state, is_cesn, screener_step_name
 ),
