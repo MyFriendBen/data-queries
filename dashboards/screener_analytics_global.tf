@@ -604,8 +604,8 @@ resource "metabase_card" "global_screener_income_source_engagement" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Income Source Actions"
-    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
+    name                = "Income Added per Member Page"
+    description         = "Of the member-detail pages people viewed, the % that added an income source. A page must be viewed to add income on it, so this is a true rate ≤ 100%."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -618,13 +618,10 @@ resource "metabase_card" "global_screener_income_source_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "scalar"
     visualization_settings = {
-      "graph.dimensions"      = ["Action"]
-      "graph.metrics"         = ["Total Actions"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Total Actions" = { color = "#d37295" } }
+      "scalar.field"    = "% of Member Pages"
+      "column_settings" = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1166,6 +1163,36 @@ resource "metabase_card" "global_screener_more_help_resources" {
     visualization_settings = {
       "table.row_index" = false
       "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_back_to_screener" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Back to Screener"
+    description         = "Of the screenings that reached the results page, the % that clicked 'Back to Screener' to go edit their answers (distinct from the in-form Back button)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_back_to_screener, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []

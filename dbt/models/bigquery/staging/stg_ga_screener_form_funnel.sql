@@ -50,6 +50,9 @@ with per_event as (
         max(case when ep.key = 'screener_step_name' then ep.value.string_value end) as screener_step_name,
         max(case when ep.key = 'screener_step_number' then ep.value.int_value end) as screener_step_number,
         max(case when ep.key = 'step_action' then ep.value.string_value end) as step_action,
+        -- member_index (FE #2163): 0-based member-page ordinal, present only on the
+        -- member-details step's view event — the per-member-page denominator key.
+        max(case when ep.key = 'member_index' then ep.value.int_value end) as member_index,
 
         -- Error details (screener_form_error only).
         -- New per-field contract (FE #2163): screener_form_error now fires ONCE PER

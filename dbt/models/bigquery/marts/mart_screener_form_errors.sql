@@ -95,7 +95,10 @@ select
         when error_field_path like 'conditions.%' then 'Household conditions'
         when error_field_path like 'studentEligibility.%' then 'Student eligibility'
 
-        -- Income streams
+        -- Income Yes/No questions (PR #2157 income UX rework) + income streams
+        when error_field_path = 'incomeEmployed' then 'Income: employed?'
+        when error_field_path = 'incomeGig' then 'Income: gig work?'
+        when error_field_path = 'incomeOther' then 'Income: other payments?'
         when error_field_path = 'incomeStreams.incomeAmount' then 'Income amount'
         when error_field_path = 'incomeStreams.incomeFrequency' then 'Income frequency'
         when error_field_path = 'incomeStreams.incomeCategory' then 'Income category'

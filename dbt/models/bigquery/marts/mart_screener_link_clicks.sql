@@ -13,12 +13,17 @@
 --                from the results Needs section, url = /{state}/{uid}/...). Edit
 --                BEHAVIOR, not content; surfaced as its own stat.
 --
--- Scope note: this mart deliberately covers ONLY screener_link_click, and only its
--- content/edit-nav links. Site-chrome clicks (logo, language switch, and the footer
--- About/Privacy/Terms legal links — which also fire as screener_link_click) are
--- served by mart_screener_footer_engagement instead, so they are EXCLUDED here to
--- avoid a dead duplicate branch. link_label is the display name; screener_step_name
--- is the step the link was clicked on. Daily grain by state.
+-- CLASSIFICATION now keys off link_location (FE #2163 gap #3), not link_name.
+-- Site-chrome footer clicks (logo, language, About/Privacy/Terms legal links) also
+-- fire as screener_link_click; they carry link_location = 'footer' and are served by
+-- mart_screener_footer_engagement, so we EXCLUDE 'footer' here. Crucially this fixes
+-- the old name-based exclusion, which wrongly dropped Privacy/Terms clicked INLINE on
+-- the Disclaimer step (same link name, different location) — those carry
+-- link_location = 'disclaimer_inline' and are now correctly retained as in-step
+-- Disclaimer engagement. edit_nav links carry link_location = 'results_needs'.
+-- Rows with a null link_location (pre-#2163 events, before the param shipped) fall
+-- back to the legacy name-based footer exclusion so historical data isn't mislabeled.
+-- link_label is the display name; screener_step_name is the step. Daily grain by state.
 
 with clicks as (
     select
@@ -27,11 +32,17 @@ with clicks as (
         screener_state,
         screener_uid,
         link_name,
+        link_location,
         screener_step_name
     from {{ ref('stg_ga_screener_ui_events') }}
     where event_name = 'screener_link_click'
-        -- footer legal links are site chrome (see mart_screener_footer_engagement)
-        and coalesce(link_name, '') not in ('About Us', 'Privacy Policy', 'Terms and Conditions')
+        -- Exclude footer/chrome. New events: by location. Legacy events (null
+        -- location): fall back to the old name-based exclusion.
+        and coalesce(link_location, '') != 'footer'
+        and not (
+            link_location is null
+            and coalesce(link_name, '') in ('About Us', 'Privacy Policy', 'Terms and Conditions')
+        )
 ),
 
 classified as (
@@ -39,7 +50,8 @@ classified as (
         *,
         case
             -- internal go-back-to-edit links (edit behavior, not content)
-            when link_name = 'Additional Resources — Edit Step' then 'edit_nav'
+            when link_location = 'results_needs'
+                or link_name = 'Additional Resources — Edit Step' then 'edit_nav'
             else 'in_step'
         end as link_group,
         coalesce(link_name, '(unnamed)') as link_label
@@ -51,6 +63,7 @@ select
     event_date_parsed,
     screener_state,
     link_group,
+    link_location,
     link_label,
     screener_step_name,
     -- friendly step label (shared ladder macro) for the in-step links card
@@ -62,5 +75,5 @@ select
     current_timestamp() as updated_at
 
 from classified
-group by event_date, event_date_parsed, screener_state, link_group, link_label, screener_step_name
+group by event_date, event_date_parsed, screener_state, link_group, link_location, link_label, screener_step_name
 order by event_date desc, screener_state, total_clicks desc

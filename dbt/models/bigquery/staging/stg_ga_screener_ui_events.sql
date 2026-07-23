@@ -21,7 +21,12 @@
 --                                 modeled separately from stg_ga_screener_step_interactions)
 --   screener_social_click       — footer social icon (social_network: linkedin |
 --                                 facebook | instagram)
+--   screener_results_back_to_screener — results-page "Back to Screener" button
+--                                 (FE #2163 gap #8; distinct from the in-form
+--                                 screener_form_back). Context-only.
 -- screener_state / screener_uid arrive as params.
+-- link_location (FE #2163 gap #3) disambiguates where a screener_link_click fired
+-- ('footer' | 'disclaimer_inline' | 'zip_code_inline' | 'results_needs').
 
 select
     event_date,
@@ -49,6 +54,7 @@ select
     end) as nps_score,
     max(case when ep.key = 'channel' then ep.value.string_value end) as feedback_channel,
     max(case when ep.key = 'link_name' then ep.value.string_value end) as link_name,
+    max(case when ep.key = 'link_location' then ep.value.string_value end) as link_location,
     max(case when ep.key = 'location' then ep.value.string_value end) as location,
     max(case when ep.key = 'network' then ep.value.string_value end) as social_network
 
@@ -66,7 +72,8 @@ where event_name in (
     'screener_link_click',
     'screener_logo_click',
     'screener_language_changed',
-    'screener_social_click'
+    'screener_social_click',
+    'screener_results_back_to_screener'
 )
 
 group by

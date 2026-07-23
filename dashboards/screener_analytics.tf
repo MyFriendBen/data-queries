@@ -800,8 +800,8 @@ resource "metabase_card" "screener_income_source_engagement" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Income Source Actions"
-    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
+    name                = "Income Added per Member Page"
+    description         = "Of the member-detail pages people viewed, the % that added an income source. A page must be viewed to add income on it, so this is a true rate ≤ 100%."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -814,12 +814,10 @@ resource "metabase_card" "screener_income_source_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "scalar"
     visualization_settings = {
-      "graph.dimensions"  = ["Action"]
-      "graph.metrics"     = ["Total Actions"]
-      "graph.show_values" = true
-      "series_settings"   = { "Total Actions" = { color = "#d37295" } }
+      "scalar.field"    = "% of Member Pages"
+      "column_settings" = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1144,6 +1142,38 @@ resource "metabase_card" "screener_more_help_resources" {
     visualization_settings = {
       "table.row_index" = false
       "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Back to Screener — scalar (% of results viewers who clicked the results-page
+# "Back to Screener" button). Sits in the results-engagement row.
+resource "metabase_card" "screener_back_to_screener" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Back to Screener"
+    description         = "Of the screenings that reached the results page, the % that clicked 'Back to Screener' to go edit their answers (distinct from the in-form Back button)."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_back_to_screener, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []

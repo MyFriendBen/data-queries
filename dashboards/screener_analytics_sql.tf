@@ -780,26 +780,22 @@ locals {
   SQL
 
   # ── Form Journey: income-source add/delete actions ──────────────────────────────
-  # Raw screening + action counts (no % denominator). A per-page rate ("% of member
-  # detail pages that added income") is the meaningful metric here but needs a FE
-  # member/page index the income event doesn't yet carry — tracked on the standing
-  # FE analytics-gaps ticket. Until then, counts answer "does income entry happen".
+  # Per-member-page income-add RATE (FE #2163 member_index): of the member-detail
+  # pages people viewed, the % that added an income source. This is the meaningful
+  # metric the old raw-count version couldn't compute without a member/page index.
+  # Numerator and denominator are both distinct (screener_uid, member_index) pages
+  # (mart_screener_member_income), so the rate is <= 100%. Scalar; raw page counts
+  # on the mart if a drill-down is needed.
   screener_sql_income_source_engagement = <<-SQL
-    SELECT `Action`, `Screenings`, `Total Actions` FROM (
-      SELECT
-        CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
-        INITCAP(action) AS `Action`,
-        COUNT(DISTINCT screener_uid) AS `Screenings`,
-        SUM(total_actions) AS `Total Actions`
-      FROM `${local.bq_dataset}.mart_screener_section_engagement`
-      WHERE __STATE_FILTER__
-        AND section = 'Income Sources'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY action, sort_key
-    )
-    ORDER BY sort_key
+    SELECT
+      ROUND(SUM(member_pages_added_income) * 100.0 / NULLIF(SUM(member_pages_viewed), 0), 1) AS `% of Member Pages`,
+      SUM(member_pages_added_income) AS `Pages That Added Income`,
+      SUM(member_pages_viewed) AS `Member Pages Viewed`
+    FROM `${local.bq_dataset}.mart_screener_member_income`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
   SQL
 
   # ── Form Journey: confirmation-page edits by section ─────────────────
@@ -1101,6 +1097,32 @@ locals {
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY `Resource`
     ORDER BY `Clicks` DESC
+  SQL
+
+  # ── Results: "Back to Screener" rate (% of results viewers who went back) ───────
+  # FE #2163 gap #8. Numerator = distinct screenings that clicked the results-page
+  # Back to Screener button (mart_screener_results_back). Same shared results-viewer
+  # denominator (CESN-aware sentinel) as the other results-engagement scalars.
+  screener_sql_back_to_screener = <<-SQL
+    WITH backs AS (
+      SELECT SUM(screenings_went_back) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_back`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM backs), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM backs), 0) AS `Went Back`
   SQL
 
   # ── Results: NPS engagement rate (% of results viewers who scored NPS) ──────────
