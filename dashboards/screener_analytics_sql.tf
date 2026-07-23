@@ -239,7 +239,11 @@ locals {
     SELECT
       (SELECT results_viewed FROM viewed) AS `Results Viewed`,
       none_eligible AS `None Eligible`,
-      ROUND(none_eligible * 100.0 / NULLIF((SELECT results_viewed FROM viewed) + none_eligible, 0), 1) AS `% None Eligible`,
+      -- none-eligible screenings are a SUBSET of results-viewed (the FE fires
+      -- screener_results_loaded AND, independently, screener_results_none_eligible
+      -- when program_count = 0), so the denominator is results_viewed alone —
+      -- adding none_eligible would double-count that group.
+      ROUND(none_eligible * 100.0 / NULLIF((SELECT results_viewed FROM viewed), 0), 1) AS `% None Eligible`,
       avg_program_count AS `Avg Programs`,
       avg_total_estimated_value AS `Avg Est Value`,
       results_errors AS `Results Errors`
