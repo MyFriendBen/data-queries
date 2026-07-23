@@ -25,9 +25,12 @@
 --                       mapped to a friendly label. UNMAPPED paths fall back to
 --                       the stripped path so a NEW field never vanishes — it just
 --                       shows its raw name until a label is added here (one line).
---   error_problem     : the zod rule normalized to a short phrase (Required /
---                       Invalid format / Too long / Too short); anything else ->
---                       'Invalid'. The rule set is small and closed.
+--   error_problem     : the FE-emitted rule LABEL, passed through verbatim. The FE
+--                       (collectFieldErrors + RULE_LABELS in errorLabels.ts) owns the
+--                       code->label mapping and sends the label, so dbt does not
+--                       re-derive it. Missing/malformed reasons fall back to
+--                       '(no detail captured)'; the FE's own unknown-code fallback is
+--                       already the literal 'Invalid'.
 -- Grouping on these consolidates counts across array indices. The raw
 -- form_error_message is dropped from the grain (kept nowhere) since the label
 -- pair fully replaces it for reporting; add it back only if a debugging card
@@ -80,11 +83,17 @@ humanized as (
         case when pair = '(unspecified)' then null
             else regexp_replace(split(pair, ': ')[safe_offset(0)], r'\.[0-9]+', '')
         end as error_field_path,
-        -- reason after the first ': ': a stable rule code post MFB-1348 (e.g.
-        -- 'select_one'), or a localized English phrase on older rows. Lowercased
-        -- (harmless for codes) so the fallback prose matching is case-insensitive.
+        -- reason after the first ': '. The FE (collectFieldErrors + RULE_LABELS)
+        -- already maps each rule code to a friendly, PII-safe LABEL before emitting
+        -- (e.g. "income: Invalid amount"), so this is a display-ready string — we
+        -- pass it through rather than re-deriving from a code. A pair with no ': ',
+        -- or an empty reason after it ("field: "), is a malformed fragment (FE
+        -- message-delimiter/truncation bug — see FE gaps ticket); null it so it
+        -- rolls into the '(no detail captured)' fallback instead of a blank/garbage
+        -- reason.
         case when pair = '(unspecified)' then null
-            else lower(trim(substr(pair, instr(pair, ': ') + 2)))
+            when instr(pair, ': ') = 0 then null
+            else nullif(trim(substr(pair, instr(pair, ': ') + 2)), '')
         end as error_reason_raw
     from pairs
 )
@@ -125,30 +134,13 @@ select
         else coalesce(error_field_path, '(unspecified)')
     end as error_field_label,
 
-    -- Normalized problem phrase. The FE (MFB-1348) emits a stable rule CODE after
-    -- the "field: " prefix (e.g. "healthInsurance: select_one"); map those to the
-    -- same labels the FE's RULE_LABELS uses so both sides read identically and it's
-    -- locale-safe. The analytics epoch (2026-07-22) is the first full day after the
-    -- MFB-1348 cutover, so every row here carries a stable code — no legacy
-    -- English-message fallback is needed. Unknown code -> 'Invalid'.
-    case
-        when form_error_message = '(unspecified)' then '(no detail captured)'
-        when error_reason_raw in ('required', 'too_small', 'invalid_type') then 'Required'
-        when error_reason_raw = 'too_big' then 'Too long'
-        when error_reason_raw in ('invalid_string', 'invalid_format') then 'Invalid format'
-        when error_reason_raw in ('invalid_enum_value', 'invalid_selection') then 'Invalid selection'
-        when error_reason_raw = 'select_one' then 'Must select an option'
-        when error_reason_raw = 'none_exclusive' then "Can't combine None with others"
-        when error_reason_raw = 'invalid_amount' then 'Invalid amount'
-        when error_reason_raw = 'hours_required' then 'Enter hours worked'
-        when error_reason_raw = 'future_date' then "Date can't be in the future"
-        when error_reason_raw = 'incomplete' then 'Answer all questions'
-        when error_reason_raw = 'consent_required' then 'Consent required'
-        when error_reason_raw = 'phone_format' then 'Must be 10 digits'
-        when error_reason_raw = 'out_of_area' then 'Not in service area'
-        when error_reason_raw = 'must_agree' then 'Must be checked to continue'
-        else 'Invalid'
-    end as error_problem,
+    -- Problem phrase. The FE owns the rule-code -> friendly-label mapping (its
+    -- RULE_LABELS in errorLabels.ts) and emits the LABEL directly in
+    -- form_error_message, so dbt passes it through verbatim rather than maintaining
+    -- a parallel code->label map that would drift from the FE. Missing/fragment
+    -- reasons (null error_reason_raw) surface as '(no detail captured)'. The FE's
+    -- own unknown-code fallback is already the literal 'Invalid'.
+    coalesce(error_reason_raw, '(no detail captured)') as error_problem,
 
     -- one exploded row per (attempt x failed field), so count(*) is the field-level
     -- error total for this (step, field, problem) — no longer over-attributed to

@@ -4,14 +4,18 @@
   )
 }}
 
--- Screener program interaction breakdown - daily grain by state, program, and
--- interaction type
+-- Screener program interaction breakdown - daily grain by state, program,
+-- interaction type, and (for document downloads) document_name.
 -- Powers the Results dashboard tab: apply / more-info / visit-website / phone
 -- / document-download counts per program.
 -- Grouped by program_id, not program_name — program_name is the English
 -- display label and can vary in spelling for the same program; program_id is
 -- the stable key. One arbitrary program_name is carried through per program_id
 -- as the display label.
+-- document_name is in the grain so the document-download card can break out
+-- WHICH document was downloaded. It is null for every non-download interaction
+-- type, so those rows are unaffected (they still collapse to one null-doc row) —
+-- only document_download rows split by document, which is the intent.
 
 with interactions as (
     select
@@ -21,6 +25,7 @@ with interactions as (
         screener_uid,
         program_id,
         program_name,
+        document_name,
         case event_name
             when 'screener_apply_click' then 'apply'
             when 'screener_program_more_info' then 'more_info'
@@ -60,11 +65,14 @@ select
 
     interaction_type,
 
+    -- null except for document_download rows (in the grain below)
+    document_name,
+
     count(*) as total_interactions,
     count(distinct screener_uid) as screenings_with_interaction,
 
     current_timestamp() as updated_at
 
 from interactions
-group by event_date, event_date_parsed, screener_state, program_id, interaction_type
+group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
 order by event_date desc, screener_state, total_interactions desc

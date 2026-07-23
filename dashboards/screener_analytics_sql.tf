@@ -72,7 +72,7 @@ locals {
     FROM (
       SELECT 'Started'            AS funnel_step, (SELECT n FROM started)   AS screenings, 1 AS step_order
       UNION ALL SELECT 'Saw Results',        (SELECT n FROM results),   2
-      UNION ALL SELECT 'Clicked More Info',  (SELECT n FROM more_info), 3
+      UNION ALL SELECT 'Viewed Details',     (SELECT n FROM more_info), 3
       UNION ALL SELECT 'Clicked Apply',      (SELECT n FROM apply),     4
     )
     ORDER BY step_order
@@ -90,7 +90,19 @@ locals {
   # state, member-basics, cesn-*) have null funnel_rank and are excluded here.
   #
   # Plotted metric is "% of Started" (bar N ÷ first/largest bar); raw session count
-  # rides along as `Screenings`.
+  # rides along as `Sessions`.
+  #
+  # NOTE — this funnel is SESSION-keyed (COUNT DISTINCT session_key), not screening-
+  # keyed: the early steps run before a screening/screener_uid even exists (created at
+  # step 3), so a session key is the only unit that spans the whole funnel. The bottom
+  # "Reached Results" bar folds in the SAME screener_results_loaded event the Results
+  # tab uses (see int_screener_furthest_step) — so it is NOT a different event, it is
+  # the same event counted by a different unit. It counts BROWSER SESSIONS that loaded
+  # results; the Results-tab "Results Viewed" scalar counts distinct SCREENINGS
+  # (screener_uid). One screening that loads its results across several sessions (e.g.
+  # returning to a saved result in a new session/device) counts once on the Results tab
+  # but once per session here — so this bar is >= the screening count by exactly the
+  # amount of results-revisiting. That is expected, not a discrepancy.
   screener_sql_step_funnel = <<-SQL
     WITH step_ranks AS (
       SELECT funnel_rank AS step_rank, screener_step_label
@@ -111,21 +123,21 @@ locals {
       SELECT
         r.step_rank,
         r.screener_step_label,
-        COUNT(DISTINCT s.session_key) AS screenings
+        COUNT(DISTINCT s.session_key) AS sessions
       FROM step_ranks r
       LEFT JOIN sessions s ON s.furthest_step_rank >= r.step_rank
       GROUP BY r.step_rank, r.screener_step_label
     ),
     -- Denominator = the first (rank 1) stage: the population that entered the funnel.
     entry AS (
-      SELECT screenings AS entry_screenings FROM funnel WHERE step_rank = 1
+      SELECT sessions AS entry_sessions FROM funnel WHERE step_rank = 1
     )
     SELECT
       screener_step_label,
-      ROUND(screenings * 100.0 / NULLIF((SELECT entry_screenings FROM entry), 0), 1) AS `% of Started`,
-      screenings AS `Screenings`
+      ROUND(sessions * 100.0 / NULLIF((SELECT entry_sessions FROM entry), 0), 1) AS `% of Started`,
+      sessions AS `Sessions`
     FROM funnel
-    WHERE screenings > 0
+    WHERE sessions > 0
     ORDER BY step_rank
   SQL
 
@@ -175,55 +187,10 @@ locals {
     ORDER BY `% of Viewers who Went Back` DESC
   SQL
 
-  # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
-  screener_sql_apply_conversion_rate = <<-SQL
-    WITH per_program AS (
-      SELECT
-        program_id,
-        MAX(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info_screenings,
-        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply_screenings
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
-    )
-    SELECT
-      program_name AS `Program`,
-      more_info_screenings AS `More Info`,
-      apply_screenings AS `Applied`,
-      ROUND(apply_screenings * 100.0 / NULLIF(more_info_screenings, 0), 1) AS `Apply Rate %`
-    FROM per_program
-    WHERE more_info_screenings > 0
-    ORDER BY `Apply Rate %` DESC
-  SQL
-
-  # ── Tab 8 (Results): more info vs apply by program ──────────────────────────
-  screener_sql_more_info_vs_apply = <<-SQL
-    WITH per_program AS (
-      SELECT
-        program_id,
-        MAX(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
-        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
-    )
-    SELECT
-      program_name AS `Program`,
-      more_info AS `More Info`,
-      apply AS `Apply`,
-      ROUND(apply * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`
-    FROM per_program
-    WHERE more_info > 0 OR apply > 0
-    ORDER BY (more_info - apply) DESC
-  SQL
+  # NOTE: the former per-program cards screener_sql_apply_conversion_rate and
+  # screener_sql_more_info_vs_apply were consolidated into two top-15 row charts
+  # (screener_sql_program_most_shown + screener_sql_program_engagement) plus the full
+  # screener_sql_program_conversion table (rates, shown>=20) further down.
 
   # ── Tab 8 (Results): results revisits distribution ──────────────────────────
   # How many screenings loaded their results page once vs. multiple times.
@@ -259,40 +226,90 @@ locals {
   # columns stay on the outcomes mart; none-eligible/errors are rare terminal
   # states (a screening lands in one once), so their per-day sum is effectively
   # screening-grain already.
-  screener_sql_results_outcome_kpis = <<-SQL
+  # ── Results outcome scalars (three standalone cards) ─────────────────────────
+  # Replaces the old multi-column "Results Outcome KPIs" table with three scalar
+  # cards. All three key off the same results-viewer base so they're directly
+  # comparable. "Results Viewed" is DISTINCT screenings that loaded results at
+  # least once (one row per screener_uid in mart_screener_results_revisits —
+  # repeat views collapse to one), NOT total views.
+
+  # (1) Results Viewed — distinct screenings that reached the results page.
+  screener_sql_results_viewed = <<-SQL
+    SELECT COUNT(*) AS `Results Viewed`
+    FROM `${local.bq_dataset}.mart_screener_results_revisits`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
+  # (2) % Eligible for 1+ Program — complement of none-eligible over results-viewers.
+  # none_eligible screenings are a subset of results-viewers (the FE fires
+  # screener_results_loaded AND, independently, screener_results_none_eligible when
+  # program_count = 0), so eligible = viewers - none_eligible, over viewers.
+  # results_viewed is per-screening distinct (revisits mart, lifetime). none_eligible
+  # comes from the daily-grain outcomes mart; SUM across days is distinct-per-day, but
+  # since it's a strict subset of the same viewer set the subtraction stays bounded
+  # (verified tiny in practice) — kept on the viewer denominator, which is the right unit.
+  screener_sql_results_pct_eligible = <<-SQL
     WITH viewed AS (
-      SELECT COUNT(*) AS results_viewed
+      SELECT COUNT(*) AS n
       FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
-    agg AS (
-      SELECT
-        SUM(screenings_none_eligible)  AS none_eligible,
-        SUM(screenings_results_error)  AS results_errors,
-        -- avg_* columns are daily averages in the mart; average them across
-        -- days as an approximation (matches the GA median-of-medians approach)
-        ROUND(AVG(avg_program_count), 2)          AS avg_program_count,
-        ROUND(AVG(avg_total_estimated_value), 2)  AS avg_total_estimated_value
+    ne AS (
+      SELECT SUM(screenings_none_eligible) AS n
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    SELECT
-      (SELECT results_viewed FROM viewed) AS `Results Viewed`,
-      none_eligible AS `None Eligible`,
-      ROUND(none_eligible * 100.0 / NULLIF((SELECT results_viewed FROM viewed) + none_eligible, 0), 1) AS `% None Eligible`,
-      avg_program_count AS `Avg Programs`,
-      avg_total_estimated_value AS `Avg Est Value`,
-      results_errors AS `Results Errors`
-    FROM agg
+    -- GREATEST(..., 0) clamps the numerator: `viewed` is lifetime-distinct (revisits
+    -- mart) while `ne` is a daily-grain SUM, so a screening none-eligible across
+    -- multiple days could in theory over-subtract to a small negative. Bounded and
+    -- tiny in practice, but the clamp guarantees a non-negative rate.
+    SELECT ROUND(
+      GREATEST((SELECT n FROM viewed) - COALESCE((SELECT n FROM ne), 0), 0) * 100.0
+      / NULLIF((SELECT n FROM viewed), 0), 1
+    ) AS `% Eligible for 1+ Program`
+  SQL
+
+  # (3) Results Error Rate % — distinct erroring screenings ÷ distinct results-viewers.
+  # Denominator is the same results-viewer base as (1)/(2) (per user: "of people who
+  # got to results, how many errored"). error count is daily-distinct summed; negligible
+  # multi-day inflation at current volume, and the viewer base is the intended unit.
+  screener_sql_results_error_rate = <<-SQL
+    WITH viewed AS (
+      SELECT COUNT(*) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    err AS (
+      SELECT SUM(screenings_results_error) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT ROUND(
+      COALESCE((SELECT n FROM err), 0) * 100.0
+      / NULLIF((SELECT n FROM viewed), 0), 1
+    ) AS `Results Error Rate %`
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — popup ──────────────────────────
+  # Share popup (results page) funnel: Shown (reached results) -> Opened -> Sent.
+  # The "Shown" base is results-page viewers (mart_screener_results_revisits, the
+  # shared results-viewer denominator, CESN-aware sentinel) — the popup only appears
+  # on results. Share actions come from mart_screener_shares (screening-keyed).
   screener_sql_share_funnel_popup = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
@@ -301,23 +318,37 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT COUNT(*) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Opened' AS funnel_step,
-             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-             1 AS step_order
+      SELECT 'Shown (reached results)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL
+      SELECT 'Opened',
+             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END),
+             2
       FROM filtered
       UNION ALL
       SELECT 'Sent',
              SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-             2
+             3
       FROM filtered
     )
     ORDER BY step_order
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — footer ─────────────────────────
+  # Share footer funnel: Shown (started the screener) -> Opened -> Sent. The footer
+  # (with its Share button) renders on ~every page, so the "Shown" base is screenings
+  # that started the form (form_start on mart_screener_form_funnel, is_cesn + null-
+  # state aware). Share actions come from mart_screener_shares (footer location).
   screener_sql_share_funnel_footer = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
@@ -326,17 +357,28 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT SUM(screenings_viewed_step) AS n
+      FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      WHERE __STATE_FILTER_CESN__
+        AND screener_step_name = '__form_start__'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Opened' AS funnel_step,
-             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-             1 AS step_order
+      SELECT 'Shown (started screener)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL
+      SELECT 'Opened',
+             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END),
+             2
       FROM filtered
       UNION ALL
       SELECT 'Sent',
              SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-             2
+             3
       FROM filtered
     )
     ORDER BY step_order
@@ -365,6 +407,10 @@ locals {
   SQL
 
   # ── Tab 9 (Sharing & Saving): save funnel ───────────────────────────────────
+  # Save funnel: Shown (reached results) -> Opened Save Popup -> Saved. Save is only
+  # offered on the results page (BackAndSaveButtons), so the "Shown" base is results-
+  # page viewers (shared results-viewer denominator, CESN-aware sentinel). Popup +
+  # save come from mart_screener_saves.
   screener_sql_save_funnel = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_saves`
@@ -372,11 +418,20 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT COUNT(*) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Shown Popup' AS funnel_step, SUM(screenings_shown_popup) AS screenings, 1 AS step_order FROM filtered
-      UNION ALL SELECT 'Saved', SUM(screenings_with_save), 2 FROM filtered
+      SELECT 'Shown (reached results)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL SELECT 'Opened Save Popup', SUM(screenings_shown_popup), 2 FROM filtered
+      UNION ALL SELECT 'Saved', SUM(screenings_with_save), 3 FROM filtered
     )
     ORDER BY step_order
   SQL
@@ -410,75 +465,80 @@ locals {
     ORDER BY `Total Saves` DESC
   SQL
 
-  # ── Tab 8 (Results): results-page tab split ─────────────────────────────────
-  # % of results-page viewers who opened each results tab. Numerator = distinct
-  # screenings that opened the tab; denominator = distinct screenings that loaded
-  # results (mart_screener_results_outcomes). A raw count is meaningless without
-  # this denominator. Note long_term_benefits is the default tab (≈100%); the
-  # signal is the Additional Resources rate.
-  screener_sql_tab_split = <<-SQL
-    WITH tab_opens AS (
-      SELECT
-        CASE dimension
-          WHEN 'additional_resources' THEN 'Additional Resources'
-          WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
-          ELSE COALESCE(dimension, '(none)')
-        END AS tab_label,
-        SUM(distinct_screenings) AS n
-      FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-      WHERE __STATE_FILTER__
-        AND metric = 'tab_open'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY tab_label
-    ),
-    results_viewers AS (
-      -- Screening-grain (one row per screener_uid, deduped across days) so a
-      -- multi-day window doesn't double-count a screening that loaded results on
-      -- more than one day — which SUM(screenings_results_loaded) over the per-day
-      -- results-outcomes mart would.
-      SELECT COUNT(*) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_revisits`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    )
-    SELECT
-      tab_opens.tab_label AS `Tab`,
-      ROUND(tab_opens.n * 100.0 / NULLIF((SELECT denom FROM results_viewers), 0), 1) AS `% of Results Viewers`
-    FROM tab_opens
-    ORDER BY `% of Results Viewers` DESC
-  SQL
-
-  # ── Tab 8 (Results): top additional resources ───────────────────────────────
-  screener_sql_top_resources = <<-SQL
-    SELECT
-      dimension AS `Resource`,
-      SUM(total_clicks) AS `Clicks`
-    FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-    WHERE __STATE_FILTER__
-      AND metric = 'resource_click'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY dimension
-    ORDER BY `Clicks` DESC
-    LIMIT 20
-  SQL
+  # NOTE: screener_sql_top_resources (the "Top Additional Resources" single-metric
+  # bar) was removed — the "Additional Resource Engagement" chart (below) supersedes
+  # it: same top-20 resources plus the more-info / website / phone breakdown.
 
   # ══════════════════════════════════════════════════════════════════════════════
   # Analytics v2 cards — new event families
   # ══════════════════════════════════════════════════════════════════════════════
 
   # ── Results: per-program conversion (more-info ÷ shown, apply ÷ more-info) ──────
-  # Pivots interaction_type from mart_screener_program_interactions to compute the
-  # two conversion rates now that program_shown gives a "shown" denominator.
+  # Program engagement, from mart_screener_program_interactions. Split into two
+  # cards: this VOLUME chart (all programs, raw Shown/More Info/Applied counts) and
+  # the RATE chart below (conversion rates, min-Shown filtered).
+  #
+  # No "Other" bucket — every program is shown individually.
   # NOTE: screenings_with_interaction is deduped per DAY in the mart, so summing
-  # across a multi-day window counts a screening active on N days N times — the
-  # rate is "screening-days", not truly-distinct screenings. This matches every
-  # other rate card over these daily-grain marts (e.g. apply_conversion_rate).
+  # across a multi-day window is "screening-days", not truly-distinct screenings —
+  # consistent with the other daily-grain rate cards.
+  # Most-shown programs — top 15 by raw Shown count, for a horizontal (row) bar chart.
+  # Bounded to 15 so the chart stays readable AND to sidestep Metabase 0.56's "Other"
+  # bucketing (a ~115-row bar chart buckets the tail; a top-N never trips it). The full
+  # per-program counts live in the Conversion Rates table below.
+  # Group by program_id (the stable key, consistent with the mart), carrying
+  # MAX(program_name) as the display label — so two programs never merge on a shared
+  # display name and a name that drifts across the window doesn't split one program.
+  screener_sql_program_most_shown = <<-SQL
+    SELECT
+      MAX(program_name) AS `Program`,
+      SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
+    FROM `${local.bq_dataset}.mart_screener_program_interactions`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY program_id
+    HAVING `Shown` > 0
+    ORDER BY `Shown` DESC
+    LIMIT 15
+  SQL
+
+  # Program engagement — top 15 by Viewed-Details Rate % (more-info ÷ shown), for a row
+  # bar chart. Same shown >= 20 floor as the Conversion Rates table so a program with a
+  # handful of impressions and a fluky rate can't top the ranking. Bounded to 15 for
+  # readability and to avoid the "Other" bucket. Rate % also appears in the table below
+  # (intentional: this is the at-a-glance visual, the table is the sortable detail).
+  screener_sql_program_engagement = <<-SQL
+    WITH per_program AS (
+      SELECT
+        program_id,
+        MAX(program_name) AS program_name,
+        SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
+        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
+      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY program_id
+    )
+    SELECT
+      program_name AS `Program`,
+      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `Viewed-Details Rate %`
+    FROM per_program
+    WHERE shown >= 20
+    ORDER BY `Viewed-Details Rate %` DESC
+    LIMIT 15
+  SQL
+
+  # Program conversion RATES. Only programs shown to >= 20 screenings, because
+  # program_shown events are dropped by GA4 when a screening's ~40 impressions fire
+  # in one tick (verified: hundreds of more_info clicks have no matching shown
+  # event) — so per-program rates on a tiny Shown denominator are unreliable and can
+  # exceed 100%. The >= 20 floor also just excludes statistically-noisy low-n rates.
+  # Once the FE batches the shown events (FE gaps ticket), this can relax toward a
+  # smaller noise-only floor, but should never be 0. No "Other" bucket.
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
@@ -497,13 +557,14 @@ locals {
     SELECT
       program_name AS `Program`,
       shown AS `Shown`,
-      more_info AS `More Info`,
+      more_info AS `Viewed Details`,
       applied AS `Applied`,
-      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `More-Info Rate %`,
-      ROUND(applied * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`
+      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1)     AS `Shown -> Details %`,
+      ROUND(applied * 100.0 / NULLIF(more_info, 0), 1)   AS `Details -> Applied %`,
+      ROUND(applied * 100.0 / NULLIF(shown, 0), 1)       AS `Shown -> Applied %`
     FROM per_program
-    WHERE shown > 0
-    ORDER BY `More-Info Rate %` DESC
+    WHERE shown >= 20
+    ORDER BY `Shown -> Details %` DESC
   SQL
 
   # ── Results: navigator engagement (program × navigator × method) ────────────────
@@ -566,8 +627,9 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     viewers AS (
-      -- Screening-grain (deduped across days) — see screener_sql_tab_split. Carries
-      -- is_cesn, so the CESN-aware sentinel still applies for the global card.
+      -- Screening-grain results-viewer count (mart_screener_results_revisits,
+      -- deduped across days) — the shared denominator for the results-engagement
+      -- scalars. Carries is_cesn, so the CESN-aware sentinel applies on the global card.
       SELECT COUNT(*) AS denom
       FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER_CESN__
@@ -576,8 +638,8 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      (SELECT n FROM tab) AS `Opened Additional Resources`,
-      ROUND((SELECT n FROM tab) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`
+      ROUND((SELECT n FROM tab) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      (SELECT n FROM tab) AS `Opened Additional Resources`
   SQL
 
   # ── Form Journey: results scroll depth (distribution by tab) ────────────────────
@@ -662,21 +724,37 @@ locals {
   # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
   # screening-grain, deduped across days, so this is correct over any window). Total
   # events (additive) on hover. sort_key orders add->edit->delete.
-  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that viewed
-  # the roster page (member-basics, where members are added/edited/deleted), the
-  # share that took each action. Denominator = distinct screenings that viewed
-  # member-basics (session-grain step-facts, deduped across days). Raw count + total
+  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that engaged
+  # the roster step, the share that took each action. BOTH numerator and denominator
+  # count distinct screener_uid (screening grain) so the ratio is valid — a
+  # session-keyed denominator would mix grains and exceed 100% (one browser session
+  # can run multiple screenings). Denominator = screenings that VIEWED the member step
+  # OR took a member action (union), from the screening-keyed views mart + the section
+  # mart. The union guarantees every actor is in the denominator, so the bar can never
+  # exceed 100% even at a window's start edge (where an action's paired view may fall
+  # just below the date floor). Spans both the new 'member-basics' slug and the
+  # pre-MFB-1348 'household-members' slug for cutover coverage. Raw count + total
   # events on hover. sort_key orders add->edit->delete.
   screener_sql_household_member_engagement = <<-SQL
     WITH viewers AS (
-      SELECT COUNT(DISTINCT session_key) AS n
-      FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE __STATE_FILTER__
-        AND screener_step_name = 'member-basics'
-        AND viewed
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      SELECT COUNT(DISTINCT screener_uid) AS n FROM (
+        SELECT screener_uid
+        FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
+        WHERE __STATE_FILTER__
+          AND screener_step_name IN ('member-basics', 'household-members')
+          AND viewed
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        UNION DISTINCT
+        SELECT screener_uid
+        FROM `${local.bq_dataset}.mart_screener_section_engagement`
+        WHERE __STATE_FILTER__
+          AND section = 'Household Members'
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      )
     )
     SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
       SELECT
@@ -777,13 +855,30 @@ locals {
   # Distinct screenings that engaged the results filter. Only the citizenship
   # filter exists, and the chosen option is never captured (PII) — this is a
   # yes/no engagement count, not a breakdown.
+  # % of results-page viewers who used the citizenship filter. Denominator is the
+  # shared results-viewer count (mart_screener_results_revisits, CESN-aware sentinel)
+  # used by the sibling results-engagement cards so all three are comparable. Raw
+  # screening count on hover.
   screener_sql_filter_usage = <<-SQL
-    SELECT SUM(screenings_engaged) AS `Filtered Screenings`
-    FROM `${local.bq_dataset}.mart_screener_filter_usage`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    WITH engaged AS (
+      SELECT SUM(screenings_engaged) AS n
+      FROM `${local.bq_dataset}.mart_screener_filter_usage`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM engaged), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM engaged), 0) AS `Filtered Screenings`
   SQL
 
   # ── Results: NPS score distribution ──────────────────────────────────
@@ -919,25 +1014,110 @@ locals {
   # sends people back to the Additional Resources step to change what they picked.
   # Distinct from Confirmation Edits (that's the review-page edit path); this is the
   # results-page nudge. Uses the 'edit_nav' link group.
+  # % of results-page viewers who clicked the "edit Additional Resources" go-back link.
+  # Same shared results-viewer denominator (mart_screener_results_revisits, CESN-aware
+  # sentinel) as the sibling results-engagement scalars. Numerator is DISTINCT screenings
+  # (the mart's `screenings` = count(distinct screener_uid)), not raw clicks, so it's on
+  # the same grain as the denominator. Raw distinct-screening count on hover.
   screener_sql_additional_resources_edits = <<-SQL
-    SELECT SUM(total_clicks) AS `Additional Resource Edits`
-    FROM `${local.bq_dataset}.mart_screener_link_clicks`
+    WITH editors AS (
+      SELECT SUM(screenings) AS n
+      FROM `${local.bq_dataset}.mart_screener_link_clicks`
+      WHERE __STATE_FILTER__
+        AND link_group = 'edit_nav'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM editors), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM editors), 0) AS `Screenings That Edited`
+  SQL
+
+  # ── Results: document downloads (count, by document × program) ──────────────────
+  # Which "Key Information You May Need to Provide" documents get downloaded, and for
+  # which program. COUNT card (not a rate): there is no per-document impression event,
+  # so a true "% of those shown the doc that downloaded it" is not possible (logged on
+  # the FE gaps ticket). Volume is currently tiny. Distinct screenings + raw downloads.
+  screener_sql_document_downloads = <<-SQL
+    SELECT
+      document_name AS `Document`,
+      program_name  AS `Program`,
+      SUM(screenings_with_interaction) AS `Screenings`,
+      SUM(total_interactions)          AS `Downloads`
+    FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
-      AND link_group = 'edit_nav'
+      AND interaction_type = 'document_download'
+      AND document_name IS NOT NULL
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY `Document`, `Program`
+    ORDER BY `Downloads` DESC
+  SQL
+
+  # ── Results: NPS engagement rate (% of results viewers who scored NPS) ──────────
+  # % of results-page viewers who engaged with the NPS widget (submitted a score).
+  # Same shared results-viewer denominator (CESN-aware sentinel) as the other results
+  # engagement scalars. Numerator = distinct screenings that submitted an NPS score.
+  # Raw distinct-screening count on hover. scores_submitted is an event count in the
+  # NPS mart, so distinct screenings are counted here off the (score-grain) mart via
+  # SUM of the daily distinct — but NPS lacks a uid in output, so we count score
+  # submissions as the numerator (one score per screening in practice).
+  screener_sql_nps_engagement = <<-SQL
+    WITH scored AS (
+      SELECT SUM(scores_submitted) AS n
+      FROM `${local.bq_dataset}.mart_screener_nps`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM scored), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM scored), 0) AS `Scored NPS`
   SQL
 
   # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────
+  # % of results-page viewers who clicked the "More Help?" / 211 CTA. Same shared
+  # results-viewer denominator as the sibling cards. Raw click count on hover.
   screener_sql_get_help_clicks = <<-SQL
-    SELECT SUM(total_clicks) AS `More Help Clicks`
-    FROM `${local.bq_dataset}.mart_screener_help`
-    WHERE __STATE_FILTER__
-      AND metric = 'get_help_click'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    WITH clicks AS (
+      SELECT SUM(total_clicks) AS n
+      FROM `${local.bq_dataset}.mart_screener_help`
+      WHERE __STATE_FILTER__
+        AND metric = 'get_help_click'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM clicks), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM clicks), 0) AS `More Help Clicks`
   SQL
 
   # ── Form Journey: which validation errors, by step ──────────────────────────────
