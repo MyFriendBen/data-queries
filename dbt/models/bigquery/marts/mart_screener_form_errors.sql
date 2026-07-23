@@ -62,29 +62,72 @@ select
     -- of truth across the Form Journey marts).
     {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
-    -- Friendly field label; unmapped paths fall back to the raw path.
+    -- Friendly field label. Mapping is EXHAUSTIVE against the FE zod schemas
+    -- (source-verified vocabulary); any unmapped path falls through to the raw
+    -- path so a NEW field never vanishes — see the dbt test that flags unmapped
+    -- paths so they get a label the moment they ship. Member fields appear BOTH
+    -- bare (birthYear) and members.-prefixed (members.birthYear) depending on the
+    -- form, so both normalize to the same label.
     case
         when error_field_path is null then '(unspecified)'
-        when error_field_path = 'householdSize' then 'Household size'
+        when error_field_path = '' then '(form-level)'  -- SignUp outer no-path refine
+
+        -- Simple steps
         when error_field_path = 'zipcode' then 'Zip code'
         when error_field_path = 'county' then 'County'
-        when error_field_path = 'incomeStreams.income' then 'Income amount'
+        when error_field_path = 'householdSize' then 'Household size'
+        when error_field_path = 'householdAssets' then 'Household assets'
+        when error_field_path = 'state' then 'State'
+        when error_field_path = 'referralSource' then 'Referral source'
+        when error_field_path = 'otherReferrer' then 'Other referral source'
+        when error_field_path = 'needs' or error_field_path like 'needs.%' then 'Immediate needs'
+
+        -- Member basics (bare or members.-prefixed)
+        when error_field_path in ('birthMonth', 'members.birthMonth') then 'Member birth month'
+        when error_field_path in ('birthYear', 'members.birthYear') then 'Member birth year'
+        when error_field_path in ('relationshipToHH', 'members.relationshipToHH') then 'Member relationship'
+        when error_field_path = 'receivesSsi' then 'Receives SSI'
+
+        -- Health insurance (object-level refine reports at 'healthInsurance'; also sub-checkboxes)
+        when error_field_path = 'healthInsurance' or error_field_path like 'healthInsurance.%' then 'Health insurance'
+
+        -- Conditions / student eligibility
+        when error_field_path like 'conditions.%' then 'Household conditions'
+        when error_field_path like 'studentEligibility.%' then 'Student eligibility'
+
+        -- Income streams
+        when error_field_path = 'incomeStreams.incomeAmount' then 'Income amount'
         when error_field_path = 'incomeStreams.incomeFrequency' then 'Income frequency'
+        when error_field_path = 'incomeStreams.incomeCategory' then 'Income category'
+        when error_field_path = 'incomeStreams.incomeStreamName' then 'Income type'
+        when error_field_path = 'incomeStreams.hoursPerWeek' then 'Income hours per week'
         when error_field_path like 'incomeStreams.%' then 'Income'
-        when error_field_path = 'healthInsurance' then 'Health insurance'
-        when error_field_path = 'members.birthMonth' then 'Member birth month'
-        when error_field_path = 'members.birthYear' then 'Member birth year'
-        when error_field_path = 'members.relationship' then 'Member relationship'
-        when error_field_path like 'members.%' then 'Household member'
+
+        -- Expenses (main screener nested rows; cesn's bare 'expenses' record)
+        when error_field_path = 'expenses.expenseAmount' then 'Expense amount'
+        when error_field_path = 'expenses.expenseFrequency' then 'Expense frequency'
+        when error_field_path = 'expenses.expenseSourceName' then 'Expense type'
+        when error_field_path = 'expenses' or error_field_path like 'expenses.%' then 'Expenses'
+
+        -- Sign-up / contact
         when error_field_path = 'contactInfo.firstName' then 'First name'
         when error_field_path = 'contactInfo.lastName' then 'Last name'
         when error_field_path = 'contactInfo.email' then 'Email'
         when error_field_path = 'contactInfo.cell' then 'Phone number'
+        when error_field_path = 'contactInfo.emailConsent' then 'Email consent'
         when error_field_path = 'contactInfo.tcpa' then 'Consent to contact'
         when error_field_path like 'contactInfo.%' then 'Contact info'
-        when error_field_path = 'referralSource' then 'Referral source'
-        when error_field_path = 'otherReferrer' then 'Other referral source'
-        when error_field_path like 'studentEligibility%' then 'Student eligibility'
+        when error_field_path = 'contactType' or error_field_path like 'contactType.%' then 'Contact preferences'
+
+        -- Disclaimer
+        when error_field_path = 'agreeToTermsOfService' then 'Agree to terms'
+        when error_field_path = 'is13OrOlder' then 'Age 13 or older'
+
+        -- Energy Calculator (cesn)
+        when error_field_path = 'electricityProvider' then 'Electricity provider'
+        when error_field_path = 'gasProvider' then 'Gas provider'
+        when error_field_path like 'energyCalculator.%' then 'Energy calculator'
+
         else coalesce(error_field_path, '(unspecified)')
     end as error_field_label,
 

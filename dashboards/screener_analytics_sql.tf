@@ -568,25 +568,28 @@ locals {
     ORDER BY `Shown -> Details %` DESC
   SQL
 
-  # ── Results: navigator engagement (program × navigator × method) ────────────────
+  # ── Results: navigator engagement (grouped bar per navigator) ───────────────────
+  # Mirrors Additional Resource Engagement: per navigator, a Shown -> Website /
+  # Email / Phone funnel. Shown is the distinct-screening impression count
+  # (contact_method '__shown__'); the contact columns are total engagement clicks.
+  # Top 20 by shown. Program carried alongside the navigator name for context.
   screener_sql_navigator_engagement = <<-SQL
     SELECT
-      program_name AS `Program`,
       navigator_name AS `Navigator`,
-      CASE contact_method
-        WHEN 'website' THEN 'Website'
-        WHEN 'email' THEN 'Email'
-        WHEN 'phone' THEN 'Phone'
-        ELSE COALESCE(contact_method, '(unknown)')
-      END AS `Method`,
-      SUM(screenings_with_engagement) AS `Screenings`
+      MAX(program_name) AS `Program`,
+      SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS `Shown`,
+      SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS `Website`,
+      SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS `Email`,
+      SUM(CASE WHEN contact_method = 'phone'   THEN total_engagements ELSE 0 END) AS `Phone`
     FROM `${local.bq_dataset}.mart_screener_navigator_engagement`
     WHERE __STATE_FILTER__
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Program`, `Navigator`, `Method`
-    ORDER BY `Screenings` DESC
+    GROUP BY navigator_id, `Navigator`
+    HAVING (`Shown` + `Website` + `Email` + `Phone`) > 0
+    ORDER BY `Shown` DESC, `Website` + `Email` + `Phone` DESC
+    LIMIT 20
   SQL
 
   # ── Results: additional-resource engagement (more-info → website/phone) ─────────
@@ -595,18 +598,19 @@ locals {
   screener_sql_resource_engagement = <<-SQL
     SELECT
       dimension AS `Resource`,
+      SUM(CASE WHEN metric = 'resource_shown'     THEN distinct_screenings ELSE 0 END) AS `Shown`,
       SUM(CASE WHEN metric = 'resource_more_info' THEN total_clicks ELSE 0 END) AS `More Info`,
       SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'website' THEN total_clicks ELSE 0 END) AS `Website`,
       SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'phone'   THEN total_clicks ELSE 0 END) AS `Phone`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
     WHERE __STATE_FILTER__
-      AND metric IN ('resource_more_info', 'resource_click')
+      AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY `Resource`
-    HAVING (`More Info` + `Website` + `Phone`) > 0
-    ORDER BY `More Info` DESC
+    HAVING (`Shown` + `More Info` + `Website` + `Phone`) > 0
+    ORDER BY `Shown` DESC, `More Info` DESC
     LIMIT 20
   SQL
 

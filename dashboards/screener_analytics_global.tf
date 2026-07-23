@@ -409,7 +409,7 @@ resource "metabase_card" "global_screener_navigator_engagement" {
 
   json = jsonencode({
     name                = "Navigator Engagement"
-    description         = "Distinct screenings that engaged a navigator, broken out by program, navigator, and contact method."
+    description         = "Per navigator, as a funnel: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Top 20 by shown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -422,10 +422,14 @@ resource "metabase_card" "global_screener_navigator_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "bar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "graph.show_values"       = true
+      "graph.dimensions"        = ["Navigator"]
+      "graph.metrics"           = ["Shown", "Website", "Email", "Phone"]
+      "graph.x_axis.title_text" = "Navigator"
+      "graph.y_axis.title_text" = "Screenings"
+      "graph.y_axis.decimals"   = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -437,7 +441,7 @@ resource "metabase_card" "global_screener_resource_engagement" {
 
   json = jsonencode({
     name                = "Additional Resource Engagement"
-    description         = "Per additional resource: more-info expands and contact clicks split by website vs phone, top 20 by more-info."
+    description         = "Per additional resource, as a funnel: how many screenings were Shown it, expanded More Info, and clicked through to the Website or Phone. Top 20 by shown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -454,7 +458,7 @@ resource "metabase_card" "global_screener_resource_engagement" {
     visualization_settings = {
       "graph.show_values"       = true
       "graph.dimensions"        = ["Resource"]
-      "graph.metrics"           = ["More Info", "Website", "Phone"]
+      "graph.metrics"           = ["Shown", "More Info", "Website", "Phone"]
       "graph.x_axis.title_text" = "Resource"
       "graph.y_axis.title_text" = "Clicks"
       "graph.y_axis.decimals"   = 0

@@ -25,6 +25,12 @@
 -- carried positionally as the display label (may be truncated at GA4's 100-char
 -- cap for very long lists — acceptable since it's display-only and the id drives
 -- every join/group).
+--
+-- NAVIGATOR IMPRESSIONS (FE #2163): screener_navigators_shown fires once per
+-- program page carrying navigator_ids / navigator_names JSON arrays plus the
+-- program_id/program_name context. Exploded per navigator and re-emitted as
+-- 'screener_navigator_shown' — the shown denominator for a navigator
+-- shown->engaged rate (mart_screener_navigator_engagement).
 
 with scalar_events as (
     select
@@ -161,8 +167,69 @@ programs_shown as (
         r.event_datetime
     from programs_shown_raw r,
     unnest(json_extract_string_array(r.program_ids_json)) as pid with offset as off
+),
+
+-- Batched screener_navigators_shown: one raw event per program page carrying
+-- navigator_ids / navigator_names JSON arrays plus scalar program_id/program_name.
+navigators_shown_raw as (
+    select
+        event_date,
+        event_timestamp,
+        parse_date('%Y%m%d', event_date) as event_date_parsed,
+        user_pseudo_id,
+        user_id,
+        event_bundle_sequence_id,
+        batch_event_index,
+        max(case when ep.key = 'ga_session_id' then ep.value.int_value end) as ga_session_id,
+        max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
+        max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
+        max(case when ep.key = 'program_id'
+            then coalesce(cast(ep.value.int_value as string), ep.value.string_value)
+        end) as program_id,
+        max(case when ep.key = 'program_name' then ep.value.string_value end) as program_name,
+        max(case when ep.key = 'navigator_ids' then ep.value.string_value end) as navigator_ids_json,
+        max(case when ep.key = 'navigator_names' then ep.value.string_value end) as navigator_names_json,
+        timestamp_micros(event_timestamp) as event_datetime
+    from {{ source('google_analytics', 'events_*') }}
+    cross join unnest(event_params) as ep
+    where event_name = 'screener_navigators_shown'
+    group by
+        event_date, event_timestamp, user_pseudo_id, user_id,
+        event_bundle_sequence_id, batch_event_index
+),
+
+-- Explode per navigator; re-emit 'screener_navigator_shown'. navigator_ids is the
+-- key (short); navigator_names positional display label. program_id/name are scalar
+-- context shared by every navigator on the page.
+navigators_shown as (
+    select
+        r.event_date,
+        r.event_timestamp,
+        r.event_date_parsed,
+        'screener_navigator_shown' as event_name,
+        r.user_pseudo_id,
+        r.user_id,
+        r.event_bundle_sequence_id,
+        r.batch_event_index + off as batch_event_index,
+        r.ga_session_id,
+        r.screener_state,
+        r.screener_uid,
+        r.program_id,
+        r.program_name,
+        cast(null as string) as url,
+        cast(null as string) as document_name,
+        cast(null as string) as filter_type,
+        cast(null as string) as tab_name,
+        nid as navigator_id,
+        json_extract_string_array(r.navigator_names_json)[safe_offset(off)] as navigator_name,
+        cast(null as string) as contact_method,
+        r.event_datetime
+    from navigators_shown_raw r,
+    unnest(json_extract_string_array(r.navigator_ids_json)) as nid with offset as off
 )
 
 select * from scalar_events
 union all
 select * from programs_shown
+union all
+select * from navigators_shown

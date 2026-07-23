@@ -14,7 +14,10 @@
 -- backs several cards; `dimension` holds the tab_name or resource_name depending
 -- on the metric. `contact_method` ('website' | 'phone') is set only on the
 -- resource_click metric — null elsewhere — so the resource funnel reads:
---   resource_more_info (expand)  →  resource_click split by contact_method.
+--   resource_shown (impression) → resource_more_info (expand) → resource_click
+--   split by contact_method.
+-- resource_shown (FE #2163, batched screener_resources_shown exploded per resource
+-- in staging) is the denominator for a per-resource shown->clicked rate.
 -- Dedupe by screener_uid for "distinct screenings" (these events fire
 -- post-step-3, so uid exists).
 -- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
@@ -35,6 +38,22 @@ with tab_clicks as (
     from {{ ref('stg_ga_screener_resource_engagement') }}
     where event_name = 'screener_results_tab_click'
         and tab_name is not null
+),
+
+-- Resource impression (FE #2163) — the shown denominator for the resource
+-- shown->clicked rate. Exploded per resource in staging.
+resource_shown as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        screener_uid,
+        'resource_shown' as metric,
+        resource_name as dimension,
+        cast(null as string) as contact_method
+    from {{ ref('stg_ga_screener_resource_engagement') }}
+    where event_name = 'screener_resource_shown'
+        and resource_name is not null
 ),
 
 resource_more_info as (
@@ -67,6 +86,8 @@ resource_clicks as (
 
 combined as (
     select * from tab_clicks
+    union all
+    select * from resource_shown
     union all
     select * from resource_more_info
     union all
