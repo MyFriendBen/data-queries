@@ -410,48 +410,6 @@ locals {
     ORDER BY `Total Saves` DESC
   SQL
 
-  # ── Tab 8 (Results): results-page tab split ─────────────────────────────────
-  # % of results-page viewers who opened each results tab. Numerator = distinct
-  # screenings that opened the tab; denominator = distinct screenings that loaded
-  # results (mart_screener_results_outcomes). A raw count is meaningless without
-  # this denominator. Note long_term_benefits is the default tab (≈100%); the
-  # signal is the Additional Resources rate.
-  screener_sql_tab_split = <<-SQL
-    WITH tab_opens AS (
-      SELECT
-        CASE dimension
-          WHEN 'additional_resources' THEN 'Additional Resources'
-          WHEN 'long_term_benefits' THEN 'Long-Term Benefits'
-          ELSE COALESCE(dimension, '(none)')
-        END AS tab_label,
-        SUM(distinct_screenings) AS n
-      FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-      WHERE __STATE_FILTER__
-        AND metric = 'tab_open'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY tab_label
-    ),
-    results_viewers AS (
-      -- Screening-grain (one row per screener_uid, deduped across days) so a
-      -- multi-day window doesn't double-count a screening that loaded results on
-      -- more than one day — which SUM(screenings_results_loaded) over the per-day
-      -- results-outcomes mart would.
-      SELECT COUNT(*) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_revisits`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    )
-    SELECT
-      tab_opens.tab_label AS `Tab`,
-      ROUND(tab_opens.n * 100.0 / NULLIF((SELECT denom FROM results_viewers), 0), 1) AS `% of Results Viewers`
-    FROM tab_opens
-    ORDER BY `% of Results Viewers` DESC
-  SQL
-
   # ── Tab 8 (Results): top additional resources ───────────────────────────────
   screener_sql_top_resources = <<-SQL
     SELECT
@@ -566,8 +524,9 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     viewers AS (
-      -- Screening-grain (deduped across days) — see screener_sql_tab_split. Carries
-      -- is_cesn, so the CESN-aware sentinel still applies for the global card.
+      -- Screening-grain results-viewer count (mart_screener_results_revisits,
+      -- deduped across days) — the shared denominator for the results-engagement
+      -- scalars. Carries is_cesn, so the CESN-aware sentinel applies on the global card.
       SELECT COUNT(*) AS denom
       FROM `${local.bq_dataset}.mart_screener_results_revisits`
       WHERE __STATE_FILTER_CESN__
@@ -576,8 +535,8 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      (SELECT n FROM tab) AS `Opened Additional Resources`,
-      ROUND((SELECT n FROM tab) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`
+      ROUND((SELECT n FROM tab) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      (SELECT n FROM tab) AS `Opened Additional Resources`
   SQL
 
   # ── Form Journey: results scroll depth (distribution by tab) ────────────────────
@@ -793,13 +752,30 @@ locals {
   # Distinct screenings that engaged the results filter. Only the citizenship
   # filter exists, and the chosen option is never captured (PII) — this is a
   # yes/no engagement count, not a breakdown.
+  # % of results-page viewers who used the citizenship filter. Denominator is the
+  # shared results-viewer count (mart_screener_results_revisits, CESN-aware sentinel)
+  # used by the sibling results-engagement cards so all three are comparable. Raw
+  # screening count on hover.
   screener_sql_filter_usage = <<-SQL
-    SELECT SUM(screenings_engaged) AS `Filtered Screenings`
-    FROM `${local.bq_dataset}.mart_screener_filter_usage`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    WITH engaged AS (
+      SELECT SUM(screenings_engaged) AS n
+      FROM `${local.bq_dataset}.mart_screener_filter_usage`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM engaged), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM engaged), 0) AS `Filtered Screenings`
   SQL
 
   # ── Results: NPS score distribution ──────────────────────────────────
@@ -946,14 +922,29 @@ locals {
   SQL
 
   # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────
+  # % of results-page viewers who clicked the "More Help?" / 211 CTA. Same shared
+  # results-viewer denominator as the sibling cards. Raw click count on hover.
   screener_sql_get_help_clicks = <<-SQL
-    SELECT SUM(total_clicks) AS `More Help Clicks`
-    FROM `${local.bq_dataset}.mart_screener_help`
-    WHERE __STATE_FILTER__
-      AND metric = 'get_help_click'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    WITH clicks AS (
+      SELECT SUM(total_clicks) AS n
+      FROM `${local.bq_dataset}.mart_screener_help`
+      WHERE __STATE_FILTER__
+        AND metric = 'get_help_click'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewers AS (
+      SELECT COUNT(*) AS denom
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT
+      ROUND(COALESCE((SELECT n FROM clicks), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      COALESCE((SELECT n FROM clicks), 0) AS `More Help Clicks`
   SQL
 
   # ── Form Journey: which validation errors, by step ──────────────────────────────

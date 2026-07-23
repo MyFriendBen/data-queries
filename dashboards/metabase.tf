@@ -1286,12 +1286,34 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # ── (3) RESULTS FILTER ────────────────────────────────────────────────
+      # ── (3) RESULTS-PAGE ENGAGEMENT (3 scalars, % of results viewers) ──────
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
         row                    = 30
         col                    = 0
+        size_x                 = 8
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
+        dashboard_tab_id       = 6
+        row                    = 30
+        col                    = 8
+        size_x                 = 8
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
+        dashboard_tab_id       = 6
+        row                    = 30
+        col                    = 16
         size_x                 = 8
         size_y                 = 4
         parameter_mappings     = []
@@ -1322,21 +1344,10 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
-        dashboard_tab_id       = 6
-        row                    = 42
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      {
         card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
         dashboard_tab_id       = 6
         row                    = 42
-        col                    = 12
+        col                    = 0
         size_x                 = 12
         size_y                 = 4
         parameter_mappings     = []
@@ -1354,35 +1365,12 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # ── (5) NAV BETWEEN RESULTS TABS ──────────────────────────────────────
-      {
-        card_id                = tonumber(metabase_card.global_screener_tab_split[0].id)
-        dashboard_tab_id       = 6
-        row                    = 54
-        col                    = 0
-        size_x                 = 12
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # ── (6) HELP & FEEDBACK ───────────────────────────────────────────────
-      {
-        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
-        dashboard_tab_id       = 6
-        row                    = 62
-        col                    = 0
-        size_x                 = 8
-        size_y                 = 4
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
+      # ── (5) FEEDBACK ──────────────────────────────────────────────────────
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 62
-        col                    = 8
+        row                    = 54
+        col                    = 0
         size_x                 = 16
         size_y                 = 8
         parameter_mappings     = []

@@ -475,36 +475,10 @@ resource "metabase_card" "screener_saves_by_channel" {
   })
 }
 
-# Results-page tab split — bar. Tab opens on the results page:
-# long_term_benefits vs additional_resources, from
-# mart_screener_resource_engagement (metric = 'tab_open').
-resource "metabase_card" "screener_tab_split" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "Results Tab Engagement"
-    description         = "% of results-page viewers who opened each results tab (denominator = screenings that loaded results). Long-Term Benefits is the default tab (~100%); the signal is the Additional Resources rate."
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "bar"
-    visualization_settings = {
-      "graph.dimensions" = ["Tab"]
-      "graph.metrics"    = ["% of Results Viewers"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
+# NOTE: "Results Tab Engagement" (screener_tab_split) was removed — the
+# Additional-Resources open rate it surfaced is now the "Opened Additional
+# Resources" scalar in the results-engagement row, and Long-Term Benefits was the
+# default tab (~100%, no signal).
 
 # Top Additional Resources clicked — bar. Same mart (metric = 'resource_click'),
 # top 20 resources by total clicks.
@@ -644,8 +618,8 @@ resource "metabase_card" "screener_resources_tab_engagement" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Additional Resources Tab Engagement"
-    description         = "Screenings that opened the Additional Resources tab and that count as a percentage of results-page viewers."
+    name                = "Opened Additional Resources"
+    description         = "Of the screenings that viewed the results page, the % that opened the Additional Resources tab. Hover for the raw screening count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -660,10 +634,10 @@ resource "metabase_card" "screener_resources_tab_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "scalar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -812,8 +786,8 @@ resource "metabase_card" "screener_get_help_clicks" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "More Help Clicks"
-    description         = "Total clicks on the More Help / 211 call-to-action from the results page."
+    name                = "Clicked More Help?"
+    description         = "Of the screenings that viewed the results page, the % that clicked the More Help / 211 call-to-action. Hover for the raw click count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -822,13 +796,16 @@ resource "metabase_card" "screener_get_help_clicks" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_get_help_clicks, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query = replace(
+          replace(local.screener_sql_get_help_clicks, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "More Help Clicks"
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -940,8 +917,8 @@ resource "metabase_card" "screener_filter_usage" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Citizenship Filter Usage"
-    description         = "Distinct screenings that used the results citizenship filter. The chosen option isn't captured, so this is a yes/no engagement count."
+    name                = "Used Citizenship Filter"
+    description         = "Of the screenings that viewed the results page, the % that used the results citizenship filter. The chosen option isn't captured (PII). Hover for the raw screening count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -950,13 +927,16 @@ resource "metabase_card" "screener_filter_usage" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_filter_usage, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query = replace(
+          replace(local.screener_sql_filter_usage, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "Filtered Screenings"
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1410,7 +1390,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # ── (2) PROGRAMS (eligible-programs list + CTAs) ──
+          # ── (2) PROGRAMS ──
           card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
           dashboard_tab_id = 8
           row              = 14
@@ -1477,7 +1457,7 @@ locals {
           visualization_settings = {}
         },
         {
-          # ── (3) RESULTS FILTER ──
+          # ── (3) RESULTS-PAGE ENGAGEMENT (3 scalars, % of results viewers) ──
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
           row              = 30
@@ -1493,6 +1473,50 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_filter_usage[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+          dashboard_tab_id = 8
+          row              = 30
+          col              = 8
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
+          dashboard_tab_id = 8
+          row              = 30
+          col              = 16
+          size_x           = 8
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1545,32 +1569,10 @@ locals {
           visualization_settings = {}
         },
         {
-          card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
-          dashboard_tab_id = 8
-          row              = 42
-          col              = 0
-          size_x           = 12
-          size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
           card_id          = tonumber(metabase_card.screener_additional_resources_edits[key].id)
           dashboard_tab_id = 8
           row              = 42
-          col              = 12
+          col              = 0
           size_x           = 12
           size_y           = 4
           parameter_mappings = [
@@ -1611,56 +1613,11 @@ locals {
           visualization_settings = {}
         },
         {
-          # ── (5) NAV BETWEEN RESULTS TABS ──
-          card_id          = tonumber(metabase_card.screener_tab_split[key].id)
+          # ── (5) FEEDBACK ──
+          card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
           row              = 54
           col              = 0
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_tab_split[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_tab_split[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # ── (6) HELP & FEEDBACK ──
-          card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
-          dashboard_tab_id = 8
-          row              = 62
-          col              = 0
-          size_x           = 8
-          size_y           = 4
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_get_help_clicks[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
-          dashboard_tab_id = 8
-          row              = 62
-          col              = 8
           size_x           = 16
           size_y           = 8
           parameter_mappings = [

@@ -304,33 +304,9 @@ resource "metabase_card" "global_screener_results_revisits" {
 }
 
 
-resource "metabase_card" "global_screener_tab_split" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Results Tab Engagement"
-    description         = "% of results-page viewers who opened each results tab (denominator = screenings that loaded results). Long-Term Benefits is the default tab (~100%); the signal is the Additional Resources rate."
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_tab_split, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "bar"
-    visualization_settings = {
-      "graph.dimensions" = ["Tab"]
-      "graph.metrics"    = ["% of Results Viewers"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
+# NOTE: "Results Tab Engagement" (global_screener_tab_split) removed — see the
+# tenant-file note; the Additional-Resources open rate is now the "Opened
+# Additional Resources" scalar in the results-engagement row.
 
 resource "metabase_card" "global_screener_top_resources" {
   count = var.bigquery_enabled ? 1 : 0
@@ -459,8 +435,8 @@ resource "metabase_card" "global_screener_resources_tab_engagement" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Additional Resources Tab Engagement"
-    description         = "Screenings that opened the Additional Resources tab and that count as a percentage of results-page viewers."
+    name                = "Opened Additional Resources"
+    description         = "Of the screenings that viewed the results page, the % that opened the Additional Resources tab. Hover for the raw screening count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -475,10 +451,10 @@ resource "metabase_card" "global_screener_resources_tab_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "scalar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -623,8 +599,8 @@ resource "metabase_card" "global_screener_get_help_clicks" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "More Help Clicks"
-    description         = "Total clicks on the More Help / 211 call-to-action from the results page."
+    name                = "Clicked More Help?"
+    description         = "Of the screenings that viewed the results page, the % that clicked the More Help / 211 call-to-action. Hover for the raw click count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -633,13 +609,16 @@ resource "metabase_card" "global_screener_get_help_clicks" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_get_help_clicks, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query = replace(
+          replace(local.screener_sql_get_help_clicks, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "More Help Clicks"
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -888,8 +867,8 @@ resource "metabase_card" "global_screener_filter_usage" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Citizenship Filter Usage"
-    description         = "Distinct screenings that used the results citizenship filter. The chosen option isn't captured, so this is a yes/no engagement count."
+    name                = "Used Citizenship Filter"
+    description         = "Of the screenings that viewed the results page, the % that used the results citizenship filter. The chosen option isn't captured (PII). Hover for the raw screening count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -898,13 +877,16 @@ resource "metabase_card" "global_screener_filter_usage" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_filter_usage, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query = replace(
+          replace(local.screener_sql_filter_usage, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "Filtered Screenings"
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
