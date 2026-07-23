@@ -5,12 +5,15 @@
 }}
 
 -- Screener help interactions - daily grain by state.
--- Two help signals share one mart via a `metric` discriminator:
+-- Three help signals share one mart via a `metric` discriminator:
 --   1. help_click  — inline "?" tooltip opens, keyed by help_topic + step
 --                    (the per-step confusion metric). dimension = help_topic,
 --                    with screener_step_label for the step drill-down.
 --   2. get_help_click — results-page "More Help / 211" CTA, keyed by location.
 --                    dimension = location; screener_step_label is null.
+--   3. more_help_resource_click — "Visit Website" links on the more-help page's
+--                    "Other Resources Near You" list. dimension = resource label
+--                    (or "Resource #<ordinal>"); screener_step_label is null.
 -- Deduped by screener_uid for distinct-screening counts. help_click can fire
 -- pre-uid on early steps, so uid may be null there — total_clicks is the robust
 -- volume measure; distinct_screenings is a floor.
@@ -41,10 +44,32 @@ get_help_click as (
     where event_name = 'screener_get_help_click'
 ),
 
+-- More-help page "Visit Website" resource clicks (FE #2163). dimension is the
+-- resource label; the FE falls back to an ordinal when no label exists, so an
+-- ordinal-only click reads as "Resource #<n>".
+more_help_resource_click as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        screener_uid,
+        'more_help_resource_click' as metric,
+        coalesce(
+            resource_name,
+            'Resource #' || cast(resource_index as string),
+            '(unspecified)'
+        ) as dimension,
+        cast(null as string) as screener_step_name
+    from {{ ref('stg_ga_screener_help') }}
+    where event_name = 'screener_more_help_resource_click'
+),
+
 combined as (
     select * from help_click
     union all
     select * from get_help_click
+    union all
+    select * from more_help_resource_click
 )
 
 select

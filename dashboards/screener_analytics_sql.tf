@@ -1047,26 +1047,60 @@ locals {
       COALESCE((SELECT n FROM editors), 0) AS `Screenings That Edited`
   SQL
 
-  # ── Results: document downloads (count, by document × program) ──────────────────
-  # Which "Key Information You May Need to Provide" documents get downloaded, and for
-  # which program. COUNT card (not a rate): there is no per-document impression event,
-  # so a true "% of those shown the doc that downloaded it" is not possible (logged on
-  # the FE gaps ticket). Volume is currently tiny. Distinct screenings + raw downloads.
+  # ── Results: document downloads (by document × program, with download rate) ─────
+  # Which "Key Information You May Need to Provide" documents get downloaded, for
+  # which program. Now that a per-document impression event exists (FE #2163,
+  # screener_program_documents_shown, exploded to document_shown), we can show a
+  # true download RATE: of screenings shown the document, the % that downloaded it.
+  #   Shown         = distinct screenings shown the document (denominator)
+  #   Downloaded    = distinct screenings that downloaded it (numerator)
+  #   Downloads     = total download clicks (>= Downloaded if repeat clicks)
+  #   Download Rate % = Downloaded / Shown
   screener_sql_document_downloads = <<-SQL
+    WITH per_doc AS (
+      SELECT
+        document_name,
+        max(program_name) AS program_name,
+        SUM(CASE WHEN interaction_type = 'document_shown'    THEN screenings_with_interaction ELSE 0 END) AS shown,
+        SUM(CASE WHEN interaction_type = 'document_download' THEN screenings_with_interaction ELSE 0 END) AS downloaded,
+        SUM(CASE WHEN interaction_type = 'document_download' THEN total_interactions ELSE 0 END) AS downloads
+      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      WHERE __STATE_FILTER__
+        AND interaction_type IN ('document_shown', 'document_download')
+        AND document_name IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY document_name
+    )
     SELECT
       document_name AS `Document`,
       program_name  AS `Program`,
-      SUM(screenings_with_interaction) AS `Screenings`,
-      SUM(total_interactions)          AS `Downloads`
-    FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      shown         AS `Shown`,
+      downloaded    AS `Downloaded`,
+      downloads     AS `Downloads`,
+      ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1) AS `Download Rate %`
+    FROM per_doc
+    WHERE (shown + downloads) > 0
+    ORDER BY `Downloads` DESC
+  SQL
+
+  # ── Results (more-help page): which "Other Resources Near You" links get clicked ─
+  # FE #2163 gap #7 — these were plain <a> links, now tracked. Simple volume by
+  # resource. Plain __STATE_FILTER__ (mart_screener_help has no is_cesn column).
+  screener_sql_more_help_resources = <<-SQL
+    SELECT
+      dimension AS `Resource`,
+      SUM(total_clicks) AS `Clicks`,
+      SUM(distinct_screenings) AS `Screenings`
+    FROM `${local.bq_dataset}.mart_screener_help`
     WHERE __STATE_FILTER__
-      AND interaction_type = 'document_download'
-      AND document_name IS NOT NULL
+      AND metric = 'more_help_resource_click'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Document`, `Program`
-    ORDER BY `Downloads` DESC
+    GROUP BY `Resource`
+    ORDER BY `Clicks` DESC
   SQL
 
   # ── Results: NPS engagement rate (% of results viewers who scored NPS) ──────────

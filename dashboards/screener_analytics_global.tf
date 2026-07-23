@@ -1121,7 +1121,7 @@ resource "metabase_card" "global_screener_document_downloads" {
 
   json = jsonencode({
     name                = "Document Downloads"
-    description         = "Which 'Key Information You May Need to Provide' documents were downloaded, and for which program. Screenings = how many screenings downloaded it; Downloads = total download clicks."
+    description         = "Which 'Key Information You May Need to Provide' documents get downloaded, by program, as a rate. Shown = screenings shown the document; Downloaded = screenings that downloaded it; Downloads = total download clicks; Download Rate % = Downloaded ÷ Shown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1131,6 +1131,34 @@ resource "metabase_card" "global_screener_document_downloads" {
       type     = "native"
       native = {
         query         = replace(local.screener_sql_document_downloads, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_more_help_resources" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "More Help Resource Clicks"
+    description         = "On the 'More Help' page, which 'Other Resources Near You' Visit-Website links get clicked. Clicks = total; Screenings = distinct screenings."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_more_help_resources, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }

@@ -32,6 +32,7 @@ with interactions as (
             when 'screener_program_visit_website' then 'visit_website'
             when 'screener_program_phone_click' then 'phone_click'
             when 'screener_program_document_download' then 'document_download'
+            when 'screener_program_document_shown' then 'document_shown'
             when 'screener_required_program_click' then 'required_program_click'
             when 'screener_eligibility_tags_shown' then 'eligibility_tags_shown'
             -- Per-program impression: the "shown" denominator for conversion
@@ -45,6 +46,7 @@ with interactions as (
         'screener_program_visit_website',
         'screener_program_phone_click',
         'screener_program_document_download',
+        'screener_program_document_shown',
         'screener_required_program_click',
         'screener_eligibility_tags_shown',
         'screener_program_shown'

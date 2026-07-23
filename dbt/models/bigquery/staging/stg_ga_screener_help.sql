@@ -12,6 +12,10 @@
 --                             is where it was clicked (e.g. results). Kept
 --                             separate so it doesn't pollute the per-step
 --                             confusion metric.
+--   screener_more_help_resource_click — (FE #2163) a "Visit Website" link on the
+--                             more-help page's "Other Resources Near You" list;
+--                             resource_name (config label, else ordinal) + url.
+--                             Previously a plain <a> with no tracking (gap #7).
 -- screener_state / screener_uid arrive directly as event params.
 
 select
@@ -42,6 +46,11 @@ select
     -- screener_get_help_click
     max(case when ep.key = 'location' then ep.value.string_value end) as location,
 
+    -- screener_more_help_resource_click (more-help page "Visit Website" links)
+    max(case when ep.key = 'resource_name' then ep.value.string_value end) as resource_name,
+    max(case when ep.key = 'resource_index' then ep.value.int_value end) as resource_index,
+    max(case when ep.key = 'url' then ep.value.string_value end) as url,
+
     -- Event timestamp
     timestamp_micros(event_timestamp) as event_datetime
 
@@ -50,7 +59,8 @@ cross join unnest(event_params) as ep
 
 where event_name in (
     'screener_help_click',
-    'screener_get_help_click'
+    'screener_get_help_click',
+    'screener_more_help_resource_click'
 )
 
 group by

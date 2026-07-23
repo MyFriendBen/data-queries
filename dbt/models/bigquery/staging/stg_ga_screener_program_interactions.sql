@@ -226,6 +226,64 @@ navigators_shown as (
         r.event_datetime
     from navigators_shown_raw r,
     unnest(json_extract_string_array(r.navigator_ids_json)) as nid with offset as off
+),
+
+-- Batched screener_program_documents_shown: one raw event per program page's
+-- "Required Key Documents Checklist" carrying a document_names JSON array plus
+-- scalar program_id/program_name. The shown denominator for a document download
+-- rate. Documents are keyed by name (no id), so the exploded name is key + label.
+documents_shown_raw as (
+    select
+        event_date,
+        event_timestamp,
+        parse_date('%Y%m%d', event_date) as event_date_parsed,
+        user_pseudo_id,
+        user_id,
+        event_bundle_sequence_id,
+        batch_event_index,
+        max(case when ep.key = 'ga_session_id' then ep.value.int_value end) as ga_session_id,
+        max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
+        max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
+        max(case when ep.key = 'program_id'
+            then coalesce(cast(ep.value.int_value as string), ep.value.string_value)
+        end) as program_id,
+        max(case when ep.key = 'program_name' then ep.value.string_value end) as program_name,
+        max(case when ep.key = 'document_names' then ep.value.string_value end) as document_names_json,
+        timestamp_micros(event_timestamp) as event_datetime
+    from {{ source('google_analytics', 'events_*') }}
+    cross join unnest(event_params) as ep
+    where event_name = 'screener_program_documents_shown'
+    group by
+        event_date, event_timestamp, user_pseudo_id, user_id,
+        event_bundle_sequence_id, batch_event_index
+),
+
+-- Explode per document; re-emit 'screener_program_document_shown'.
+documents_shown as (
+    select
+        r.event_date,
+        r.event_timestamp,
+        r.event_date_parsed,
+        'screener_program_document_shown' as event_name,
+        r.user_pseudo_id,
+        r.user_id,
+        r.event_bundle_sequence_id,
+        r.batch_event_index + off as batch_event_index,
+        r.ga_session_id,
+        r.screener_state,
+        r.screener_uid,
+        r.program_id,
+        r.program_name,
+        cast(null as string) as url,
+        dname as document_name,
+        cast(null as string) as filter_type,
+        cast(null as string) as tab_name,
+        cast(null as string) as navigator_id,
+        cast(null as string) as navigator_name,
+        cast(null as string) as contact_method,
+        r.event_datetime
+    from documents_shown_raw r,
+    unnest(json_extract_string_array(r.document_names_json)) as dname with offset as off
 )
 
 select * from scalar_events
@@ -233,3 +291,5 @@ union all
 select * from programs_shown
 union all
 select * from navigators_shown
+union all
+select * from documents_shown
