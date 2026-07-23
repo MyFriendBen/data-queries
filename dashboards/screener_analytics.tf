@@ -420,7 +420,7 @@ resource "metabase_card" "screener_save_funnel" {
 
   json = jsonencode({
     name                = "Save Funnel"
-    description         = "Popup impressions vs distinct screenings that engaged the save-results modal. Note: 'Saved' counts any save_action (open/send/close/back) — i.e. modal engagement, not only completed sends."
+    description         = "Save-results funnel: reached results → opened the save popup → saved. 'Saved' counts screenings that completed a save (sent it to themselves), not just opening the popup."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null

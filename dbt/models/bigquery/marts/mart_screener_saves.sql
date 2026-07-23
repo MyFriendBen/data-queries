@@ -12,7 +12,8 @@
 --
 -- Output shape: three DISJOINT row types (see the union block below) — raw
 -- per-(channel,action) save counts, a synthetic '__saved__' row for distinct
--- savers, and a synthetic '__popup_shown__' row for popup impressions — so each
+-- COMPLETED savers (save_action = 'send' only), and a synthetic '__popup_shown__'
+-- row for popup impressions — so each
 -- metric sums exactly once with no fan-out. Distinct metrics (screenings_with_save,
 -- screenings_shown_popup) dedupe on screener_uid, which is valid here because both
 -- save and popup events fire post-step-3 (uid exists).
@@ -59,9 +60,11 @@ save_summary as (
     group by event_date, event_date_parsed, screener_state, save_channel, save_action
 ),
 
--- Distinct savers per (date, state) — the "Saved" funnel denominator. One row
--- per grain, so SUM() counts each screening once regardless of how many
--- channels/actions it used.
+-- Distinct COMPLETED savers per (date, state) — the "Saved" funnel stage. Only
+-- save_action = 'send' counts as a completed save; open/close/back are modal
+-- interaction, not a completed save (they'd overstate the bottom funnel stage).
+-- One row per grain, so SUM() counts each screening once regardless of how many
+-- channels it sent through.
 saves_distinct_summary as (
     select
         event_date,
@@ -69,6 +72,7 @@ saves_distinct_summary as (
         screener_state,
         count(distinct screener_uid) as screenings_with_save
     from saves
+    where save_action = 'send'
     group by event_date, event_date_parsed, screener_state
 ),
 
@@ -87,7 +91,8 @@ popup_summary as (
 -- synthetic-row pattern). Each metric column is non-zero on exactly ONE row type,
 -- so SUM() over any filter counts each exactly once — no fan-out:
 --   1. channel/action rows  → total_saves (raw count, summable per channel)
---   2. '__saved__' rows      → screenings_with_save (distinct savers per date/state)
+--   2. '__saved__' rows      → screenings_with_save (distinct completed savers,
+--        save_action='send', per date/state)
 --   3. '__popup_shown__' rows → popup impressions/distinct (per date/state)
 -- The card reads Saved from row type 2, Shown Popup from row type 3, and
 -- saves-by-channel from row type 1 (which excludes the synthetic rows via its
