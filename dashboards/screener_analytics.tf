@@ -57,9 +57,8 @@ resource "metabase_card" "screener_macro_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions"             = ["Funnel Step"]
-      "graph.metrics"                = ["Screenings"]
-      "graph.max_categories_enabled" = false
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -94,12 +93,11 @@ resource "metabase_card" "screener_step_funnel" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions"             = ["screener_step_label"]
-      "graph.metrics"                = ["% of Started"]
-      "graph.show_values"            = true
-      "graph.x_axis.title_text"      = "Screener Step"
-      "series_settings"              = { "% of Started" = { color = "#4e79a7" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
+      "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -128,12 +126,11 @@ resource "metabase_card" "screener_errors_by_step" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions"             = ["Step"]
-      "graph.metrics"                = ["% of Viewers with 1+ Errors"]
-      "graph.show_values"            = true
-      "graph.x_axis.title_text"      = "Screener Step"
-      "series_settings"              = { "% of Viewers with 1+ Errors" = { color = "#d64550" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["% of Viewers with 1+ Errors"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
+      "series_settings"         = { "% of Viewers with 1+ Errors" = { color = "#d64550" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -162,12 +159,11 @@ resource "metabase_card" "screener_back_nav_by_step" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions"             = ["Step"]
-      "graph.metrics"                = ["% of Viewers who Went Back"]
-      "graph.show_values"            = true
-      "graph.x_axis.title_text"      = "Screener Step"
-      "series_settings"              = { "% of Viewers who Went Back" = { color = "#59a14f" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"        = ["Step"]
+      "graph.metrics"           = ["% of Viewers who Went Back"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
+      "series_settings"         = { "% of Viewers who Went Back" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -208,13 +204,12 @@ resource "metabase_card" "screener_results_revisits" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Times Viewed"]
-      "graph.metrics"                = ["Screenings"]
-      "graph.x_axis.title_text"      = "Times Results Viewed"
-      "graph.y_axis.decimals"        = 0
-      "series_settings"              = { "Screenings" = { color = "#af7aa1" } }
-      "graph.max_categories_enabled" = false
+      "graph.show_values"       = true
+      "graph.dimensions"        = ["Times Viewed"]
+      "graph.metrics"           = ["Screenings"]
+      "graph.x_axis.title_text" = "Times Results Viewed"
+      "graph.y_axis.decimals"   = 0
+      "series_settings"         = { "Screenings" = { color = "#af7aa1" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -284,9 +279,8 @@ resource "metabase_card" "screener_share_funnel_popup" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions"             = ["Funnel Step"]
-      "graph.metrics"                = ["Screenings"]
-      "graph.max_categories_enabled" = false
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -314,9 +308,8 @@ resource "metabase_card" "screener_share_funnel_footer" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions"             = ["Funnel Step"]
-      "graph.metrics"                = ["Screenings"]
-      "graph.max_categories_enabled" = false
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -345,11 +338,10 @@ resource "metabase_card" "screener_shares_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Share Channel"]
-      "graph.metrics"                = ["Total Shares"]
-      "graph.y_axis.decimals"        = 0
-      "series_settings"              = { "Total Shares" = { color = "#76b7b2" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"      = ["Share Channel"]
+      "graph.metrics"         = ["Total Shares"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Total Shares" = { color = "#76b7b2" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -383,9 +375,8 @@ resource "metabase_card" "screener_save_funnel" {
     }
     display = "funnel"
     visualization_settings = {
-      "graph.dimensions"             = ["Funnel Step"]
-      "graph.metrics"                = ["Screenings"]
-      "graph.max_categories_enabled" = false
+      "graph.dimensions" = ["Funnel Step"]
+      "graph.metrics"    = ["Screenings"]
     }
     parameter_mappings = []
     parameters         = []
@@ -413,11 +404,10 @@ resource "metabase_card" "screener_saves_by_channel" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Save Channel"]
-      "graph.metrics"                = ["Total Saves"]
-      "graph.y_axis.decimals"        = 0
-      "series_settings"              = { "Total Saves" = { color = "#ff9da7" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"      = ["Save Channel"]
+      "graph.metrics"         = ["Total Saves"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -451,12 +441,11 @@ resource "metabase_card" "screener_top_resources" {
     }
     display = "row"
     visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Resource"]
-      "graph.metrics"                = ["Clicks"]
-      "graph.y_axis.decimals"        = 0
-      "series_settings"              = { "Clicks" = { color = "#9c755f" } }
+      "graph.show_values"     = true
+      "graph.dimensions"      = ["Resource"]
+      "graph.metrics"         = ["Clicks"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Clicks" = { color = "#9c755f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -488,20 +477,22 @@ resource "metabase_card" "screener_program_conversion" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "row"
+    # Table, not a bar/row chart: with ~115 programs a bar chart is unreadable and
+    # Metabase auto-buckets the long tail into an "Other" category that this build
+    # exposes no toggle to disable. A table shows every program, sortable.
+    display = "table"
     visualization_settings = {
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["More-Info Rate %", "Apply Rate %"]
-      "graph.tooltip_columns"        = ["Shown", "More Info", "Applied"]
-      "graph.max_categories_enabled" = false
+      "table.row_index"     = false
+      "table.paginate"      = false
+      "table.column_widths" = {}
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Program engagement volume — bar (all programs, no min filter). Shown / More Info /
-# Applied counts per program, most-shown first.
+# Program engagement volume — table (all programs; a 115-row bar chart is unreadable
+# and Metabase buckets the tail into "Other"). Shown / More Info / Applied per program.
 resource "metabase_card" "screener_program_volume" {
   for_each = local.ga_tenants_enabled
 
@@ -520,11 +511,10 @@ resource "metabase_card" "screener_program_volume" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "row"
+    display = "table"
     visualization_settings = {
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["Shown", "More Info", "Applied"]
-      "graph.max_categories_enabled" = false
+      "table.row_index" = false
+      "table.paginate"  = false
     }
     parameter_mappings = []
     parameters         = []
@@ -583,11 +573,10 @@ resource "metabase_card" "screener_resource_engagement" {
     }
     display = "row"
     visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Resource"]
-      "graph.metrics"                = ["More Info", "Website", "Phone"]
-      "graph.y_axis.decimals"        = 0
+      "graph.show_values"     = true
+      "graph.dimensions"      = ["Resource"]
+      "graph.metrics"         = ["More Info", "Website", "Phone"]
+      "graph.y_axis.decimals" = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -654,9 +643,8 @@ resource "metabase_card" "screener_scroll_depth" {
       "graph.metrics"     = ["% of Tab Scrollers"]
       "graph.show_values" = true
       "series_settings" = {
-        "Long-Term Benefits"           = { color = "#4e79a7" }
-        "Additional Resources"         = { color = "#59a14f" }
-        "graph.max_categories_enabled" = false
+        "Long-Term Benefits"   = { color = "#4e79a7" }
+        "Additional Resources" = { color = "#59a14f" }
       }
     }
     parameter_mappings = []
@@ -687,11 +675,10 @@ resource "metabase_card" "screener_help_by_topic" {
     }
     display = "row"
     visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Help Topic"]
-      "graph.metrics"                = ["Clicks"]
-      "series_settings"              = { "Clicks" = { color = "#e8a33d" } }
+      "graph.show_values" = true
+      "graph.dimensions"  = ["Help Topic"]
+      "graph.metrics"     = ["Clicks"]
+      "series_settings"   = { "Clicks" = { color = "#e8a33d" } }
       # Clicks are whole numbers; force integer axis ticks so a max of 2 doesn't
       # auto-scale to 0.2/0.4/... gridlines.
       "graph.y_axis.decimals" = 0
@@ -723,11 +710,10 @@ resource "metabase_card" "screener_household_member_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Action"]
-      "graph.metrics"                = ["% of Household-Step Viewers"]
-      "graph.show_values"            = true
-      "series_settings"              = { "% of Household-Step Viewers" = { color = "#499894" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["% of Household-Step Viewers"]
+      "graph.show_values" = true
+      "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -755,11 +741,10 @@ resource "metabase_card" "screener_income_source_engagement" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Action"]
-      "graph.metrics"                = ["Total Actions"]
-      "graph.show_values"            = true
-      "series_settings"              = { "Total Actions" = { color = "#d37295" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["Total Actions"]
+      "graph.show_values" = true
+      "series_settings"   = { "Total Actions" = { color = "#d37295" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -855,10 +840,9 @@ resource "metabase_card" "screener_confirmation_edits" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions"             = ["Section"]
-      "graph.metrics"                = ["% of Confirmation Viewers"]
-      "series_settings"              = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions" = ["Section"]
+      "graph.metrics"    = ["% of Confirmation Viewers"]
+      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -887,11 +871,10 @@ resource "metabase_card" "screener_signup_consent" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Channel"]
-      "graph.metrics"                = ["% Opted In"]
-      "graph.show_values"            = true
-      "series_settings"              = { "% Opted In" = { color = "#59a14f" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"  = ["Channel"]
+      "graph.metrics"     = ["% Opted In"]
+      "graph.show_values" = true
+      "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -952,11 +935,10 @@ resource "metabase_card" "screener_nps_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"             = ["Category"]
-      "graph.metrics"                = ["Responses"]
-      "graph.y_axis.decimals"        = 0
-      "series_settings"              = { "Responses" = { color = "#af7aa1" } }
-      "graph.max_categories_enabled" = false
+      "graph.dimensions"      = ["Category"]
+      "graph.metrics"         = ["Responses"]
+      "graph.y_axis.decimals" = 0
+      "series_settings"       = { "Responses" = { color = "#af7aa1" } }
     }
     parameter_mappings = []
     parameters         = []
