@@ -10,7 +10,6 @@ WITH translations_t AS (
     WHERE
         tt.label ILIKE 'program.%-name'
         OR tt.label ILIKE 'program.%-apply_button_link'
-        OR tt.label ILIKE 'program.%-value_type'
     ORDER BY tt.id
 ),
 
@@ -33,4 +32,3 @@ SELECT
     ttt.text
 FROM translations_t AS tt
 LEFT JOIN translations_tt AS ttt ON tt.id = ttt.master_id
-WHERE tt.label ILIKE 'program.%-value_type'

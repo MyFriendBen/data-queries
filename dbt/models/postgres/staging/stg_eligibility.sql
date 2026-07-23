@@ -15,7 +15,6 @@ SELECT
     pes.new,
     pes.name,
     pes.name_abbreviated,
-    pes.value_type,
     pes.estimated_value,
     pes.estimated_delivery_time,
     pes.estimated_application_time,
