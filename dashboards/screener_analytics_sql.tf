@@ -247,6 +247,10 @@ locals {
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — popup ──────────────────────────
+  # Share popup (results page) funnel: Shown (reached results) -> Opened -> Sent.
+  # The "Shown" base is results-page viewers (mart_screener_results_revisits, the
+  # shared results-viewer denominator, CESN-aware sentinel) — the popup only appears
+  # on results. Share actions come from mart_screener_shares (screening-keyed).
   screener_sql_share_funnel_popup = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
@@ -255,23 +259,37 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT COUNT(*) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Opened' AS funnel_step,
-             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-             1 AS step_order
+      SELECT 'Shown (reached results)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL
+      SELECT 'Opened',
+             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END),
+             2
       FROM filtered
       UNION ALL
       SELECT 'Sent',
              SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-             2
+             3
       FROM filtered
     )
     ORDER BY step_order
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — footer ─────────────────────────
+  # Share footer funnel: Shown (started the screener) -> Opened -> Sent. The footer
+  # (with its Share button) renders on ~every page, so the "Shown" base is screenings
+  # that started the form (form_start on mart_screener_form_funnel, is_cesn + null-
+  # state aware). Share actions come from mart_screener_shares (footer location).
   screener_sql_share_funnel_footer = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_shares`
@@ -280,17 +298,28 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT SUM(screenings_viewed_step) AS n
+      FROM `${local.bq_dataset}.mart_screener_form_funnel`
+      WHERE __STATE_FILTER_CESN__
+        AND screener_step_name = '__form_start__'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Opened' AS funnel_step,
-             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END) AS screenings,
-             1 AS step_order
+      SELECT 'Shown (started screener)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL
+      SELECT 'Opened',
+             SUM(CASE WHEN share_action = 'open' THEN screenings_with_share ELSE 0 END),
+             2
       FROM filtered
       UNION ALL
       SELECT 'Sent',
              SUM(CASE WHEN share_action = 'send' THEN screenings_with_share ELSE 0 END),
-             2
+             3
       FROM filtered
     )
     ORDER BY step_order
@@ -319,6 +348,10 @@ locals {
   SQL
 
   # ── Tab 9 (Sharing & Saving): save funnel ───────────────────────────────────
+  # Save funnel: Shown (reached results) -> Opened Save Popup -> Saved. Save is only
+  # offered on the results page (BackAndSaveButtons), so the "Shown" base is results-
+  # page viewers (shared results-viewer denominator, CESN-aware sentinel). Popup +
+  # save come from mart_screener_saves.
   screener_sql_save_funnel = <<-SQL
     WITH filtered AS (
       SELECT * FROM `${local.bq_dataset}.mart_screener_saves`
@@ -326,11 +359,20 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    shown AS (
+      SELECT COUNT(*) AS n
+      FROM `${local.bq_dataset}.mart_screener_results_revisits`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
     FROM (
-      SELECT 'Shown Popup' AS funnel_step, SUM(screenings_shown_popup) AS screenings, 1 AS step_order FROM filtered
-      UNION ALL SELECT 'Saved', SUM(screenings_with_save), 2 FROM filtered
+      SELECT 'Shown (reached results)' AS funnel_step, (SELECT n FROM shown) AS screenings, 1 AS step_order
+      UNION ALL SELECT 'Opened Save Popup', SUM(screenings_shown_popup), 2 FROM filtered
+      UNION ALL SELECT 'Saved', SUM(screenings_with_save), 3 FROM filtered
     )
     ORDER BY step_order
   SQL
