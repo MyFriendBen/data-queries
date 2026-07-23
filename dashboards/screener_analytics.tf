@@ -175,71 +175,10 @@ resource "metabase_card" "screener_back_nav_by_step" {
 # ══════════════════════════════════════════════════════════════════════════════
 
 # HEADLINER: apply conversion rate per program = apply / more_info, sorted desc.
-# Pivots interaction_type in mart_screener_program_interactions with conditional
-# SUMs, grouping by program_id (the stable key) and carrying program_name as the
-# display label (MAX, matching the mart's own display-label convention).
-resource "metabase_card" "screener_apply_conversion_rate" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "Apply Conversion Rate by Program"
-    description         = "apply / more_info conversion rate per program (screenings basis), highest first"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "row"
-    visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["Apply Rate %"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
-
-# Paired/grouped bar per program: more_info and apply side by side, sorted by the
-# gap (more_info - apply) descending — surfaces the programs with the biggest
-# interest-to-action drop-off.
-resource "metabase_card" "screener_more_info_vs_apply" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "More Info vs Apply by Program"
-    description         = "Distinct screenings clicking more-info vs apply per program, sorted by the gap"
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "row"
-    visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["More Info", "Apply"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
+# NOTE: "Apply Conversion Rate by Program" and "More Info vs Apply by Program" were
+# consolidated into "Program Engagement Volume" (counts) + "Program Conversion Rates"
+# (rates, shown>=20) further down. See screener_sql_program_volume /
+# screener_sql_program_conversion.
 
 # Results revisits — bar. How many screenings loaded their results page once vs.
 # multiple times (1 / 2 / 3+), a proxy for how often people return to a saved
@@ -525,8 +464,8 @@ resource "metabase_card" "screener_program_conversion" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Program Conversion"
-    description         = "Per-program funnel: shown, more-info, and applied counts with the more-info and apply conversion rates, highest more-info rate first."
+    name                = "Program Conversion Rates"
+    description         = "Per-program conversion: More-Info Rate % (more-info ÷ shown) and Apply Rate % (applied ÷ more-info). Only programs shown to ≥20 screenings (small denominators are unreliable — some shown events are dropped in transit). Counts on hover. Highest more-info rate first."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -539,10 +478,41 @@ resource "metabase_card" "screener_program_conversion" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "row"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "graph.dimensions"      = ["Program"]
+      "graph.metrics"         = ["More-Info Rate %", "Apply Rate %"]
+      "graph.tooltip_columns" = ["Shown", "More Info", "Applied"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Program engagement volume — bar (all programs, no min filter). Shown / More Info /
+# Applied counts per program, most-shown first.
+resource "metabase_card" "screener_program_volume" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Program Engagement Volume"
+    description         = "Per-program raw counts: how many screenings were shown each program, clicked More Info, and clicked Apply. All programs, most-shown first."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_program_volume, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["Shown", "More Info", "Applied"]
     }
     parameter_mappings = []
     parameters         = []
@@ -1390,22 +1360,22 @@ locals {
           visualization_settings = {}
         },
         {
-          # ── (2) PROGRAMS ──
-          card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
+          # ── (2) PROGRAMS: volume then conversion rates ──
+          card_id          = tonumber(metabase_card.screener_program_volume[key].id)
           dashboard_tab_id = 8
           row              = 14
           col              = 0
           size_x           = 24
-          size_y           = 8
+          size_y           = 10
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              card_id      = tonumber(metabase_card.screener_program_volume[key].id)
               target       = ["variable", ["template-tag", "start_date"]]
             },
             {
               parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
+              card_id      = tonumber(metabase_card.screener_program_volume[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1413,43 +1383,21 @@ locals {
           visualization_settings = {}
         },
         {
-          card_id          = tonumber(metabase_card.screener_more_info_vs_apply[key].id)
+          card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
           dashboard_tab_id = 8
-          row              = 22
+          row              = 24
           col              = 0
-          size_x           = 12
-          size_y           = 8
+          size_x           = 24
+          size_y           = 10
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_more_info_vs_apply[key].id)
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
               target       = ["variable", ["template-tag", "start_date"]]
             },
             {
               parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_more_info_vs_apply[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_apply_conversion_rate[key].id)
-          dashboard_tab_id = 8
-          row              = 22
-          col              = 12
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_apply_conversion_rate[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_apply_conversion_rate[key].id)
+              card_id      = tonumber(metabase_card.screener_program_conversion[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1460,7 +1408,7 @@ locals {
           # ── (3) RESULTS-PAGE ENGAGEMENT (3 scalars, % of results viewers) ──
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
-          row              = 30
+          row              = 34
           col              = 0
           size_x           = 8
           size_y           = 4
@@ -1482,7 +1430,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 30
+          row              = 34
           col              = 8
           size_x           = 8
           size_y           = 4
@@ -1504,7 +1452,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
           dashboard_tab_id = 8
-          row              = 30
+          row              = 34
           col              = 16
           size_x           = 8
           size_y           = 4
@@ -1527,7 +1475,7 @@ locals {
           # ── (4) ADDITIONAL RESOURCES section ──
           card_id          = tonumber(metabase_card.screener_top_resources[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 38
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1549,7 +1497,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 38
           col              = 12
           size_x           = 12
           size_y           = 8
@@ -1571,7 +1519,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_additional_resources_edits[key].id)
           dashboard_tab_id = 8
-          row              = 42
+          row              = 46
           col              = 0
           size_x           = 12
           size_y           = 4
@@ -1593,7 +1541,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 46
+          row              = 50
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1616,7 +1564,7 @@ locals {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 54
+          row              = 58
           col              = 0
           size_x           = 16
           size_y           = 8

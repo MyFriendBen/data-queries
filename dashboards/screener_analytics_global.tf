@@ -208,12 +208,12 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
   })
 }
 
-resource "metabase_card" "global_screener_apply_conversion_rate" {
+resource "metabase_card" "global_screener_program_volume" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Apply Conversion Rate by Program"
-    description         = "apply / more_info conversion rate per program (screenings basis), highest first"
+    name                = "Program Engagement Volume"
+    description         = "Per-program raw counts: how many screenings were shown each program, clicked More Info, and clicked Apply. All programs, most-shown first."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -222,46 +222,14 @@ resource "metabase_card" "global_screener_apply_conversion_rate" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_apply_conversion_rate, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_program_volume, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "row"
     visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["Apply Rate %"]
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
-
-resource "metabase_card" "global_screener_more_info_vs_apply" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "More Info vs Apply by Program"
-    description         = "Distinct screenings clicking more-info vs apply per program, sorted by the gap"
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_more_info_vs_apply, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "row"
-    visualization_settings = {
-      "graph.max_categories_enabled" = false
-      "graph.show_values"            = true
-      "graph.dimensions"             = ["Program"]
-      "graph.metrics"                = ["More Info", "Apply"]
+      "graph.dimensions" = ["Program"]
+      "graph.metrics"    = ["Shown", "More Info", "Applied"]
     }
     parameter_mappings = []
     parameters         = []
@@ -348,8 +316,8 @@ resource "metabase_card" "global_screener_program_conversion" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Program Conversion"
-    description         = "Per-program funnel: shown, more-info, and applied counts with the more-info and apply conversion rates, highest more-info rate first."
+    name                = "Program Conversion Rates"
+    description         = "Per-program conversion: More-Info Rate % (more-info ÷ shown) and Apply Rate % (applied ÷ more-info). Only programs shown to ≥20 screenings (small denominators are unreliable — some shown events are dropped in transit). Counts on hover. Highest more-info rate first."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -362,10 +330,11 @@ resource "metabase_card" "global_screener_program_conversion" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "row"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "graph.dimensions"      = ["Program"]
+      "graph.metrics"         = ["More-Info Rate %", "Apply Rate %"]
+      "graph.tooltip_columns" = ["Shown", "More Info", "Applied"]
     }
     parameter_mappings = []
     parameters         = []

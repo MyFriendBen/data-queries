@@ -175,55 +175,9 @@ locals {
     ORDER BY `% of Viewers who Went Back` DESC
   SQL
 
-  # ── Tab 8 (Results): apply conversion rate by program ───────────────────────
-  screener_sql_apply_conversion_rate = <<-SQL
-    WITH per_program AS (
-      SELECT
-        program_id,
-        MAX(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info_screenings,
-        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply_screenings
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
-    )
-    SELECT
-      program_name AS `Program`,
-      more_info_screenings AS `More Info`,
-      apply_screenings AS `Applied`,
-      ROUND(apply_screenings * 100.0 / NULLIF(more_info_screenings, 0), 1) AS `Apply Rate %`
-    FROM per_program
-    WHERE more_info_screenings > 0
-    ORDER BY `Apply Rate %` DESC
-  SQL
-
-  # ── Tab 8 (Results): more info vs apply by program ──────────────────────────
-  screener_sql_more_info_vs_apply = <<-SQL
-    WITH per_program AS (
-      SELECT
-        program_id,
-        MAX(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
-        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS apply
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
-    )
-    SELECT
-      program_name AS `Program`,
-      more_info AS `More Info`,
-      apply AS `Apply`,
-      ROUND(apply * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`
-    FROM per_program
-    WHERE more_info > 0 OR apply > 0
-    ORDER BY (more_info - apply) DESC
-  SQL
+  # NOTE: the former per-program cards screener_sql_apply_conversion_rate and
+  # screener_sql_more_info_vs_apply were consolidated into screener_sql_program_volume
+  # (counts) + screener_sql_program_conversion (rates, shown>=20) further down.
 
   # ── Tab 8 (Results): results revisits distribution ──────────────────────────
   # How many screenings loaded their results page once vs. multiple times.
@@ -431,17 +385,41 @@ locals {
   # ══════════════════════════════════════════════════════════════════════════════
 
   # ── Results: per-program conversion (more-info ÷ shown, apply ÷ more-info) ──────
-  # Pivots interaction_type from mart_screener_program_interactions to compute the
-  # two conversion rates now that program_shown gives a "shown" denominator.
+  # Program engagement, from mart_screener_program_interactions. Split into two
+  # cards: this VOLUME chart (all programs, raw Shown/More Info/Applied counts) and
+  # the RATE chart below (conversion rates, min-Shown filtered).
+  #
+  # No "Other" bucket — every program is shown individually.
   # NOTE: screenings_with_interaction is deduped per DAY in the mart, so summing
-  # across a multi-day window counts a screening active on N days N times — the
-  # rate is "screening-days", not truly-distinct screenings. This matches every
-  # other rate card over these daily-grain marts (e.g. apply_conversion_rate).
+  # across a multi-day window is "screening-days", not truly-distinct screenings —
+  # consistent with the other daily-grain rate cards.
+  screener_sql_program_volume = <<-SQL
+    SELECT
+      program_name AS `Program`,
+      SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS `Shown`,
+      SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS `More Info`,
+      SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS `Applied`
+    FROM `${local.bq_dataset}.mart_screener_program_interactions`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY program_name
+    HAVING `Shown` > 0 OR `More Info` > 0 OR `Applied` > 0
+    ORDER BY `Shown` DESC
+  SQL
+
+  # Program conversion RATES. Only programs shown to >= 20 screenings, because
+  # program_shown events are dropped by GA4 when a screening's ~40 impressions fire
+  # in one tick (verified: hundreds of more_info clicks have no matching shown
+  # event) — so per-program rates on a tiny Shown denominator are unreliable and can
+  # exceed 100%. The >= 20 floor also just excludes statistically-noisy low-n rates.
+  # Once the FE batches the shown events (FE gaps ticket), this can relax toward a
+  # smaller noise-only floor, but should never be 0. No "Other" bucket.
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
-        program_id,
-        MAX(program_name) AS program_name,
+        program_name,
         SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
@@ -450,17 +428,17 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY program_id
+      GROUP BY program_name
     )
     SELECT
       program_name AS `Program`,
+      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `More-Info Rate %`,
+      ROUND(applied * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`,
       shown AS `Shown`,
       more_info AS `More Info`,
-      applied AS `Applied`,
-      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `More-Info Rate %`,
-      ROUND(applied * 100.0 / NULLIF(more_info, 0), 1) AS `Apply Rate %`
+      applied AS `Applied`
     FROM per_program
-    WHERE shown > 0
+    WHERE shown >= 20
     ORDER BY `More-Info Rate %` DESC
   SQL
 
