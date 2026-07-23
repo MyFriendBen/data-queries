@@ -21,7 +21,7 @@ resource "metabase_card" "global_screener_macro_funnel" {
 
   json = jsonencode({
     name                = "Screener Macro Funnel"
-    description         = "Visitors -> Started -> Saw Results -> Clicked More Info -> Clicked Apply. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
+    description         = "Visitors -> Started -> Saw Results -> Viewed Details -> Clicked Apply. 'Viewed Details' = clicked 'More info' on a program. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -85,7 +85,7 @@ resource "metabase_card" "global_screener_step_funnel" {
 
   json = jsonencode({
     name                = "Form Step Reached"
-    description         = "Share of screening sessions that reached at least each step, in flow order through the results page. Monotonic: each bar counts every session that got this far or further, so it always decreases down the funnel. Hover a bar for the raw session count. Referral Source and Select State are excluded (conditionally shown / pre-white-label)."
+    description         = "How far people get through the form: each bar is the share of visits that reached at least that step, so bars always shrink down the list. Counted per visit (session), not per screening — the first steps happen before a screening exists. Hover for the count. Because it counts visits, 'Reached Results' runs higher than 'Results Viewed' on the Results Page tab (which counts distinct screenings). Referral Source and Select State are excluded (only shown to some users)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -116,7 +116,7 @@ resource "metabase_card" "global_screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Of the screenings that viewed each step, the % that hit at least one validation error on it — normalized for traffic so steps are comparable by how error-prone they are. Hover for the raw screening count and total error events (attempts, inflated by retries)."
+    description         = "Of the screenings that viewed each step, the % that hit at least one validation error there — so steps are comparable regardless of traffic. Hover for the screening count and total error attempts."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -148,7 +148,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
 
   json = jsonencode({
     name                = "Back Navigation by Step"
-    description         = "Of the screenings that viewed each step, the % that navigated back from it — normalized for traffic so steps are comparable by how often they send people back. Hover for the raw back-navigation count."
+    description         = "Of the screenings that viewed each step, the % that clicked Back from it — so steps are comparable regardless of traffic. Hover for the back-navigation count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -180,12 +180,12 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
 # Tab 6 (Results Page Activity)
 # ══════════════════════════════════════════════════════════════════════════════
 
-resource "metabase_card" "global_screener_results_outcome_kpis" {
+resource "metabase_card" "global_screener_results_viewed" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Results Outcome KPIs"
-    description         = "Results viewed, none-eligible count/%, avg programs found, avg estimated value, results errors"
+    name                = "Results Viewed"
+    description         = "How many screenings reached the results page at least once. Counts each screening once, not total views — reloading or revisiting results doesn't inflate it. (The 'Reached Results' bar on the Engagement by Step tab counts per visit instead, so it runs higher.)"
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -194,26 +194,25 @@ resource "metabase_card" "global_screener_results_outcome_kpis" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_outcome_kpis, "__STATE_FILTER__", local.all_screener_global_predicate)
+        query         = replace(local.screener_sql_results_viewed, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
-    display = "table"
+    display = "scalar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "scalar.field" = "Results Viewed"
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-resource "metabase_card" "global_screener_program_volume" {
+resource "metabase_card" "global_screener_results_pct_eligible" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Program Engagement Volume"
-    description         = "Per-program raw counts: how many screenings were shown each program, clicked More Info, and clicked Apply. All programs, most-shown first."
+    name                = "% Eligible for 1+ Program"
+    description         = "Of the screenings that reached the results page, the % that qualified for at least one program (i.e. were not shown an empty results page)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -222,16 +221,107 @@ resource "metabase_card" "global_screener_program_volume" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_program_volume, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_results_pct_eligible, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
-    # Table (see tenant note): ~115 programs is unreadable as bars + Metabase buckets
-    # the tail into "Other" with no toggle to disable in this build.
-    display = "table"
+    display = "scalar"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "scalar.field"    = "% Eligible for 1+ Program"
+      "column_settings" = { "[\"name\",\"% Eligible for 1+ Program\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_results_error_rate" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Results Error Rate %"
+    description         = "Of the screenings that reached the results page, the % that hit an error while loading results."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_results_error_rate, "__STATE_FILTER__", local.all_screener_global_predicate)
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "Results Error Rate %"
+      "column_settings" = { "[\"name\",\"Results Error Rate %\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_program_most_shown" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Most Shown Programs (Top 15)"
+    description         = "The 15 programs shown to the most screenings. Raw count of distinct screenings each program appeared for. Full per-program counts are in the Conversion Rates table."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_program_most_shown, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"        = ["Program"]
+      "graph.metrics"           = ["Shown"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Program"
+      "graph.y_axis.title_text" = "Screenings Shown"
+      "series_settings"         = { "Shown" = { color = "#4e79a7" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_program_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Program Engagement (Top 15)"
+    description         = "The 15 programs with the highest Viewed-Details Rate % (share of screenings shown the program that clicked 'More info' to view its details). Only programs shown to ≥20 screenings, so small-denominator flukes don't top the ranking."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_program_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"        = ["Program"]
+      "graph.metrics"           = ["Viewed-Details Rate %"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Program"
+      "graph.y_axis.title_text" = "Viewed-Details Rate %"
+      "series_settings"         = { "Viewed-Details Rate %" = { color = "#59a14f" } }
+      "column_settings"         = { "[\"name\",\"Viewed-Details Rate %\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -246,7 +336,7 @@ resource "metabase_card" "global_screener_results_revisits" {
 
   json = jsonencode({
     name                = "Results Views per Screening"
-    description         = "How many screenings loaded their results page once, twice, or 3+ times — a proxy for returning to a saved result. Counted per screening; the date filter selects screenings by their first results view."
+    description         = "How many screenings loaded their results page once, twice, or 3+ times — a sign of people returning to a saved result. The date filter picks screenings by their first results view."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -277,37 +367,9 @@ resource "metabase_card" "global_screener_results_revisits" {
 # NOTE: "Results Tab Engagement" (global_screener_tab_split) removed — see the
 # tenant-file note; the Additional-Resources open rate is now the "Opened
 # Additional Resources" scalar in the results-engagement row.
-
-resource "metabase_card" "global_screener_top_resources" {
-  count = var.bigquery_enabled ? 1 : 0
-
-  json = jsonencode({
-    name                = "Top Additional Resources"
-    description         = "Top 20 additional resources clicked on the results page, by total clicks"
-    collection_id       = local.global_col_id
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_top_resources, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "row"
-    visualization_settings = {
-      "graph.show_values"     = true
-      "graph.dimensions"      = ["Resource"]
-      "graph.metrics"         = ["Clicks"]
-      "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Clicks" = { color = "#9c755f" } }
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
+# NOTE: "Top Additional Resources" (global_screener_top_resources) removed — the
+# "Additional Resource Engagement" bar chart supersedes it (same resources, plus the
+# website/phone contact split).
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Analytics v2 cards — new event families
@@ -318,7 +380,7 @@ resource "metabase_card" "global_screener_program_conversion" {
 
   json = jsonencode({
     name                = "Program Conversion Rates"
-    description         = "Per-program conversion: More-Info Rate % (more-info ÷ shown) and Apply Rate % (applied ÷ more-info). Only programs shown to ≥20 screenings (small denominators are unreliable — some shown events are dropped in transit). Counts on hover. Highest more-info rate first."
+    description         = "Per-program funnel: how many screenings were Shown each program, Viewed Details (clicked 'More info'), and Applied — plus the step-to-step conversion rates. Only programs shown to 20+ screenings (smaller numbers are too noisy to trust). Sorted by the Shown → Details rate."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -388,12 +450,14 @@ resource "metabase_card" "global_screener_resource_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "row"
+    display = "bar"
     visualization_settings = {
-      "graph.show_values"     = true
-      "graph.dimensions"      = ["Resource"]
-      "graph.metrics"         = ["More Info", "Website", "Phone"]
-      "graph.y_axis.decimals" = 0
+      "graph.show_values"       = true
+      "graph.dimensions"        = ["Resource"]
+      "graph.metrics"           = ["More Info", "Website", "Phone"]
+      "graph.x_axis.title_text" = "Resource"
+      "graph.y_axis.title_text" = "Clicks"
+      "graph.y_axis.decimals"   = 0
     }
     parameter_mappings = []
     parameters         = []
@@ -405,7 +469,7 @@ resource "metabase_card" "global_screener_resources_tab_engagement" {
 
   json = jsonencode({
     name                = "Opened Additional Resources"
-    description         = "Of the screenings that viewed the results page, the % that opened the Additional Resources tab. Hover for the raw screening count."
+    description         = "Of the screenings that reached the results page, the % that opened the Additional Resources tab."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -568,7 +632,7 @@ resource "metabase_card" "global_screener_get_help_clicks" {
 
   json = jsonencode({
     name                = "Clicked More Help?"
-    description         = "Of the screenings that viewed the results page, the % that clicked the More Help / 211 call-to-action. Hover for the raw click count."
+    description         = "Of the screenings that reached the results page, the % that clicked the More Help / 211 call-to-action."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -630,7 +694,7 @@ resource "metabase_card" "global_screener_share_funnel_popup" {
 
   json = jsonencode({
     name                = "Share Funnel — Popup"
-    description         = "Popup share funnel: distinct screenings that opened vs sent a share"
+    description         = "Popup share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -660,7 +724,7 @@ resource "metabase_card" "global_screener_share_funnel_footer" {
 
   json = jsonencode({
     name                = "Share Funnel — Footer"
-    description         = "Footer share funnel: distinct screenings that opened vs sent a share"
+    description         = "Footer share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -690,7 +754,7 @@ resource "metabase_card" "global_screener_shares_by_channel" {
 
   json = jsonencode({
     name                = "Shares by Channel"
-    description         = "Total shares by channel (and provider, e.g. email provider)"
+    description         = "How many shares were sent, broken out by channel (and provider, e.g. email provider). Counts every send, so it can run a bit higher than the Share Funnel's 'Sent' stage, which counts each screening only once."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -750,7 +814,7 @@ resource "metabase_card" "global_screener_saves_by_channel" {
 
   json = jsonencode({
     name                = "Saves by Channel"
-    description         = "Total results-saves by channel"
+    description         = "How many results-saves were sent, broken out by channel. Counts every save, so it can run a bit higher than the Save Funnel, which counts each screening only once."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -842,7 +906,7 @@ resource "metabase_card" "global_screener_filter_usage" {
 
   json = jsonencode({
     name                = "Used Citizenship Filter"
-    description         = "Of the screenings that viewed the results page, the % that used the results citizenship filter. The chosen option isn't captured (PII). Hover for the raw screening count."
+    description         = "Of the screenings that reached the results page, the % that used the citizenship filter. Which option they picked isn't captured (privacy)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1022,8 +1086,8 @@ resource "metabase_card" "global_screener_additional_resources_edits" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Additional Resources Edits (from Results)"
-    description         = "Clicks on the results-page link that sends people back to the Additional Resources step to change their selections. Distinct from confirmation-page edits."
+    name                = "Additional Resources Edited (from Results)"
+    description         = "Of the screenings that reached the results page, the % that clicked the link to go back and edit their Additional Resources selections (different from edits made on the confirmation page)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1032,13 +1096,74 @@ resource "metabase_card" "global_screener_additional_resources_edits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query = replace(
+          replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "Additional Resource Edits"
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_document_downloads" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Document Downloads"
+    description         = "Which 'Key Information You May Need to Provide' documents were downloaded, and for which program. Screenings = how many screenings downloaded it; Downloads = total download clicks."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_document_downloads, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_nps_engagement" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Engaged with NPS"
+    description         = "Of the screenings that reached the results page, the % that engaged with the NPS survey (clicked a score)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_nps_engagement, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
