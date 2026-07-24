@@ -723,17 +723,19 @@ locals {
   # ── Form Journey: help-tooltip click RATE by topic (which tooltips drive confusion) ──
   # Now that screener_help_click carries screener_step_name (GTM fix, gap #4), this is
   # a proper rate: of the SCREENINGS that viewed the step a tooltip lives on, the % that
-  # clicked it. BOTH sides are keyed on SCREENING (screener_uid) so the numerator is a
-  # strict subset of the denominator and the rate can't exceed 100%:
+  # clicked it. BOTH sides are keyed on SCREENING (screener_uid), joined on the raw
+  # screener_step_name slug:
   #   numerator  = SUM(distinct_screenings) from mart_screener_help (distinct screenings
   #                that clicked the tooltip on that step) — NOT total_clicks, which is
-  #                click volume and would let one screening's repeat clicks push >100%.
+  #                click volume.
   #   denominator= distinct screenings that viewed that step, from the screening-keyed
   #                mart_screener_step_views_by_screening (the same mart the Household
   #                Member Actions rate uses — NOT the session-keyed step_facts, which
   #                would mix grains).
-  # Both are daily-grain SUMs of per-day distinct counts, so a screening spanning days
-  # is a small over-count on both sides equally — negligible at the two tooltips that
+  # Grain caveat: the numerator SUMs per-DAY distinct screenings while the denominator
+  # is a true cross-day COUNT(DISTINCT) — asymmetric, so a screening clicking across
+  # multiple days can push the raw ratio slightly over 100%. LEAST(...,100) clamps it
+  # (same guard as Additional Resources Edited). Negligible at the two tooltips that
   # exist today (income-frequency, household-assets). Clicks (raw volume) rides on hover.
   screener_sql_help_by_topic = <<-SQL
     WITH clicks AS (
@@ -763,7 +765,7 @@ locals {
     )
     SELECT
       c.help_topic AS `Help Topic`,
-      ROUND(c.screenings_clicked * 100.0 / NULLIF(v.viewers, 0), 1) AS `% of Step Viewers`,
+      LEAST(ROUND(c.screenings_clicked * 100.0 / NULLIF(v.viewers, 0), 1), 100.0) AS `% of Step Viewers`,
       c.clicks AS `Clicks`
     FROM clicks c
     LEFT JOIN step_viewers v USING (screener_step_name)
@@ -1123,9 +1125,17 @@ locals {
   #   Downloaded    = distinct screenings that downloaded it (numerator)
   #   Downloads     = total download clicks (>= Downloaded if repeat clicks)
   #   Download Rate % = Downloaded / Shown
+  # Grouped by (document_name, program_id) — the same document name shown under two
+  # programs stays as two rows (grouping by name alone would merge their counts and
+  # show an arbitrary program). program_id is the stable key; MAX(program_name) is the
+  # display label. LEAST(...,100) clamps the daily-grain residual (shown/downloaded are
+  # per-day distinct SUMs). NOTE: shown↔downloaded join is on program_id + document_name;
+  # if the exploded shown-array name and the scalar download name drift in casing/
+  # punctuation they won't line up — on the PR verification checklist.
   screener_sql_document_downloads = <<-SQL
     WITH per_doc AS (
       SELECT
+        program_id,
         document_name,
         max(program_name) AS program_name,
         SUM(CASE WHEN interaction_type = 'document_shown'    THEN screenings_with_interaction ELSE 0 END) AS shown,
@@ -1138,7 +1148,7 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY document_name
+      GROUP BY program_id, document_name
     )
     SELECT
       document_name AS `Document`,
@@ -1146,7 +1156,7 @@ locals {
       shown         AS `Shown`,
       downloaded    AS `Downloaded`,
       downloads     AS `Downloads`,
-      ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1) AS `Download Rate %`
+      LEAST(ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1), 100.0) AS `Download Rate %`
     FROM per_doc
     WHERE (shown + downloads) > 0
     ORDER BY `Downloads` DESC

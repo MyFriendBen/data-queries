@@ -1462,13 +1462,13 @@ locals {
           visualization_settings = {}
         },
         {
-          # in-step content-link click rates — per-step engagement, so on this tab
+          # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
           card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
           dashboard_tab_id = 7
           row              = 58
           col              = 0
-          size_x           = 6
-          size_y           = 4
+          size_x           = 12
+          size_y           = 6
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -1697,6 +1697,11 @@ locals {
           # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──
           # Citizenship Filter, More Help, Viewed Additional Resources, Additional
           # Resources Edited. 6-wide. (Back to Screener lives in the top outcome row.)
+          # NOTE: global reorders "Clicked More Help?" last; this tenant layout keeps
+          # the original order. Kept as-is — these tenant screener tabs are dormant
+          # (ga_tenants_enabled is empty), so the order is invisible; reordering would
+          # require moving blocks to preserve the provider's row/col-ascending rule for
+          # zero rendered benefit. Align if/when a tenant activates screener tabs.
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
           row              = 34

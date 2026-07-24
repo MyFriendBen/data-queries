@@ -94,9 +94,11 @@ select
     metric,
     dimension,
 
-    -- Human-readable step label for the help_click drill-down (null for the 211
-    -- CTA, which isn't step-scoped — a null slug returns null from the macro).
-    -- Shared screener_step_label macro (single source of truth).
+    -- Raw step slug (the stable join key for a per-step rate) AND the humanized
+    -- label. The help-rate card joins on screener_step_name to the screening-keyed
+    -- step-views mart; screener_step_label is the display value. Null for the 211
+    -- CTA / more-help clicks, which aren't step-scoped.
+    screener_step_name,
     {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
     count(*) as total_clicks,
@@ -105,5 +107,5 @@ select
     current_timestamp() as updated_at
 
 from combined
-group by event_date, event_date_parsed, screener_state, metric, dimension, screener_step_label
+group by event_date, event_date_parsed, screener_state, metric, dimension, screener_step_name
 order by event_date desc, screener_state, metric, total_clicks desc
