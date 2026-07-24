@@ -67,7 +67,7 @@ select
 
     interaction_type,
 
-    -- null except for document_download rows (in the grain below)
+    -- null except for document_download and document_shown rows (in the grain below)
     document_name,
 
     count(*) as total_interactions,

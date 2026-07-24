@@ -1082,8 +1082,10 @@ locals {
   # Denominator is screenings that OPENED the Additional Resources tab (not all
   # results viewers) — editing your resource selections only makes sense once you're
   # on that tab, so tab-openers is the honest base. Both CTEs read screening-keyed
-  # marts with a plain state filter (neither carries is_cesn; the tab-open mart is
-  # the denominator, so no CESN sentinel needed here).
+  # CESN-EXCLUDED like the rest of the results-engagement row (nothing global counts
+  # CESN). Numerator (link_clicks): CESN is dropped by the state IN-list — 'cesn' isn't
+  # in all_screener_state_filter. Denominator (resource_engagement): now carries is_cesn,
+  # so NOT is_cesn drops CESN's null-state / display-name rows too.
   # Numerator scoped to the Additional Resources edit link by LABEL (not just
   # link_group='edit_nav', which widened to any results_needs link) so it can't pull in
   # a future non-AR edit-nav link against this AR-tab-openers denominator. Both sides are
@@ -1105,6 +1107,7 @@ locals {
       SELECT SUM(distinct_screenings) AS denom
       FROM `${local.bq_dataset}.mart_screener_resource_engagement`
       WHERE __STATE_FILTER__
+        AND NOT is_cesn
         AND metric = 'tab_open'
         AND dimension = 'additional_resources'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')

@@ -32,6 +32,7 @@ with tab_clicks as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'tab_open' as metric,
         tab_name as dimension,
         cast(null as string) as contact_method
@@ -48,6 +49,7 @@ resource_shown as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'resource_shown' as metric,
         resource_name as dimension,
         cast(null as string) as contact_method
@@ -62,6 +64,7 @@ resource_more_info as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'resource_more_info' as metric,
         resource_name as dimension,
         cast(null as string) as contact_method
@@ -76,6 +79,7 @@ resource_clicks as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'resource_click' as metric,
         resource_name as dimension,
         contact_method
@@ -98,6 +102,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    is_cesn,
     metric,
     dimension,
     contact_method,
@@ -108,5 +113,5 @@ select
     current_timestamp() as updated_at
 
 from combined
-group by event_date, event_date_parsed, screener_state, metric, dimension, contact_method
+group by event_date, event_date_parsed, screener_state, is_cesn, metric, dimension, contact_method
 order by event_date desc, screener_state, metric, total_clicks desc

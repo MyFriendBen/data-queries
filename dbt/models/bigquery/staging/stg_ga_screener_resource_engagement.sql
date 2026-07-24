@@ -127,8 +127,20 @@ resources_shown as (
         r.event_datetime
     from resources_shown_raw r,
     unnest(json_extract_string_array(r.resource_names_json)) as rname with offset as off
+),
+
+combined as (
+    select * from scalar_events
+    union all
+    select * from resources_shown
 )
 
-select * from scalar_events
-union all
-select * from resources_shown
+select
+    *,
+    -- Session-level CESN flag so the global cards can exclude CESN (nothing on the
+    -- global dashboard should count CESN). These events carry screener_state, so the
+    -- cesn signal is the state itself; windowed by session for null-state robustness.
+    -- Mirrors the derivation in stg_ga_screener_results_outcomes / _form_funnel.
+    logical_or(lower(screener_state) = 'cesn')
+        over (partition by user_pseudo_id, ga_session_id) as is_cesn
+from combined
