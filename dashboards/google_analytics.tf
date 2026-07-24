@@ -76,17 +76,20 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 22, 2026** forward, the first full day the current analytics event tracking was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 24, 2026** forward, the first full day the current analytics event contract was live in production."
 
   # Analytics epoch: the first FULL day the current app-emitted screener_* event
   # CONTRACT was live in production. Every screener card floors on this so metrics
-  # reflect one contract. The contract (stable per-rule error codes, member-basics/
-  # member-details sub-step slugs, results-as-step, help step context) shipped to prod
-  # on 2026-07-21, a partial/mixed day; 07-22 is the first full day with no pre-cutover
-  # rows. Flooring at 07-22 means the cards use the new contract only — no legacy
-  # English error messages or parent household-members slug — which is why the error
-  # mart safely drops its legacy English-message fallback. A fixed historical fact.
-  screener_analytics_epoch = "2026-07-22"
+  # reflect one contract. The latest contract — per-FIELD screener_form_error
+  # (form_field_name/form_error_reason), batched screener_programs_shown +
+  # resources/navigators/documents impression events, member_index, link_location,
+  # back-to-screener (FE PRs #2163/#2164/#2165 + GTM workspace 12) — shipped to prod
+  # the EVENING of 2026-07-23, so 07-23 is a partial/mixed day. 07-24 is the first
+  # full day of pure new-contract data. Flooring here means every card (new-contract
+  # cards AND the pre-existing ones) reads only post-release data — no pre-release
+  # rows, no partial-day mixing. Trade-off accepted: the older cards lose 07-22/07-23
+  # history. A fixed historical fact.
+  screener_analytics_epoch = "2026-07-24"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`
