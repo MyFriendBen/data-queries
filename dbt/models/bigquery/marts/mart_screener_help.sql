@@ -66,8 +66,9 @@ more_help_resource_click as (
                 when url like '%211colorado.org%' then '2-1-1 Colorado'
                 when url like '%coloradocrisisservices.org%' then 'Colorado Crisis Services'
                 when url like '%hungerfreecolorado.org%' then 'Hunger Free Colorado'
-                -- add url->label lines here as new more-help resources appear;
-                -- the dbt test on this mart flags any raw-url dimension that slips through.
+                -- add url->label lines here as new more-help resources appear; an
+                -- unmapped url falls through to the raw url below (visible on the card,
+                -- so it's noticeable — but not auto-flagged; this tree has no dbt tests).
                 else nullif(url, '')
             end,
             'Resource #' || cast(resource_index as string),

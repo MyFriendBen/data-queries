@@ -722,19 +722,25 @@ locals {
 
   # ── Form Journey: help-tooltip click RATE by topic (which tooltips drive confusion) ──
   # Now that screener_help_click carries screener_step_name (GTM fix, gap #4), this is
-  # a proper rate: of the screenings that VIEWED the step a tooltip lives on, the % that
-  # clicked it. Same shape as Errors-by-Step / Back-Nav-by-Step. Numerator = distinct
-  # screenings that clicked the topic's tooltip (help mart, screening-keyed via
-  # screener_uid — but help_click can fire pre-uid on early steps; total_clicks/distinct
-  # screenings both available, we use distinct for the rate). Denominator = distinct
-  # sessions that viewed that step (step-facts, session-grain). NOTE the grains differ
-  # (numerator can be uid-null on early steps); at the two tooltips that exist today
-  # (income-frequency, household-assets) uid is present, so it's clean. Label = topic.
+  # a proper rate: of the SCREENINGS that viewed the step a tooltip lives on, the % that
+  # clicked it. BOTH sides are keyed on SCREENING (screener_uid) so the numerator is a
+  # strict subset of the denominator and the rate can't exceed 100%:
+  #   numerator  = SUM(distinct_screenings) from mart_screener_help (distinct screenings
+  #                that clicked the tooltip on that step) — NOT total_clicks, which is
+  #                click volume and would let one screening's repeat clicks push >100%.
+  #   denominator= distinct screenings that viewed that step, from the screening-keyed
+  #                mart_screener_step_views_by_screening (the same mart the Household
+  #                Member Actions rate uses — NOT the session-keyed step_facts, which
+  #                would mix grains).
+  # Both are daily-grain SUMs of per-day distinct counts, so a screening spanning days
+  # is a small over-count on both sides equally — negligible at the two tooltips that
+  # exist today (income-frequency, household-assets). Clicks (raw volume) rides on hover.
   screener_sql_help_by_topic = <<-SQL
     WITH clicks AS (
       SELECT
         screener_step_name,
         INITCAP(REPLACE(dimension, '-', ' ')) AS help_topic,
+        SUM(distinct_screenings) AS screenings_clicked,
         SUM(total_clicks) AS clicks
       FROM `${local.bq_dataset}.mart_screener_help`
       WHERE __STATE_FILTER__
@@ -746,8 +752,8 @@ locals {
       GROUP BY screener_step_name, help_topic
     ),
     step_viewers AS (
-      SELECT screener_step_name, COUNT(DISTINCT session_key) AS viewers
-      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      SELECT screener_step_name, COUNT(DISTINCT screener_uid) AS viewers
+      FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
       WHERE __STATE_FILTER__
         AND viewed
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -757,7 +763,7 @@ locals {
     )
     SELECT
       c.help_topic AS `Help Topic`,
-      ROUND(c.clicks * 100.0 / NULLIF(v.viewers, 0), 1) AS `% of Step Viewers`,
+      ROUND(c.screenings_clicked * 100.0 / NULLIF(v.viewers, 0), 1) AS `% of Step Viewers`,
       c.clicks AS `Clicks`
     FROM clicks c
     LEFT JOIN step_viewers v USING (screener_step_name)
@@ -1076,12 +1082,19 @@ locals {
   # on that tab, so tab-openers is the honest base. Both CTEs read screening-keyed
   # marts with a plain state filter (neither carries is_cesn; the tab-open mart is
   # the denominator, so no CESN sentinel needed here).
+  # Numerator scoped to the Additional Resources edit link by LABEL (not just
+  # link_group='edit_nav', which widened to any results_needs link) so it can't pull in
+  # a future non-AR edit-nav link against this AR-tab-openers denominator. Both sides are
+  # daily-grain SUMs of per-day distinct screenings, so a screening that edits or opens
+  # the tab across multiple days is a small over-count on both — LEAST(...,100) clamps
+  # the residual so the rate never renders >100%.
   screener_sql_additional_resources_edits = <<-SQL
     WITH editors AS (
       SELECT SUM(screenings) AS n
       FROM `${local.bq_dataset}.mart_screener_link_clicks`
       WHERE __STATE_FILTER__
         AND link_group = 'edit_nav'
+        AND link_label = 'Additional Resources — Edit Step'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1097,7 +1110,7 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      ROUND(COALESCE((SELECT n FROM editors), 0) * 100.0 / NULLIF((SELECT denom FROM tab_openers), 0), 1) AS `% of Tab Openers`,
+      LEAST(ROUND(COALESCE((SELECT n FROM editors), 0) * 100.0 / NULLIF((SELECT denom FROM tab_openers), 0), 1), 100.0) AS `% of Tab Openers`,
       COALESCE((SELECT n FROM editors), 0) AS `Screenings That Edited`
   SQL
 

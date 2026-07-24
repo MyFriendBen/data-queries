@@ -64,8 +64,10 @@ select
 
     -- Friendly field label. Mapping is EXHAUSTIVE against the FE zod schemas
     -- (source-verified vocabulary); any unmapped path falls through to the raw
-    -- path so a NEW field never vanishes — see the dbt test that flags unmapped
-    -- paths so they get a label the moment they ship. Member fields appear BOTH
+    -- path so a NEW field never vanishes — it just shows its raw dotted name until
+    -- a label line is added here. (TODO: a schema test asserting error_field_label
+    -- never equals a raw dotted path would surface new fields automatically; not yet
+    -- added — this tree has no dbt tests.) Member fields appear BOTH
     -- bare (birthYear) and members.-prefixed (members.birthYear) depending on the
     -- form, so both normalize to the same label.
     case
