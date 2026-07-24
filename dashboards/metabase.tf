@@ -1160,7 +1160,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_household_member_engagement[0].id)
+        card_id                = tonumber(metabase_card.global_screener_income_source_engagement[0].id)
         dashboard_tab_id       = 5
         row                    = 52
         col                    = 0
@@ -1171,7 +1171,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_income_source_engagement[0].id)
+        card_id                = tonumber(metabase_card.global_screener_household_member_engagement[0].id)
         dashboard_tab_id       = 5
         row                    = 52
         col                    = 12
