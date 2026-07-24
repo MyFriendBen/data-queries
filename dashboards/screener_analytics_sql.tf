@@ -568,15 +568,22 @@ locals {
     ORDER BY `Shown -> Details %` DESC
   SQL
 
-  # ── Results: navigator engagement (grouped bar per navigator) ───────────────────
-  # Mirrors Additional Resource Engagement: per navigator, a Shown -> Website /
-  # Email / Phone funnel. Shown is the distinct-screening impression count
+  # ── Results: navigator engagement (grouped bar per program × navigator) ─────────
+  # Mirrors Additional Resource Engagement: a Shown -> Website / Email / Phone funnel.
+  # One bar per (program, navigator) pair — a navigator serving multiple programs
+  # shows as multiple bars, each attributed to its program (the mart grain is
+  # program_id × navigator_id). Shown is the distinct-screening impression count
   # (contact_method '__shown__'); the contact columns are total engagement clicks.
-  # Top 20 by shown. Program carried alongside the navigator name for context.
+  # Bar label is "Program — Navigator". Top 20 by shown.
   screener_sql_navigator_engagement = <<-SQL
     SELECT
-      navigator_name AS `Navigator`,
-      MAX(program_name) AS `Program`,
+      -- Null-safe: a missing program name must not null out the whole CONCAT (it did,
+      -- producing blank axis labels). Fall back to the navigator name alone.
+      CASE
+        WHEN MAX(program_name) IS NOT NULL
+          THEN CONCAT(MAX(program_name), ' — ', MAX(navigator_name))
+        ELSE MAX(navigator_name)
+      END AS `Navigator`,
       SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS `Shown`,
       SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS `Website`,
       SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS `Email`,
@@ -586,7 +593,7 @@ locals {
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY navigator_id, `Navigator`
+    GROUP BY program_id, navigator_id
     HAVING (`Shown` + `Website` + `Email` + `Phone`) > 0
     ORDER BY `Shown` DESC, `Website` + `Email` + `Phone` DESC
     LIMIT 20
@@ -786,6 +793,10 @@ locals {
   # Numerator and denominator are both distinct (screener_uid, member_index) pages
   # (mart_screener_member_income), so the rate is <= 100%. Scalar; raw page counts
   # on the mart if a drill-down is needed.
+  # HAVING member-pages > 0 so an empty window returns ZERO rows (Metabase shows a
+  # clean "No results!" empty state) rather than one row of 0/0 = null, which renders
+  # as the literal "null". Coalescing to 0 would be wrong — it would falsely read as
+  # "0% added income" when the truth is "no data yet".
   screener_sql_income_source_engagement = <<-SQL
     SELECT
       ROUND(SUM(member_pages_added_income) * 100.0 / NULLIF(SUM(member_pages_viewed), 0), 1) AS `% of Member Pages`,
@@ -796,6 +807,7 @@ locals {
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    HAVING SUM(member_pages_viewed) > 0
   SQL
 
   # ── Form Journey: confirmation-page edits by section ─────────────────
@@ -979,12 +991,12 @@ locals {
   # link (raw click count on hover). Denominator = distinct sessions that viewed the
   # step (session-grain step-facts, deduped across days). One local per link/step.
   #
-  # FUTURE (blocked on FE link_location param — FE gaps ticket #3): the Disclaimer
-  # step actually has THREE links (Public Charge + Privacy + Terms). Once the FE
-  # tags link source, replace the single Public Charge scalar with one Disclaimer
-  # bar chart showing all three by-link click rates.
-  #
-  # Public Charge link, shown on the Disclaimer step.
+  # Disclaimer-step link engagement — ALL THREE inline links (Public Charge, Privacy
+  # Policy, Terms), now that link_location='disclaimer_inline' disambiguates the inline
+  # copies from the identically-named footer legal links (FE #2163 gap #3). One bar per
+  # link = its click rate over the shared denominator (distinct sessions that viewed the
+  # Disclaimer step, session-grain step-facts). Bar chart replaces the old single
+  # Public Charge scalar.
   screener_sql_public_charge_click_rate = <<-SQL
     WITH viewers AS (
       SELECT COUNT(DISTINCT session_key) AS n
@@ -996,18 +1008,22 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
-    clicks AS (
-      SELECT SUM(total_clicks) AS c
+    link_clicks AS (
+      SELECT link_label, SUM(total_clicks) AS c
       FROM `${local.bq_dataset}.mart_screener_link_clicks`
       WHERE __STATE_FILTER__
-        AND link_label = 'Public Charge'
+        AND link_location = 'disclaimer_inline'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY link_label
     )
     SELECT
-      ROUND(COALESCE((SELECT c FROM clicks), 0) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Disclaimer Viewers`,
-      COALESCE((SELECT c FROM clicks), 0) AS `Clicks`
+      link_label AS `Link`,
+      ROUND(c * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Disclaimer Viewers`,
+      c AS `Clicks`
+    FROM link_clicks
+    ORDER BY `% of Disclaimer Viewers` DESC
   SQL
 
   # ── Results: "edit Additional Resources" from the results Needs section ───────
@@ -1020,6 +1036,11 @@ locals {
   # sentinel) as the sibling results-engagement scalars. Numerator is DISTINCT screenings
   # (the mart's `screenings` = count(distinct screener_uid)), not raw clicks, so it's on
   # the same grain as the denominator. Raw distinct-screening count on hover.
+  # Denominator is screenings that OPENED the Additional Resources tab (not all
+  # results viewers) — editing your resource selections only makes sense once you're
+  # on that tab, so tab-openers is the honest base. Both CTEs read screening-keyed
+  # marts with a plain state filter (neither carries is_cesn; the tab-open mart is
+  # the denominator, so no CESN sentinel needed here).
   screener_sql_additional_resources_edits = <<-SQL
     WITH editors AS (
       SELECT SUM(screenings) AS n
@@ -1030,16 +1051,18 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
-    viewers AS (
-      SELECT COUNT(*) AS denom
-      FROM `${local.bq_dataset}.mart_screener_results_revisits`
-      WHERE __STATE_FILTER_CESN__
+    tab_openers AS (
+      SELECT SUM(distinct_screenings) AS denom
+      FROM `${local.bq_dataset}.mart_screener_resource_engagement`
+      WHERE __STATE_FILTER__
+        AND metric = 'tab_open'
+        AND dimension = 'additional_resources'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      ROUND(COALESCE((SELECT n FROM editors), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      ROUND(COALESCE((SELECT n FROM editors), 0) * 100.0 / NULLIF((SELECT denom FROM tab_openers), 0), 1) AS `% of Tab Openers`,
       COALESCE((SELECT n FROM editors), 0) AS `Screenings That Edited`
   SQL
 

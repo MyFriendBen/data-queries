@@ -1218,13 +1218,14 @@ resource "metabase_dashboard" "analytics" {
       visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
     }] : [],
     var.bigquery_enabled ? [
-      # ── (1) OVERVIEW: three outcome scalars in a row ──────────────────────
+      # ── (1) OVERVIEW: four outcome scalars in a row (6-wide each) ─────────
+      # Results Viewed, % Eligible, Results Error Rate %, Back to Screener.
       {
         card_id                = tonumber(metabase_card.global_screener_results_viewed[0].id)
         dashboard_tab_id       = 6
         row                    = 2
         col                    = 0
-        size_x                 = 8
+        size_x                 = 6
         size_y                 = 4
         parameter_mappings     = []
         series                 = []
@@ -1234,8 +1235,8 @@ resource "metabase_dashboard" "analytics" {
         card_id                = tonumber(metabase_card.global_screener_results_pct_eligible[0].id)
         dashboard_tab_id       = 6
         row                    = 2
-        col                    = 8
-        size_x                 = 8
+        col                    = 6
+        size_x                 = 6
         size_y                 = 4
         parameter_mappings     = []
         series                 = []
@@ -1245,8 +1246,19 @@ resource "metabase_dashboard" "analytics" {
         card_id                = tonumber(metabase_card.global_screener_results_error_rate[0].id)
         dashboard_tab_id       = 6
         row                    = 2
-        col                    = 16
-        size_x                 = 8
+        col                    = 12
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_back_to_screener[0].id)
+        dashboard_tab_id       = 6
+        row                    = 2
+        col                    = 18
+        size_x                 = 6
         size_y                 = 4
         parameter_mappings     = []
         series                 = []
@@ -1309,8 +1321,8 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──────
-      # Order: Citizenship Filter, More Help, Viewed Additional Resources,
-      # Additional Resources Edited. 6-wide each across the 24-col row.
+      # Citizenship Filter, More Help, Viewed Additional Resources, Additional
+      # Resources Edited. 6-wide each. (Back to Screener lives in the top outcome row.)
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
@@ -1369,10 +1381,23 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # Navigator engagement — full width (one bar per program × navigator).
       {
         card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
         dashboard_tab_id       = 6
         row                    = 50
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      # Document Downloads + More-help resource clicks (gap #7), side by side.
+      {
+        card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
+        dashboard_tab_id       = 6
+        row                    = 58
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1381,9 +1406,9 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
+        card_id                = tonumber(metabase_card.global_screener_more_help_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 50
+        row                    = 58
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1395,7 +1420,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 66
         col                    = 0
         size_x                 = 16
         size_y                 = 8
@@ -1406,7 +1431,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 66
         col                    = 16
         size_x                 = 8
         size_y                 = 4

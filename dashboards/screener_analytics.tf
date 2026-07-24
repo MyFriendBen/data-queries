@@ -320,7 +320,7 @@ resource "metabase_card" "screener_share_funnel_popup" {
 
   json = jsonencode({
     name                = "Share Funnel — Popup"
-    description         = "Popup share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Popup share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -351,7 +351,7 @@ resource "metabase_card" "screener_share_funnel_footer" {
 
   json = jsonencode({
     name                = "Share Funnel — Footer"
-    description         = "Footer share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Footer share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -770,7 +770,7 @@ resource "metabase_card" "screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "Of the screenings that reached the member step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
+    description         = "How people adjust their household after entering an initial size: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the screening count and total actions."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -801,7 +801,7 @@ resource "metabase_card" "screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Added per Member Page"
-    description         = "Of the member-detail pages people viewed, the % that added an income source. A page must be viewed to add income on it, so this is a true rate ≤ 100%."
+    description         = "Of the member-detail pages people viewed, the % where they added an income source."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1029,8 +1029,8 @@ resource "metabase_card" "screener_public_charge_click_rate" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Public Charge Link — Click Rate"
-    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
+    name                = "Disclaimer Link Clicks"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked each inline link (Public Charge, Privacy Policy, Terms). Hover for the raw click count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1043,10 +1043,13 @@ resource "metabase_card" "screener_public_charge_click_rate" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "scalar"
+    display = "row"
     visualization_settings = {
-      "scalar.field"    = "% of Disclaimer Viewers"
-      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+      "graph.dimensions"        = ["Link"]
+      "graph.metrics"           = ["% of Disclaimer Viewers"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Link"
+      "column_settings"         = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1054,15 +1057,15 @@ resource "metabase_card" "screener_public_charge_click_rate" {
 }
 
 
-# Additional Resources edited — scalar (% of results viewers). Clicks on the
-# results-page "edit your selections" link that sends people back to the Additional
-# Resources step, as a share of results viewers. Sits in the results-engagement row.
+# Additional Resources edited — scalar (% of tab openers). Clicks on the results-page
+# "edit your selections" link, as a share of screenings that opened the Additional
+# Resources tab (editing only makes sense once on that tab). Results-engagement row.
 resource "metabase_card" "screener_additional_resources_edits" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Additional Resources Edited (from Results)"
-    description         = "Of the screenings that reached the results page, the % that clicked the link to go back and edit their Additional Resources selections (different from edits made on the confirmation page)."
+    description         = "Of the screenings that opened the Additional Resources tab, the % that clicked the link to go back and edit their selections (different from edits made on the confirmation page)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1071,16 +1074,14 @@ resource "metabase_card" "screener_additional_resources_edits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query = replace(
-          replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
-        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field"    = "% of Results Viewers"
-      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
+      "scalar.field"    = "% of Tab Openers"
+      "column_settings" = { "[\"name\",\"% of Tab Openers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1495,12 +1496,13 @@ locals {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
-          # ── (1) OVERVIEW: three outcome scalars in a row ──
+          # ── (1) OVERVIEW: four outcome scalars in a row (6-wide) ──
+          # Results Viewed, % Eligible, Results Error Rate %, Back to Screener.
           card_id          = tonumber(metabase_card.screener_results_viewed[key].id)
           dashboard_tab_id = 8
           row              = 2
           col              = 0
-          size_x           = 8
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1521,8 +1523,8 @@ locals {
           card_id          = tonumber(metabase_card.screener_results_pct_eligible[key].id)
           dashboard_tab_id = 8
           row              = 2
-          col              = 8
-          size_x           = 8
+          col              = 6
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1543,8 +1545,8 @@ locals {
           card_id          = tonumber(metabase_card.screener_results_error_rate[key].id)
           dashboard_tab_id = 8
           row              = 2
-          col              = 16
-          size_x           = 8
+          col              = 12
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1555,6 +1557,28 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_results_error_rate[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_back_to_screener[key].id)
+          dashboard_tab_id = 8
+          row              = 2
+          col              = 18
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_back_to_screener[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_back_to_screener[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1674,8 +1698,8 @@ locals {
         },
         {
           # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──
-          # Order: Citizenship Filter, More Help, Viewed Additional Resources,
-          # Additional Resources Edited. 6-wide each across the 24-col row.
+          # Citizenship Filter, More Help, Viewed Additional Resources, Additional
+          # Resources Edited. 6-wide. (Back to Screener lives in the top outcome row.)
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
           row              = 34
@@ -1793,7 +1817,7 @@ locals {
           dashboard_tab_id = 8
           row              = 50
           col              = 0
-          size_x           = 12
+          size_x           = 24
           size_y           = 8
           parameter_mappings = [
             {
@@ -1813,8 +1837,8 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_document_downloads[key].id)
           dashboard_tab_id = 8
-          row              = 50
-          col              = 12
+          row              = 58
+          col              = 0
           size_x           = 12
           size_y           = 8
           parameter_mappings = [
@@ -1833,10 +1857,33 @@ locals {
           visualization_settings = {}
         },
         {
+          # More-help page resource clicks (gap #7) — next to Document Downloads.
+          card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
+          dashboard_tab_id = 8
+          row              = 58
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 66
           col              = 0
           size_x           = 16
           size_y           = 8
@@ -1858,7 +1905,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_nps_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 66
           col              = 16
           size_x           = 8
           size_y           = 4

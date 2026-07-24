@@ -575,7 +575,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people build their household: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
+    description         = "How people adjust their household after entering an initial size: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the screening count and total actions."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -605,7 +605,7 @@ resource "metabase_card" "global_screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Added per Member Page"
-    description         = "Of the member-detail pages people viewed, the % that added an income source. A page must be viewed to add income on it, so this is a true rate ≤ 100%."
+    description         = "Of the member-detail pages people viewed, the % where they added an income source."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -695,7 +695,7 @@ resource "metabase_card" "global_screener_share_funnel_popup" {
 
   json = jsonencode({
     name                = "Share Funnel — Popup"
-    description         = "Popup share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Popup share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -725,7 +725,7 @@ resource "metabase_card" "global_screener_share_funnel_footer" {
 
   json = jsonencode({
     name                = "Share Funnel — Footer"
-    description         = "Footer share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Footer share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1058,8 +1058,8 @@ resource "metabase_card" "global_screener_public_charge_click_rate" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Public Charge Link — Click Rate"
-    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
+    name                = "Disclaimer Link Clicks"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked each inline link (Public Charge, Privacy Policy, Terms). Hover for the raw click count."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1072,10 +1072,13 @@ resource "metabase_card" "global_screener_public_charge_click_rate" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "scalar"
+    display = "row"
     visualization_settings = {
-      "scalar.field"    = "% of Disclaimer Viewers"
-      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+      "graph.dimensions"        = ["Link"]
+      "graph.metrics"           = ["% of Disclaimer Viewers"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Link"
+      "column_settings"         = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1088,7 +1091,7 @@ resource "metabase_card" "global_screener_additional_resources_edits" {
 
   json = jsonencode({
     name                = "Additional Resources Edited (from Results)"
-    description         = "Of the screenings that reached the results page, the % that clicked the link to go back and edit their Additional Resources selections (different from edits made on the confirmation page)."
+    description         = "Of the screenings that opened the Additional Resources tab, the % that clicked the link to go back and edit their selections (different from edits made on the confirmation page)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1097,16 +1100,14 @@ resource "metabase_card" "global_screener_additional_resources_edits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query = replace(
-          replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
-        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_additional_resources_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field"    = "% of Results Viewers"
-      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
+      "scalar.field"    = "% of Tab Openers"
+      "column_settings" = { "[\"name\",\"% of Tab Openers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
