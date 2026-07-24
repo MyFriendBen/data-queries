@@ -44,9 +44,15 @@ get_help_click as (
     where event_name = 'screener_get_help_click'
 ),
 
--- More-help page "Visit Website" resource clicks (FE #2163). dimension is the
--- resource label; the FE falls back to an ordinal when no label exists, so an
--- ordinal-only click reads as "Resource #<n>".
+-- More-help page "Visit Website" resource clicks (FE #2163). KEYED ON url: the FE
+-- does not send resource_name for CO (the more_help_options white-label config has
+-- no label set), and resource_index is page-position (not stable across variants),
+-- so url is the only stable per-resource identifier. dimension precedence:
+--   1. resource_name (if the config ever sets a label — future-proof)
+--   2. a friendly name mapped from the url below (dbt owns the url->label map,
+--      same pattern as the program / error field-label mappings)
+--   3. the raw url as last resort (so a new resource never vanishes; add a line
+--      to the map when it appears).
 more_help_resource_click as (
     select
         event_date,
@@ -56,6 +62,14 @@ more_help_resource_click as (
         'more_help_resource_click' as metric,
         coalesce(
             resource_name,
+            case
+                when url like '%211colorado.org%' then '2-1-1 Colorado'
+                when url like '%coloradocrisisservices.org%' then 'Colorado Crisis Services'
+                when url like '%hungerfreecolorado.org%' then 'Hunger Free Colorado'
+                -- add url->label lines here as new more-help resources appear;
+                -- the dbt test on this mart flags any raw-url dimension that slips through.
+                else nullif(url, '')
+            end,
             'Resource #' || cast(resource_index as string),
             '(unspecified)'
         ) as dimension,
