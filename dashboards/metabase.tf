@@ -206,6 +206,13 @@ locals {
   # without tax credits: first 4 only
   alltime_scorecard_count = { for k, v in var.tenants : k => local.tenant_features[k].has_tax_credits ? 6 : 4 }
   alltime_scorecard_width = { for k, v in var.tenants : k => 24 / local.alltime_scorecard_count[k] }
+
+  # True when the Summary tab (tab 2) has a card row at row 4 — i.e. when
+  # has_summary_metrics or has_total_individuals is set. When true, the charts
+  # below it render 4 rows lower to make room for that row.
+  alltime_has_metrics_row = {
+    for k, v in var.tenants : k => local.tenant_features[k].has_summary_metrics || local.tenant_features[k].has_total_individuals
+  }
 }
 
 
@@ -1830,7 +1837,9 @@ resource "metabase_dashboard" "tenant_analytics" {
       ] : [],
       # Row 4: Summary metrics — TI (col 0) | Non-Tax (col 4) | Tax (col 8) | Total Benefits (col 12, 8×4) | Note (col 20).
       # Keep cards ordered by (row, col) — terraform apply errors with "Provider produced inconsistent result" otherwise.
-      local.tenant_features[each.key].has_summary_metrics ? [
+      # Total Individuals is gated on alltime_has_metrics_row so it also shows for
+      # has_total_individuals-only states; the rest of this row stays NC-only (has_summary_metrics).
+      local.alltime_has_metrics_row[each.key] ? [
         {
           card_id          = tonumber(metabase_card.tenant_total_individuals[each.key].id)
           dashboard_tab_id = 2
@@ -1865,6 +1874,9 @@ resource "metabase_dashboard" "tenant_analytics" {
           series                 = []
           visualization_settings = {}
         },
+      ] : [],
+      # Non-Tax / Tax / Total Benefits / note stay exclusive to full-summary tenants.
+      local.tenant_features[each.key].has_summary_metrics ? [
         {
           card_id          = tonumber(metabase_card.tenant_total_non_tax_benefits[each.key].id)
           dashboard_tab_id = 2
@@ -1997,7 +2009,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         {
           card_id          = tonumber(metabase_card.tenant_daily_screeners_7d[each.key].id)
           dashboard_tab_id = 2
-          row              = local.tenant_features[each.key].has_summary_metrics ? 8 : 4
+          row              = local.alltime_has_metrics_row[each.key] ? 8 : 4
           col              = 0
           size_x           = 24
           size_y           = 6
@@ -2034,7 +2046,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         {
           card_id          = tonumber(metabase_card.tenant_top_partners[each.key].id)
           dashboard_tab_id = 2
-          row              = local.tenant_features[each.key].has_summary_metrics ? 14 : 10
+          row              = local.alltime_has_metrics_row[each.key] ? 14 : 10
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -2070,7 +2082,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         {
           card_id          = tonumber(metabase_card.tenant_top_counties[each.key].id)
           dashboard_tab_id = 2
-          row              = local.tenant_features[each.key].has_summary_metrics ? 14 : 10
+          row              = local.alltime_has_metrics_row[each.key] ? 14 : 10
           col              = local.tenant_features[each.key].has_partners ? 12 : 0
           size_x           = local.tenant_features[each.key].has_partners ? 12 : 24
           size_y           = 8
