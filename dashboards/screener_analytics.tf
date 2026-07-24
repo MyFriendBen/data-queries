@@ -734,8 +734,8 @@ resource "metabase_card" "screener_help_by_topic" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Help Clicks by Topic"
-    description         = "Help-tooltip clicks by help topic, surfacing which tooltips drive the most confusion. The click event carries only the topic (which is itself step-identifying), so there is no step breakdown."
+    name                = "Help Click Rate by Topic"
+    description         = "Of the screenings that viewed the step a help tooltip lives on, the % that clicked it — surfacing which tooltips drive the most confusion. Raw clicks on hover."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -752,12 +752,9 @@ resource "metabase_card" "screener_help_by_topic" {
     visualization_settings = {
       "graph.show_values" = true
       "graph.dimensions"  = ["Help Topic"]
-      "graph.metrics"     = ["Clicks"]
-      "series_settings"   = { "Clicks" = { color = "#e8a33d" } }
-      # Clicks are whole numbers; force integer axis ticks so a max of 2 doesn't
-      # auto-scale to 0.2/0.4/... gridlines.
-      "graph.y_axis.decimals" = 0
-      "column_settings"       = { "[\"name\",\"Clicks\"]" = { number_style = "decimal", decimals = 0 } }
+      "graph.metrics"     = ["% of Step Viewers"]
+      "series_settings"   = { "% of Step Viewers" = { color = "#e8a33d" } }
+      "column_settings"   = { "[\"name\",\"% of Step Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []

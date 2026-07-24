@@ -1144,10 +1144,25 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # Disclaimer link clicks — row 44, placed BEFORE household (row 52) so the
+      # cards_json array stays row-ascending (flovouin provider requires it, else
+      # "inconsistent result after apply"). Mirrors the screener flow (Disclaimer
+      # is step 2, before Household).
+      {
+        card_id                = tonumber(metabase_card.global_screener_public_charge_click_rate[0].id)
+        dashboard_tab_id       = 5
+        row                    = 44
+        col                    = 0
+        size_x                 = 12
+        size_y                 = 6
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
       {
         card_id                = tonumber(metabase_card.global_screener_household_member_engagement[0].id)
         dashboard_tab_id       = 5
-        row                    = 44
+        row                    = 52
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1158,7 +1173,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_income_source_engagement[0].id)
         dashboard_tab_id       = 5
-        row                    = 44
+        row                    = 52
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1170,7 +1185,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_confirmation_edits[0].id)
         dashboard_tab_id       = 5
-        row                    = 52
+        row                    = 60
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1181,22 +1196,10 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_signup_consent[0].id)
         dashboard_tab_id       = 5
-        row                    = 52
+        row                    = 60
         col                    = 12
         size_x                 = 12
         size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # in-step content-link click rates — per-step engagement, so on this tab
-      {
-        card_id                = tonumber(metabase_card.global_screener_public_charge_click_rate[0].id)
-        dashboard_tab_id       = 5
-        row                    = 60
-        col                    = 0
-        size_x                 = 6
-        size_y                 = 4
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1321,8 +1324,8 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──────
-      # Citizenship Filter, More Help, Viewed Additional Resources, Additional
-      # Resources Edited. 6-wide each. (Back to Screener lives in the top outcome row.)
+      # Citizenship Filter, Opened Additional Resources, Additional Resources Edited,
+      # Clicked More Help? (last). 6-wide each. (Back to Screener is in the top row.)
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
@@ -1335,7 +1338,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
+        card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
         dashboard_tab_id       = 6
         row                    = 34
         col                    = 6
@@ -1346,7 +1349,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
+        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
         dashboard_tab_id       = 6
         row                    = 34
         col                    = 12
@@ -1357,7 +1360,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
+        card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
         dashboard_tab_id       = 6
         row                    = 34
         col                    = 18

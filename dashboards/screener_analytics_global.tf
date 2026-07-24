@@ -540,8 +540,8 @@ resource "metabase_card" "global_screener_help_by_topic" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Help Clicks by Topic"
-    description         = "Help-tooltip clicks by help topic, surfacing which tooltips drive the most confusion. The click event carries only the topic (which is itself step-identifying), so there is no step breakdown."
+    name                = "Help Click Rate by Topic"
+    description         = "Of the screenings that viewed the step a help tooltip lives on, the % that clicked it — surfacing which tooltips drive the most confusion. Raw clicks on hover."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -558,12 +558,10 @@ resource "metabase_card" "global_screener_help_by_topic" {
     visualization_settings = {
       "graph.show_values" = true
       "graph.dimensions"  = ["Help Topic"]
-      "graph.metrics"     = ["Clicks"]
+      "graph.metrics"     = ["% of Step Viewers"]
       # Amber = help/info (distinct from red errors + blue back-nav).
-      "series_settings" = { "Clicks" = { color = "#e8a33d" } }
-      # Whole-number clicks; force integer axis ticks (no 0.2/0.4 gridlines).
-      "graph.y_axis.decimals" = 0
-      "column_settings"       = { "[\"name\",\"Clicks\"]" = { number_style = "decimal", decimals = 0 } }
+      "series_settings" = { "% of Step Viewers" = { color = "#e8a33d" } }
+      "column_settings" = { "[\"name\",\"% of Step Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []

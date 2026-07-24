@@ -575,27 +575,41 @@ locals {
   # program_id × navigator_id). Shown is the distinct-screening impression count
   # (contact_method '__shown__'); the contact columns are total engagement clicks.
   # Bar label is "Program — Navigator". Top 20 by shown.
+  # Label is built in an inner CTE and selected as a PLAIN column in the outer query
+  # (not an inline CASE in the SELECT list) — Metabase types a bare column as a proper
+  # graph dimension, whereas a computed CASE in the outer SELECT wasn't recognized and
+  # rendered blank x-axis labels. Mirror the resource chart's clean-column shape.
   screener_sql_navigator_engagement = <<-SQL
+    WITH per_pair AS (
+      SELECT
+        program_id,
+        navigator_id,
+        -- Null-safe: a missing program name must not null out the whole CONCAT.
+        CASE
+          WHEN MAX(program_name) IS NOT NULL
+            THEN CONCAT(MAX(program_name), ' — ', MAX(navigator_name))
+          ELSE MAX(navigator_name)
+        END AS navigator_label,
+        SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS shown,
+        SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS website,
+        SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS email,
+        SUM(CASE WHEN contact_method = 'phone'   THEN total_engagements ELSE 0 END) AS phone
+      FROM `${local.bq_dataset}.mart_screener_navigator_engagement`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY program_id, navigator_id
+    )
     SELECT
-      -- Null-safe: a missing program name must not null out the whole CONCAT (it did,
-      -- producing blank axis labels). Fall back to the navigator name alone.
-      CASE
-        WHEN MAX(program_name) IS NOT NULL
-          THEN CONCAT(MAX(program_name), ' — ', MAX(navigator_name))
-        ELSE MAX(navigator_name)
-      END AS `Navigator`,
-      SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS `Shown`,
-      SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS `Website`,
-      SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS `Email`,
-      SUM(CASE WHEN contact_method = 'phone'   THEN total_engagements ELSE 0 END) AS `Phone`
-    FROM `${local.bq_dataset}.mart_screener_navigator_engagement`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY program_id, navigator_id
-    HAVING (`Shown` + `Website` + `Email` + `Phone`) > 0
-    ORDER BY `Shown` DESC, `Website` + `Email` + `Phone` DESC
+      navigator_label AS `Navigator`,
+      shown   AS `Shown`,
+      website AS `Website`,
+      email   AS `Email`,
+      phone   AS `Phone`
+    FROM per_pair
+    WHERE (shown + website + email + phone) > 0
+    ORDER BY shown DESC, website + email + phone DESC
     LIMIT 20
   SQL
 
@@ -706,27 +720,48 @@ locals {
     ORDER BY depth, `Tab`
   SQL
 
-  # ── Form Journey: help-tooltip clicks by TOPIC (which tooltips drive confusion) ──
-  # Sliced by help_topic (itself step-identifying, e.g. "income", "household
-  # assets"). The current event contract adds screener_step_name to
-  # screener_help_click, which will enable a per-step help RATE (clicks ÷ step
-  # viewers) in a follow-up; until that data is flowing, grouping by topic is the
-  # available cut.
+  # ── Form Journey: help-tooltip click RATE by topic (which tooltips drive confusion) ──
+  # Now that screener_help_click carries screener_step_name (GTM fix, gap #4), this is
+  # a proper rate: of the screenings that VIEWED the step a tooltip lives on, the % that
+  # clicked it. Same shape as Errors-by-Step / Back-Nav-by-Step. Numerator = distinct
+  # screenings that clicked the topic's tooltip (help mart, screening-keyed via
+  # screener_uid — but help_click can fire pre-uid on early steps; total_clicks/distinct
+  # screenings both available, we use distinct for the rate). Denominator = distinct
+  # sessions that viewed that step (step-facts, session-grain). NOTE the grains differ
+  # (numerator can be uid-null on early steps); at the two tooltips that exist today
+  # (income-frequency, household-assets) uid is present, so it's clean. Label = topic.
   screener_sql_help_by_topic = <<-SQL
+    WITH clicks AS (
+      SELECT
+        screener_step_name,
+        INITCAP(REPLACE(dimension, '-', ' ')) AS help_topic,
+        SUM(total_clicks) AS clicks
+      FROM `${local.bq_dataset}.mart_screener_help`
+      WHERE __STATE_FILTER__
+        AND metric = 'help_click'
+        AND screener_step_name IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY screener_step_name, help_topic
+    ),
+    step_viewers AS (
+      SELECT screener_step_name, COUNT(DISTINCT session_key) AS viewers
+      FROM `${local.bq_dataset}.mart_screener_step_facts`
+      WHERE __STATE_FILTER__
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY screener_step_name
+    )
     SELECT
-      -- Humanize the kebab-case help_topic slug generically (dash -> space,
-      -- Title Case) so any current OR future topic reads cleanly without a
-      -- hardcoded map: 'household-assets' -> 'Household Assets'.
-      INITCAP(REPLACE(dimension, '-', ' ')) AS `Help Topic`,
-      SUM(total_clicks) AS `Clicks`
-    FROM `${local.bq_dataset}.mart_screener_help`
-    WHERE __STATE_FILTER__
-      AND metric = 'help_click'
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY `Help Topic`
-    ORDER BY `Clicks` DESC
+      c.help_topic AS `Help Topic`,
+      ROUND(c.clicks * 100.0 / NULLIF(v.viewers, 0), 1) AS `% of Step Viewers`,
+      c.clicks AS `Clicks`
+    FROM clicks c
+    LEFT JOIN step_viewers v USING (screener_step_name)
+    ORDER BY `% of Step Viewers` DESC
   SQL
 
   # ── Form Journey: household-member add/edit/delete actions ──────────────────────
