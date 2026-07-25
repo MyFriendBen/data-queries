@@ -14,14 +14,16 @@
 --   screener_additional_resource_click      — a resource contact link was clicked;
 --                                              contact_method distinguishes website
 --                                              vs phone (both now tracked)
---   screener_resources_shown                — batched impression (FE #2163): ONE
---                                              event per results-tab load listing
---                                              every additional resource shown, as a
---                                              JSON-string array resource_names. The
+--   view_item_list (results_resources)     — additional-resource impressions
+--                                              (MFB-1419): ONE event per results-tab
+--                                              load with a native items[] array; the
 --                                              "shown" denominator for a resource
---                                              shown->clicked rate. Exploded below and
+--                                              shown->clicked rate. UNNEST'd below and
 --                                              re-emitted as one row per resource with
 --                                              event_name 'screener_resource_shown'.
+--                                              Replaces screener_resources_shown
+--                                              (100-char array truncation). Dormant
+--                                              until the FE emits view_item_list.
 -- screener_state / screener_uid arrive directly as event params. resource_name is
 -- the real resource label (e.g. "Hunger Free Colorado").
 
@@ -80,53 +82,38 @@ with scalar_events as (
         batch_event_index
 ),
 
--- Batched screener_resources_shown: one raw event per results-tab load carrying a
--- JSON-string array resource_names (GTM JSON.stringify's it). Pull params up first.
-resources_shown_raw as (
-    select
-        event_date,
-        event_timestamp,
-        parse_date('%Y%m%d', event_date) as event_date_parsed,
-        user_pseudo_id,
-        user_id,
-        event_bundle_sequence_id,
-        batch_event_index,
-        max(case when ep.key = 'ga_session_id' then ep.value.int_value end) as ga_session_id,
-        max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
-        max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
-        max(case when ep.key = 'resource_names' then ep.value.string_value end) as resource_names_json,
-        timestamp_micros(event_timestamp) as event_datetime
-    from {{ source('google_analytics', 'events_*') }}
-    cross join unnest(event_params) as ep
-    where event_name = 'screener_resources_shown'
-    group by
-        event_date, event_timestamp, user_pseudo_id, user_id,
-        event_bundle_sequence_id, batch_event_index
-),
-
--- Explode to one row per (event, resource). Re-emit as 'screener_resource_shown'
--- so the mart reads it as a normal per-resource event. Resources are keyed by name
--- (no id), so the exploded name is both key and label.
+-- Additional-resource impressions via GA4 view_item_list (MFB-1419). ONE event
+-- per results-tab load carrying a native items[] RECORD array; we UNNEST it to one
+-- row per resource shown and re-emit 'screener_resource_shown' so the mart reads it
+-- as a normal per-resource event. This REPLACES screener_resources_shown, whose
+-- stringified resource_names array truncated at GA4's 100-char cap (56% unparseable
+-- — resource org names are long). See MFB-1419 for the full diagnosis + field map.
+-- Resources are keyed by name (no id); item_name is both key and label.
+--
+-- NOT YET LIVE: the FE does not emit view_item_list yet (MFB-1419), so this returns
+-- 0 rows until it ships. Confirm the field mapping against real emission then.
 resources_shown as (
     select
         r.event_date,
         r.event_timestamp,
-        r.event_date_parsed,
+        parse_date('%Y%m%d', r.event_date) as event_date_parsed,
         'screener_resource_shown' as event_name,
         r.user_pseudo_id,
         r.user_id,
         r.event_bundle_sequence_id,
         r.batch_event_index + off as batch_event_index,
-        r.ga_session_id,
-        r.screener_state,
-        r.screener_uid,
+        (select value.int_value    from unnest(r.event_params) where key = 'ga_session_id')  as ga_session_id,
+        (select value.string_value from unnest(r.event_params) where key = 'screener_state')  as screener_state,
+        (select value.string_value from unnest(r.event_params) where key = 'screener_uid')    as screener_uid,
         cast(null as string) as tab_name,
-        rname as resource_name,
+        item.item_name as resource_name,
         cast(null as string) as url,
         cast(null as string) as contact_method,
-        r.event_datetime
-    from resources_shown_raw r,
-    unnest(json_extract_string_array(r.resource_names_json)) as rname with offset as off
+        timestamp_micros(r.event_timestamp) as event_datetime
+    from {{ source('google_analytics', 'events_*') }} r,
+    unnest(r.items) as item with offset as off
+    where r.event_name = 'view_item_list'
+        and item.item_list_name = 'results_resources'
 ),
 
 combined as (

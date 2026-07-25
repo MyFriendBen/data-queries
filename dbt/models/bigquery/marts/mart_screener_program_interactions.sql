@@ -34,7 +34,6 @@ with interactions as (
             when 'screener_program_document_download' then 'document_download'
             when 'screener_program_document_shown' then 'document_shown'
             when 'screener_required_program_click' then 'required_program_click'
-            when 'screener_eligibility_tags_shown' then 'eligibility_tags_shown'
             -- Per-program impression: the "shown" denominator for conversion
             -- rates (more_info / apply ÷ shown).
             when 'screener_program_shown' then 'shown'
@@ -48,7 +47,6 @@ with interactions as (
         'screener_program_document_download',
         'screener_program_document_shown',
         'screener_required_program_click',
-        'screener_eligibility_tags_shown',
         'screener_program_shown'
     )
     -- program_id is expected on every one of these events; guard against

@@ -16,8 +16,9 @@
 -- resource_click metric — null elsewhere — so the resource funnel reads:
 --   resource_shown (impression) → resource_more_info (expand) → resource_click
 --   split by contact_method.
--- resource_shown (FE #2163, batched screener_resources_shown exploded per resource
--- in staging) is the denominator for a per-resource shown->clicked rate.
+-- resource_shown (GA4 view_item_list items[] for item_list_name='results_resources',
+-- unnested per resource in staging — MFB-1419) is the denominator for a per-resource
+-- shown->clicked rate.
 -- Dedupe by screener_uid for "distinct screenings" (these events fire
 -- post-step-3, so uid exists).
 -- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
