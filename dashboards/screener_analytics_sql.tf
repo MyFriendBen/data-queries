@@ -829,28 +829,36 @@ locals {
     ORDER BY sort_key
   SQL
 
-  # ── Form Journey: income-source add/delete actions ──────────────────────────────
-  # Per-member-page income-add RATE (FE #2163 member_index): of the member-detail
-  # pages people viewed, the % that added an income source. This is the meaningful
-  # metric the old raw-count version couldn't compute without a member/page index.
-  # Numerator and denominator are both distinct (screener_uid, member_index) pages
-  # (mart_screener_member_income), so the rate is <= 100%. Scalar; raw page counts
-  # on the mart if a drill-down is needed.
-  # HAVING member-pages > 0 so an empty window returns ZERO rows (Metabase shows a
-  # clean "No results!" empty state) rather than one row of 0/0 = null, which renders
-  # as the literal "null". Coalescing to 0 would be wrong — it would falsely read as
-  # "0% added income" when the truth is "no data yet".
+  # ── Form Journey: income-source add/delete per member page ──────────────────────
+  # Mirrors Household Member Actions: a bar per action (Add / Delete) showing the % of
+  # member-detail pages that took it (FE #2163 member_index). Denominator = distinct
+  # member pages VIEWED; each action's numerator is a subset of that same
+  # (screener_uid, member_index) set, so each bar is <= 100%. (Income has add + delete
+  # only — no edit.) All from mart_screener_member_income (one row per date/state with
+  # per-action page counts). Raw page counts on hover; sort_key orders Add -> Delete.
   screener_sql_income_source_engagement = <<-SQL
-    SELECT
-      ROUND(SUM(member_pages_added_income) * 100.0 / NULLIF(SUM(member_pages_viewed), 0), 1) AS `% of Member Pages`,
-      SUM(member_pages_added_income) AS `Pages That Added Income`,
-      SUM(member_pages_viewed) AS `Member Pages Viewed`
-    FROM `${local.bq_dataset}.mart_screener_member_income`
-    WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    HAVING SUM(member_pages_viewed) > 0
+    WITH agg AS (
+      SELECT
+        SUM(member_pages_viewed) AS viewed,
+        SUM(member_pages_added_income) AS added,
+        SUM(member_pages_deleted_income) AS deleted
+      FROM `${local.bq_dataset}.mart_screener_member_income`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      HAVING SUM(member_pages_viewed) > 0
+    )
+    SELECT `Action`, `% of Member Pages`, `Pages` FROM (
+      SELECT 1 AS sort_key, 'Add' AS `Action`,
+        ROUND(added * 100.0 / NULLIF(viewed, 0), 1) AS `% of Member Pages`, added AS `Pages`
+      FROM agg
+      UNION ALL
+      SELECT 2, 'Delete',
+        ROUND(deleted * 100.0 / NULLIF(viewed, 0), 1), deleted
+      FROM agg
+    )
+    ORDER BY sort_key
   SQL
 
   # ── Form Journey: confirmation-page edits by section ─────────────────

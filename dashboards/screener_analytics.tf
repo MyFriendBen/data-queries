@@ -95,6 +95,7 @@ resource "metabase_card" "screener_step_funnel" {
     visualization_settings = {
       "graph.dimensions"        = ["screener_step_label"]
       "graph.metrics"           = ["% of Started"]
+      "column_settings"         = { "[\"name\",\"% of Started\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
@@ -128,6 +129,7 @@ resource "metabase_card" "screener_errors_by_step" {
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
       "graph.metrics"           = ["% of Viewers with 1+ Errors"]
+      "column_settings"         = { "[\"name\",\"% of Viewers with 1+ Errors\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Viewers with 1+ Errors" = { color = "#d64550" } }
@@ -161,6 +163,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
       "graph.metrics"           = ["% of Viewers who Went Back"]
+      "column_settings"         = { "[\"name\",\"% of Viewers who Went Back\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Viewers who Went Back" = { color = "#59a14f" } }
@@ -400,6 +403,7 @@ resource "metabase_card" "screener_shares_by_channel" {
     visualization_settings = {
       "graph.dimensions"      = ["Share Channel"]
       "graph.metrics"         = ["Total Shares"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Total Shares" = { color = "#76b7b2" } }
     }
@@ -468,6 +472,7 @@ resource "metabase_card" "screener_saves_by_channel" {
     visualization_settings = {
       "graph.dimensions"      = ["Save Channel"]
       "graph.metrics"         = ["Total Saves"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
     }
@@ -716,6 +721,7 @@ resource "metabase_card" "screener_scroll_depth" {
       # labels are numeric-prefixed so the alphabetical axis sort stays Quarter->Full.
       "graph.dimensions"  = ["Depth", "Tab"]
       "graph.metrics"     = ["% of Tab Scrollers"]
+      "column_settings"   = { "[\"name\",\"% of Tab Scrollers\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings" = {
         "Long-Term Benefits"   = { color = "#4e79a7" }
@@ -784,6 +790,7 @@ resource "metabase_card" "screener_household_member_engagement" {
     visualization_settings = {
       "graph.dimensions"  = ["Action"]
       "graph.metrics"     = ["% of Household-Step Viewers"]
+      "column_settings"   = { "[\"name\",\"% of Household-Step Viewers\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
@@ -797,8 +804,8 @@ resource "metabase_card" "screener_income_source_engagement" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Income Added per Member Page"
-    description         = "Of the member-detail pages people viewed, the % where they added an income source."
+    name                = "Income Source Actions per Member Page"
+    description         = "Of the member-detail pages people viewed, the % where they added or deleted an income source. (Income has no edit action.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -811,10 +818,13 @@ resource "metabase_card" "screener_income_source_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "scalar"
+    display = "bar"
     visualization_settings = {
-      "scalar.field"    = "% of Member Pages"
-      "column_settings" = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
+      "graph.dimensions"  = ["Action"]
+      "graph.metrics"     = ["% of Member Pages"]
+      "graph.show_values" = true
+      "series_settings"   = { "% of Member Pages" = { color = "#499894" } }
+      "column_settings"   = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -910,9 +920,11 @@ resource "metabase_card" "screener_confirmation_edits" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Section"]
-      "graph.metrics"    = ["% of Confirmation Viewers"]
-      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
+      "graph.dimensions"  = ["Section"]
+      "graph.metrics"     = ["% of Confirmation Viewers"]
+      "graph.show_values" = true
+      "column_settings"   = { "[\"name\",\"% of Confirmation Viewers\"]" = { suffix = "%" } }
+      "series_settings"   = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -943,6 +955,7 @@ resource "metabase_card" "screener_signup_consent" {
     visualization_settings = {
       "graph.dimensions"  = ["Channel"]
       "graph.metrics"     = ["% Opted In"]
+      "column_settings"   = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
     }
@@ -1007,6 +1020,7 @@ resource "metabase_card" "screener_nps_distribution" {
     visualization_settings = {
       "graph.dimensions"      = ["Category"]
       "graph.metrics"         = ["Responses"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Responses" = { color = "#af7aa1" } }
     }
