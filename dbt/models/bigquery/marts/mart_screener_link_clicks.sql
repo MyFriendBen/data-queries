@@ -49,9 +49,12 @@ classified as (
     select
         *,
         case
-            -- internal go-back-to-edit links (edit behavior, not content)
-            when link_location = 'results_needs'
-                or link_name = 'Additional Resources — Edit Step' then 'edit_nav'
+            -- internal go-back-to-edit links (edit behavior, not content). New
+            -- events classify by location; the name match is only a fallback for
+            -- legacy rows that predate link_location.
+            when link_location = 'results_needs' then 'edit_nav'
+            when link_location is null
+                and link_name = 'Additional Resources — Edit Step' then 'edit_nav'
             else 'in_step'
         end as link_group,
         coalesce(link_name, '(unnamed)') as link_label

@@ -1062,7 +1062,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     link_clicks AS (
-      SELECT link_label, SUM(total_clicks) AS c
+      SELECT
+        link_label,
+        SUM(screenings)  AS clicked_screenings,
+        SUM(total_clicks) AS c
       FROM `${local.bq_dataset}.mart_screener_link_clicks`
       WHERE __STATE_FILTER__
         AND link_location = 'disclaimer_inline'
@@ -1073,7 +1076,11 @@ locals {
     )
     SELECT
       link_label AS `Link`,
-      ROUND(c * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Disclaimer Viewers`,
+      -- Rate = distinct screenings that clicked the link ÷ distinct disclaimer
+      -- viewers (a true "clicked at least once" %, not clicks-per-viewer). Both are
+      -- per-day-distinct summed vs a cross-day distinct denominator, so a residual
+      -- multi-day over-count is possible — LEAST clamps it.
+      LEAST(ROUND(clicked_screenings * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1), 100.0) AS `% of Disclaimer Viewers`,
       c AS `Clicks`
     FROM link_clicks
     ORDER BY `% of Disclaimer Viewers` DESC
@@ -1093,9 +1100,11 @@ locals {
   # results viewers) — editing your resource selections only makes sense once you're
   # on that tab, so tab-openers is the honest base. Both CTEs read screening-keyed
   # CESN-EXCLUDED like the rest of the results-engagement row (nothing global counts
-  # CESN). Numerator (link_clicks): CESN is dropped by the state IN-list — 'cesn' isn't
-  # in all_screener_state_filter. Denominator (resource_engagement): now carries is_cesn,
-  # so NOT is_cesn drops CESN's null-state / display-name rows too.
+  # CESN). Numerator (link_clicks, no is_cesn column) uses the plain state sentinel —
+  # 'cesn' isn't in all_screener_state_filter, so it's excluded on the global card.
+  # Denominator (resource_engagement, has is_cesn) uses the CESN-aware sentinel: the
+  # global card applies NOT is_cesn, the CESN tenant card gets a plain state list (a
+  # hardcoded NOT is_cesn would zero the CESN tenant's own card).
   # Numerator scoped to the Additional Resources edit link by LABEL (not just
   # link_group='edit_nav', which widened to any results_needs link) so it can't pull in
   # a future non-AR edit-nav link against this AR-tab-openers denominator. Both sides are
@@ -1116,8 +1125,7 @@ locals {
     tab_openers AS (
       SELECT SUM(distinct_screenings) AS denom
       FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-      WHERE __STATE_FILTER__
-        AND NOT is_cesn
+      WHERE __STATE_FILTER_CESN__
         AND metric = 'tab_open'
         AND dimension = 'additional_resources'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -1215,7 +1223,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      ROUND(COALESCE((SELECT n FROM backs), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
+      -- Numerator is per-day distinct screenings summed; the denominator is
+      -- cross-day distinct — a screening that went back on multiple days can nudge
+      -- the ratio over 100%, so clamp (matches the other results-engagement rates).
+      LEAST(ROUND(COALESCE((SELECT n FROM backs), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1), 100.0) AS `% of Results Viewers`,
       COALESCE((SELECT n FROM backs), 0) AS `Went Back`
   SQL
 
@@ -1250,11 +1261,14 @@ locals {
   SQL
 
   # ── Results: "More Help?" button clicks ─────────────────────────────────────────
-  # % of results-page viewers who clicked the "More Help?" / 211 CTA. Same shared
-  # results-viewer denominator as the sibling cards. Raw click count on hover.
+  # % of results-page viewers who clicked the "More Help?" button. Rate uses distinct
+  # clicking screenings (not raw clicks) over the shared results-viewer denominator,
+  # so it's a true "clicked at least once" %. Raw click count on hover.
   screener_sql_get_help_clicks = <<-SQL
     WITH clicks AS (
-      SELECT SUM(total_clicks) AS n
+      SELECT
+        SUM(distinct_screenings) AS clicked_screenings,
+        SUM(total_clicks) AS total
       FROM `${local.bq_dataset}.mart_screener_help`
       WHERE __STATE_FILTER__
         AND metric = 'get_help_click'
@@ -1271,8 +1285,8 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT
-      ROUND(COALESCE((SELECT n FROM clicks), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1) AS `% of Results Viewers`,
-      COALESCE((SELECT n FROM clicks), 0) AS `More Help Clicks`
+      LEAST(ROUND(COALESCE((SELECT clicked_screenings FROM clicks), 0) * 100.0 / NULLIF((SELECT denom FROM viewers), 0), 1), 100.0) AS `% of Results Viewers`,
+      COALESCE((SELECT total FROM clicks), 0) AS `More Help Clicks`
   SQL
 
   # ── Form Journey: which validation errors, by step ──────────────────────────────

@@ -16,7 +16,7 @@ This script:
 Run against PRODUCTION Metabase (NOT localhost):
 
   METABASE_URL='https://<prod-metabase>' \\
-  METABASE_ADMIN_EMAIL='caton@myfriendben.org' \\
+  METABASE_ADMIN_EMAIL='<admin-email>' \\
   METABASE_ADMIN_PASSWORD='<prod-password>' \\
   python3 cleanup_orphaned_permission_groups.py            # dry run, shows what it would remove
   python3 cleanup_orphaned_permission_groups.py --apply    # actually writes the cleaned graph
@@ -61,7 +61,17 @@ def main():
     session = _request(
         "POST", f"{base}/api/session", body={"username": email, "password": password}
     )["id"]
+    try:
+        _run(base, session, apply)
+    finally:
+        # Best-effort: don't leave a live admin session token valid against prod.
+        try:
+            _request("DELETE", f"{base}/api/session", session)
+        except SystemExit:
+            pass
 
+
+def _run(base, session, apply):
     # Existing group IDs (paginated; 50 per page).
     existing = set()
     offset = 0
@@ -69,8 +79,11 @@ def main():
         page = _request(
             "GET", f"{base}/api/permissions/group?limit=50&offset={offset}", session
         )
+        before = len(existing)
         existing.update(g["id"] for g in page if isinstance(g, dict))
-        if len(page) < 50:
+        # Stop on a short page, or if a full page added no new ids (guards against an
+        # API that ignores limit/offset and returns the same page forever).
+        if len(page) < 50 or len(existing) == before:
             break
         offset += 50
 

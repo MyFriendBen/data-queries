@@ -72,7 +72,6 @@ select
     -- form, so both normalize to the same label.
     case
         when error_field_path is null then '(unspecified)'
-        when error_field_path = '' then '(form-level)'  -- SignUp outer no-path refine
 
         -- Simple steps
         when error_field_path = 'zipcode' then 'Zip code'
