@@ -94,9 +94,11 @@ resources_shown as (
         r.user_id,
         r.event_bundle_sequence_id,
         r.batch_event_index + off as batch_event_index,
-        (select value.int_value    from unnest(r.event_params) where key = 'ga_session_id')  as ga_session_id,
-        (select value.string_value from unnest(r.event_params) where key = 'screener_state')  as screener_state,
-        (select value.string_value from unnest(r.event_params) where key = 'screener_uid')    as screener_uid,
+        -- LIMIT 1 guards against a repeated param key (a bare scalar subquery would
+        -- error on more than one row).
+        (select value.int_value    from unnest(r.event_params) where key = 'ga_session_id'  limit 1) as ga_session_id,
+        (select value.string_value from unnest(r.event_params) where key = 'screener_state' limit 1) as screener_state,
+        (select value.string_value from unnest(r.event_params) where key = 'screener_uid'   limit 1) as screener_uid,
         cast(null as string) as tab_name,
         item.item_name as resource_name,
         cast(null as string) as url,

@@ -112,9 +112,11 @@ impressions_raw as (
         user_id,
         event_bundle_sequence_id,
         batch_event_index,
-        (select value.int_value    from unnest(event_params) where key = 'ga_session_id')  as ga_session_id,
-        (select value.string_value from unnest(event_params) where key = 'screener_state')  as screener_state,
-        (select value.string_value from unnest(event_params) where key = 'screener_uid')    as screener_uid,
+        -- LIMIT 1 guards against a repeated param key (a bare scalar subquery would
+        -- error on more than one row).
+        (select value.int_value    from unnest(event_params) where key = 'ga_session_id'  limit 1) as ga_session_id,
+        (select value.string_value from unnest(event_params) where key = 'screener_state' limit 1) as screener_state,
+        (select value.string_value from unnest(event_params) where key = 'screener_uid'   limit 1) as screener_uid,
         timestamp_micros(event_timestamp) as event_datetime,
         items
     from {{ source('google_analytics', 'events_*') }}
@@ -134,8 +136,8 @@ impressions_shown as (
         r.user_pseudo_id,
         r.user_id,
         r.event_bundle_sequence_id,
-        -- one item per row already; offset keeps rows within an event distinct on
-        -- (bundle_seq, batch_event_index) for the batch-dedup contract downstream.
+        -- offset the batch index by the item position so exploded rows from one
+        -- event don't all share the same batch_event_index.
         r.batch_event_index + off as batch_event_index,
         r.ga_session_id,
         r.screener_state,

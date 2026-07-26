@@ -614,7 +614,7 @@ locals {
       SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'website' THEN total_clicks ELSE 0 END) AS `Website`,
       SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'phone'   THEN total_clicks ELSE 0 END) AS `Phone`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-    WHERE __STATE_FILTER__
+    WHERE __STATE_FILTER_CESN__
       AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
@@ -626,16 +626,16 @@ locals {
   SQL
 
   # ── Results: Additional Resources tab engagement (count + % of results viewers) ─
-  # TWO sentinels (like macro_funnel): the `tab` CTE reads
-  # mart_screener_resource_engagement (no is_cesn column) → plain __STATE_FILTER__;
-  # the `viewers` CTE reads mart_screener_results_outcomes (carries is_cesn) →
-  # __STATE_FILTER_CESN__ so the global denominator excludes CESN, matching the
-  # numerator (which has no CESN rows) and every other global funnel-rate card.
+  # Both the numerator and denominator use the CESN-aware sentinel so the global
+  # rate excludes CESN and matches. is_cesn is session-level, so a CESN session's
+  # rows can carry a real state code and slip past a plain state IN-list; the
+  # __STATE_FILTER_CESN__ predicate applies NOT is_cesn on the global card (and a
+  # plain state list on tenant cards, where CESN is its own tenant).
   screener_sql_resources_tab_engagement = <<-SQL
     WITH tab AS (
       SELECT SUM(distinct_screenings) AS n
       FROM `${local.bq_dataset}.mart_screener_resource_engagement`
-      WHERE __STATE_FILTER__
+      WHERE __STATE_FILTER_CESN__
         AND metric = 'tab_open'
         AND dimension = 'additional_resources'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
