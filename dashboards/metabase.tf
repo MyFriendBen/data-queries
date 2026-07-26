@@ -1379,7 +1379,7 @@ resource "metabase_dashboard" "analytics" {
         row                    = 38
         col                    = 0
         size_x                 = 24
-        size_y                 = 12
+        size_y                 = 15
         parameter_mappings     = []
         series                 = []
         visualization_settings = {}
@@ -1388,7 +1388,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 50
+        row                    = 53
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1400,7 +1400,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 61
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1411,7 +1411,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_help_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 58
+        row                    = 61
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1423,7 +1423,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 66
+        row                    = 69
         col                    = 0
         size_x                 = 16
         size_y                 = 8
@@ -1434,7 +1434,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 66
+        row                    = 69
         col                    = 16
         size_x                 = 8
         size_y                 = 4

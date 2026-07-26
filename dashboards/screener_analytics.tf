@@ -602,7 +602,7 @@ resource "metabase_card" "screener_navigator_engagement" {
 
   json = jsonencode({
     name                = "Navigator Engagement"
-    description         = "Per navigator, as a funnel: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Top 20 by shown."
+    description         = "Per program + navigator: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Sorted by shown."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -615,14 +615,11 @@ resource "metabase_card" "screener_navigator_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "table"
     visualization_settings = {
-      "graph.show_values"       = true
-      "graph.dimensions"        = ["Navigator"]
-      "graph.metrics"           = ["Shown", "Website", "Email", "Phone"]
-      "graph.x_axis.title_text" = "Navigator"
-      "graph.y_axis.title_text" = "Screenings"
-      "graph.y_axis.decimals"   = 0
+      "table.row_index"     = false
+      "table.paginate"      = false
+      "table.column_widths" = {}
     }
     parameter_mappings = []
     parameters         = []
@@ -831,13 +828,13 @@ resource "metabase_card" "screener_income_source_engagement" {
   })
 }
 
-# Get-help clicks — single number. Total clicks on the "More Help / 211" CTA.
+# Get-help clicks — single number. Total clicks on the "More Help?" button.
 resource "metabase_card" "screener_get_help_clicks" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Clicked More Help?"
-    description         = "Of the screenings that reached the results page, the % that clicked the More Help / 211 call-to-action."
+    description         = "Of the screenings that reached the results page, the % that clicked the \"More Help?\" button."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null

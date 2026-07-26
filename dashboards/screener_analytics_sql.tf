@@ -568,28 +568,18 @@ locals {
     ORDER BY `Shown -> Details %` DESC
   SQL
 
-  # ── Results: navigator engagement (grouped bar per program × navigator) ─────────
-  # Mirrors Additional Resource Engagement: a Shown -> Website / Email / Phone funnel.
-  # One bar per (program, navigator) pair — a navigator serving multiple programs
-  # shows as multiple bars, each attributed to its program (the mart grain is
-  # program_id × navigator_id). Shown is the distinct-screening impression count
-  # (contact_method '__shown__'); the contact columns are total engagement clicks.
-  # Bar label is "Program — Navigator". Top 20 by shown.
-  # Label is built in an inner CTE and selected as a PLAIN column in the outer query
-  # (not an inline CASE in the SELECT list) — Metabase types a bare column as a proper
-  # graph dimension, whereas a computed CASE in the outer SELECT wasn't recognized and
-  # rendered blank x-axis labels. Mirror the resource chart's clean-column shape.
+  # ── Results: navigator engagement (table, one row per program × navigator) ──────
+  # One row per (program, navigator) pair with Program and Navigator columns, then
+  # the Shown -> Website / Email / Phone funnel as count columns. Shown is the
+  # distinct-screening impression count (contact_method '__shown__'); the contact
+  # columns are total engagement clicks. Sorted by shown.
   screener_sql_navigator_engagement = <<-SQL
     WITH per_pair AS (
       SELECT
         program_id,
         navigator_id,
-        -- Null-safe: a missing program name must not null out the whole CONCAT.
-        CASE
-          WHEN MAX(program_name) IS NOT NULL
-            THEN CONCAT(MAX(program_name), ' — ', MAX(navigator_name))
-          ELSE MAX(navigator_name)
-        END AS navigator_label,
+        MAX(program_name) AS program_name,
+        MAX(navigator_name) AS navigator_name,
         SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS shown,
         SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS website,
         SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS email,
@@ -602,7 +592,8 @@ locals {
       GROUP BY program_id, navigator_id
     )
     SELECT
-      navigator_label AS `Navigator`,
+      program_name   AS `Program`,
+      navigator_name AS `Navigator`,
       shown   AS `Shown`,
       website AS `Website`,
       email   AS `Email`,
@@ -610,7 +601,6 @@ locals {
     FROM per_pair
     WHERE (shown + website + email + phone) > 0
     ORDER BY shown DESC, website + email + phone DESC
-    LIMIT 20
   SQL
 
   # ── Results: additional-resource engagement (more-info → website/phone) ─────────
@@ -1259,7 +1249,7 @@ locals {
       COALESCE((SELECT n FROM scored), 0) AS `Scored NPS`
   SQL
 
-  # ── Results: "More Help / 211" CTA clicks ───────────────────────────────────────
+  # ── Results: "More Help?" button clicks ─────────────────────────────────────────
   # % of results-page viewers who clicked the "More Help?" / 211 CTA. Same shared
   # results-viewer denominator as the sibling cards. Raw click count on hover.
   screener_sql_get_help_clicks = <<-SQL

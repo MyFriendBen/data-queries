@@ -413,7 +413,7 @@ resource "metabase_card" "global_screener_navigator_engagement" {
 
   json = jsonencode({
     name                = "Navigator Engagement"
-    description         = "Per navigator, as a funnel: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Top 20 by shown."
+    description         = "Per program + navigator: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Sorted by shown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -426,14 +426,11 @@ resource "metabase_card" "global_screener_navigator_engagement" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "bar"
+    display = "table"
     visualization_settings = {
-      "graph.show_values"       = true
-      "graph.dimensions"        = ["Navigator"]
-      "graph.metrics"           = ["Shown", "Website", "Email", "Phone"]
-      "graph.x_axis.title_text" = "Navigator"
-      "graph.y_axis.title_text" = "Screenings"
-      "graph.y_axis.decimals"   = 0
+      "table.row_index"     = false
+      "table.paginate"      = false
+      "table.column_widths" = {}
     }
     parameter_mappings = []
     parameters         = []
@@ -640,7 +637,7 @@ resource "metabase_card" "global_screener_get_help_clicks" {
 
   json = jsonencode({
     name                = "Clicked More Help?"
-    description         = "Of the screenings that reached the results page, the % that clicked the More Help / 211 call-to-action."
+    description         = "Of the screenings that reached the results page, the % that clicked the \"More Help?\" button."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
