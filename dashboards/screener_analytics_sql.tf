@@ -1289,6 +1289,53 @@ locals {
       COALESCE((SELECT total FROM clicks), 0) AS `More Help Clicks`
   SQL
 
+  # ── Results/Form: average interactions per ENGAGED session ──────────────────────
+  # Paired with the reach % scalars: how many times a session that engaged the
+  # action did so (total events / distinct engaged sessions), averaged only over
+  # sessions that engaged — so it's >= 1. >1 signals repeat clicking (possible
+  # confusion / unmet need). ROUND to 1 decimal.
+  screener_sql_more_help_avg = <<-SQL
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Clicks / Session`
+    FROM `${local.bq_dataset}.mart_screener_help`
+    WHERE __STATE_FILTER__
+      AND metric = 'get_help_click'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
+  screener_sql_resources_tab_avg = <<-SQL
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Opens / Session`
+    FROM `${local.bq_dataset}.mart_screener_resource_engagement`
+    WHERE __STATE_FILTER_CESN__
+      AND metric = 'tab_open'
+      AND dimension = 'additional_resources'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
+  screener_sql_additional_resources_edits_avg = <<-SQL
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(screenings), 0), 1) AS `Avg Edits / Session`
+    FROM `${local.bq_dataset}.mart_screener_link_clicks`
+    WHERE __STATE_FILTER__
+      AND link_group = 'edit_nav'
+      AND link_label = 'Additional Resources — Edit Step'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
+  screener_sql_filter_usage_avg = <<-SQL
+    SELECT ROUND(SUM(total_engagements) / NULLIF(SUM(screenings_engaged), 0), 1) AS `Avg Uses / Session`
+    FROM `${local.bq_dataset}.mart_screener_filter_usage`
+    WHERE __STATE_FILTER__
+      AND filter_type = 'citizenship'
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+  SQL
+
   # ── Form Journey: which validation errors, by step ──────────────────────────────
   # Reads the humanized error columns produced in mart_screener_form_errors
   # (error_field_label / error_problem). The FE now emits per-field errors

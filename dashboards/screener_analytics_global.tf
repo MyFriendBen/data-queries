@@ -941,6 +941,110 @@ resource "metabase_card" "global_screener_filter_usage" {
   })
 }
 
+# Average interactions per engaged session — intensity companions to the reach %
+# scalars. Averaged only over sessions that engaged, so the value is >= 1.
+resource "metabase_card" "global_screener_filter_usage_avg" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Citizenship Filter — Avg per Session"
+    description         = "Average number of times an engaged session used the citizenship filter (uses ÷ sessions that used it). Above 1 means repeat toggling."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage_avg, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Uses / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "global_screener_resources_tab_avg" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Additional Resources — Avg Opens per Session"
+    description         = "Average number of times an engaged session opened the Additional Resources tab (opens ÷ sessions that opened it). Above 1 means repeat visits."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_resources_tab_avg, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Opens / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "global_screener_additional_resources_edits_avg" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Additional Resources Edited — Avg per Session"
+    description         = "Average number of times an engaged session used the Additional Resources edit link (edits ÷ sessions that edited). Above 1 means repeat edits."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits_avg, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Edits / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "global_screener_more_help_avg" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "More Help? — Avg Clicks per Session"
+    description         = "Average number of times an engaged session clicked the \"More Help?\" button (clicks ÷ sessions that clicked). Above 1 means repeat clicking (possible confusion)."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_more_help_avg, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Clicks / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
 resource "metabase_card" "global_screener_nps_distribution" {
   count = var.bigquery_enabled ? 1 : 0
 

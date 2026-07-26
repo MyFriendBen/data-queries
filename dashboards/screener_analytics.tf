@@ -993,6 +993,111 @@ resource "metabase_card" "screener_filter_usage" {
   })
 }
 
+# Average interactions per engaged session — the intensity companions to the reach %
+# scalars above. Each averages total events over the distinct sessions that engaged,
+# so the value is >= 1; > 1 means repeat engagement.
+resource "metabase_card" "screener_filter_usage_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Citizenship Filter — Avg per Session"
+    description         = "Average number of times an engaged session used the citizenship filter (uses ÷ sessions that used it). Above 1 means repeat toggling."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Uses / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_resources_tab_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources — Avg Opens per Session"
+    description         = "Average number of times an engaged session opened the Additional Resources tab (opens ÷ sessions that opened it). Above 1 means repeat visits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_resources_tab_avg, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Opens / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_additional_resources_edits_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources Edited — Avg per Session"
+    description         = "Average number of times an engaged session used the Additional Resources edit link (edits ÷ sessions that edited). Above 1 means repeat edits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Edits / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_more_help_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "More Help? — Avg Clicks per Session"
+    description         = "Average number of times an engaged session clicked the \"More Help?\" button (clicks ÷ sessions that clicked). Above 1 means repeat clicking (possible confusion)."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_more_help_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Clicks / Session" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
 # NPS distribution — bar. Submitted NPS scores bucketed Detractor / Passive /
 # Promoter.
 resource "metabase_card" "screener_nps_distribution" {

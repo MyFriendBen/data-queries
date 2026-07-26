@@ -1370,13 +1370,58 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
+      # Avg-per-engaged-session intensity row — directly below the reach row, same order.
+      {
+        card_id                = tonumber(metabase_card.global_screener_filter_usage_avg[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_resources_tab_avg[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 6
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_additional_resources_edits_avg[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 12
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_more_help_avg[0].id)
+        dashboard_tab_id       = 6
+        row                    = 38
+        col                    = 18
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
       # ── (4) ADDITIONAL RESOURCES section ──────────────────────────────────
       # Full-width, tall grouped bar (top 20 resources × more-info/website/phone);
       # replaces the old side-by-side Top Resources + Engagement pair.
       {
         card_id                = tonumber(metabase_card.global_screener_resource_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 42
         col                    = 0
         size_x                 = 24
         size_y                 = 15
@@ -1388,7 +1433,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 53
+        row                    = 57
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1400,7 +1445,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
         dashboard_tab_id       = 6
-        row                    = 61
+        row                    = 65
         col                    = 0
         size_x                 = 12
         size_y                 = 8
@@ -1411,7 +1456,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_help_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 61
+        row                    = 65
         col                    = 12
         size_x                 = 12
         size_y                 = 8
@@ -1423,7 +1468,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 69
+        row                    = 73
         col                    = 0
         size_x                 = 16
         size_y                 = 8
@@ -1434,7 +1479,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 69
+        row                    = 73
         col                    = 16
         size_x                 = 8
         size_y                 = 4
