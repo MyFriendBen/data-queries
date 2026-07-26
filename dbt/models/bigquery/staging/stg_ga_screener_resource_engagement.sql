@@ -14,16 +14,13 @@
 --   screener_additional_resource_click      — a resource contact link was clicked;
 --                                              contact_method distinguishes website
 --                                              vs phone (both now tracked)
---   view_item_list (results_resources)     — additional-resource impressions
---                                              (MFB-1419): ONE event per results-tab
---                                              load with a native items[] array; the
---                                              "shown" denominator for a resource
---                                              shown->clicked rate. UNNEST'd below and
---                                              re-emitted as one row per resource with
---                                              event_name 'screener_resource_shown'.
---                                              Replaces screener_resources_shown
---                                              (100-char array truncation). Dormant
---                                              until the FE emits view_item_list.
+--   view_item_list (results_resources)     — additional-resource impressions: one
+--                                              event per results-tab load with a
+--                                              native items[] array. The "shown"
+--                                              denominator for a resource
+--                                              shown->clicked rate. Unnested below,
+--                                              one row per resource with event_name
+--                                              'screener_resource_shown'.
 -- screener_state / screener_uid arrive directly as event params. resource_name is
 -- the real resource label (e.g. "Hunger Free Colorado").
 
@@ -82,16 +79,11 @@ with scalar_events as (
         batch_event_index
 ),
 
--- Additional-resource impressions via GA4 view_item_list (MFB-1419). ONE event
--- per results-tab load carrying a native items[] RECORD array; we UNNEST it to one
--- row per resource shown and re-emit 'screener_resource_shown' so the mart reads it
--- as a normal per-resource event. This REPLACES screener_resources_shown, whose
--- stringified resource_names array truncated at GA4's 100-char cap (56% unparseable
--- — resource org names are long). See MFB-1419 for the full diagnosis + field map.
--- Resources are keyed by name (no id); item_name is both key and label.
---
--- NOT YET LIVE: the FE does not emit view_item_list yet (MFB-1419), so this returns
--- 0 rows until it ships. Confirm the field mapping against real emission then.
+-- Additional-resource impressions from the GA4 view_item_list results_resources
+-- list: one event per results-tab load carrying a native items[] RECORD array,
+-- unnested to one row per resource and re-emitted as 'screener_resource_shown' so
+-- the mart reads it as a normal per-resource event. Resources are keyed by name
+-- (no id); item_name is both key and label.
 resources_shown as (
     select
         r.event_date,

@@ -813,8 +813,20 @@ locals {
     )
     SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
       SELECT
-        CASE action WHEN 'add' THEN 1 WHEN 'edit' THEN 2 WHEN 'delete' THEN 3 ELSE 4 END AS sort_key,
-        INITCAP(action) AS `Action`,
+        CASE action
+          WHEN 'add' THEN 1
+          WHEN 'delete' THEN 2
+          WHEN 'edit_from_summary' THEN 3
+          WHEN 'delete_from_summary' THEN 4
+          ELSE 5
+        END AS sort_key,
+        CASE action
+          WHEN 'add' THEN 'Add'
+          WHEN 'delete' THEN 'Delete'
+          WHEN 'edit_from_summary' THEN 'Edit (from summary)'
+          WHEN 'delete_from_summary' THEN 'Delete (from summary)'
+          ELSE INITCAP(action)
+        END AS `Action`,
         ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Household-Step Viewers`,
         COUNT(DISTINCT screener_uid) AS `Screenings`,
         SUM(total_actions) AS `Total Actions`

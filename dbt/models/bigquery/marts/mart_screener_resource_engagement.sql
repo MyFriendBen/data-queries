@@ -16,9 +16,7 @@
 -- resource_click metric — null elsewhere — so the resource funnel reads:
 --   resource_shown (impression) → resource_more_info (expand) → resource_click
 --   split by contact_method.
--- resource_shown (GA4 view_item_list items[] for item_list_name='results_resources',
--- unnested per resource in staging — MFB-1419) is the denominator for a per-resource
--- shown->clicked rate.
+-- resource_shown is the denominator for a per-resource shown->clicked rate.
 -- Dedupe by screener_uid for "distinct screenings" (these events fire
 -- post-step-3, so uid exists).
 -- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
@@ -42,8 +40,7 @@ with tab_clicks as (
         and tab_name is not null
 ),
 
--- Resource impression (FE #2163) — the shown denominator for the resource
--- shown->clicked rate. Exploded per resource in staging.
+-- Resource impression — the shown denominator for the resource shown->clicked rate.
 resource_shown as (
     select
         event_date,

@@ -24,7 +24,6 @@ with interactions as (
         screener_state,
         screener_uid,
         program_id,
-        program_name,
         document_name,
         case event_name
             when 'screener_apply_click' then 'apply'
@@ -52,27 +51,37 @@ with interactions as (
     -- program_id is expected on every one of these events; guard against
     -- unmapped/legacy rows polluting the grain
     and program_id is not null
+),
+
+aggregated as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        program_id,
+        interaction_type,
+        -- null except for document_download and document_shown rows
+        document_name,
+        count(*) as total_interactions,
+        count(distinct screener_uid) as screenings_with_interaction
+    from interactions
+    group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
 )
 
 select
-    event_date,
-    event_date_parsed,
-    screener_state,
-    program_id,
-
-    -- Arbitrary display label per program_id (see note above on spelling drift)
-    max(program_name) as program_name,
-
-    interaction_type,
-
-    -- null except for document_download and document_shown rows (in the grain below)
-    document_name,
-
-    count(*) as total_interactions,
-    count(distinct screener_uid) as screenings_with_interaction,
-
+    a.event_date,
+    a.event_date_parsed,
+    a.screener_state,
+    a.program_id,
+    -- fall back to the id if a name was never captured for this program
+    coalesce(pn.program_name, a.program_id) as program_name,
+    a.interaction_type,
+    a.document_name,
+    a.total_interactions,
+    a.screenings_with_interaction,
     current_timestamp() as updated_at
 
-from interactions
-group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
-order by event_date desc, screener_state, total_interactions desc
+from aggregated a
+left join {{ ref('int_screener_program_names') }} pn
+    on a.program_id = pn.program_id
+order by a.event_date desc, a.screener_state, a.total_interactions desc

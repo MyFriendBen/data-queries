@@ -4,37 +4,21 @@
   )
 }}
 
--- Screener program interaction events (app-emitted screener_* events)
+-- Screener program interaction events (app-emitted screener_* events).
 -- Covers screener_apply_click, screener_program_more_info,
 -- screener_program_visit_website, screener_program_phone_click,
 -- screener_program_document_download, screener_required_program_click,
--- screener_filter_engaged, screener_results_tab_click,
--- screener_navigator_engaged, and results-page impressions via the GA4
--- view_item_list items[] array (unnested below — MFB-1419).
--- Group downstream by program_id, not program_name — program_name is the
--- English display label and can vary in spelling for the same program.
+-- screener_filter_engaged, screener_results_tab_click, screener_navigator_engaged,
+-- and results-page impressions from the GA4 view_item_list items[] array.
+-- Group downstream by program_id, not program_name (the English display label,
+-- which can vary in spelling for the same program).
 --
--- RESULTS-PAGE IMPRESSIONS ("shown" events) — via GA4 view_item_list (MFB-1419):
--- Every results-page "shown" list (programs, navigators, documents) is emitted as
--- a single GA4 ecommerce `view_item_list` event carrying a native `items` array,
--- differentiated by items[].item_list_name. This REPLACES the earlier per-item
--- burst (screener_program_shown, dropped ~60% by GA4's same-tick batch cap) AND
--- the stringified-JSON-array events (screener_programs_shown / _navigators_shown /
--- _program_documents_shown, truncated at GA4's 100-char param cap → unparseable).
--- The native items array is a repeated RECORD in the BigQuery export, so it is
--- immune to both failure modes: one event (no burst) and each field is its own
--- typed column (no 100-char array truncation). See MFB-1419 for the full diagnosis.
---
--- We UNNEST(items) and re-emit the SAME event_name each mart already consumes
--- (screener_program_shown / screener_navigator_shown /
--- screener_program_document_shown) so the marts are unchanged:
---   item_list_name = 'results_programs'   -> screener_program_shown
---   item_list_name = 'results_navigators' -> screener_navigator_shown  (program ctx via item_category)
---   item_list_name = 'results_documents'  -> screener_program_document_shown (program ctx via item_category)
---
--- NOT YET LIVE: as of MFB-1419 the FE does not emit view_item_list yet, so
--- impressions_shown returns 0 rows (the SELECTs below are correct but dormant).
--- Day-of-activation verification queries are in the MFB-1419 dbt section.
+-- Results-page impressions arrive as GA4 ecommerce view_item_list events, one per
+-- list load carrying a native items[] RECORD array. items[].item_list_name routes
+-- each item to the shown-type the marts consume:
+--   results_programs   -> screener_program_shown
+--   results_navigators -> screener_navigator_shown           (parent program in item_category)
+--   results_documents  -> screener_program_document_shown     (parent program in item_category)
 
 with scalar_events as (
     select
@@ -112,20 +96,13 @@ with scalar_events as (
         batch_event_index
 ),
 
--- Results-page impressions via GA4 view_item_list (MFB-1419). ONE event per list
--- load carrying a native items[] RECORD array; we UNNEST it to one row per shown
--- item and re-emit the event_name each mart already consumes. item_list_name
--- routes each item to the right shown-type. Event-level screener_state/uid/session
--- are pulled up once; per-item fields come off the unnested struct.
---
--- Field mapping (confirm against real emission when MFB-1419 ships — see the
--- day-of verification queries in that ticket before relying on these rows):
---   item.item_id            -> program_id (programs) / navigator_id (navigators)
---   item.item_name          -> program_name / navigator_name / document_name
---   item.item_category      -> parent program_id for navigators/documents (page context)
---   item.item_list_name     -> which list ('results_programs' | 'results_navigators'
---                              | 'results_documents')
--- program_id/navigator_id land as strings in item_id; documents are keyed by name.
+-- One row per view_item_list event with event-level fields pulled up; the items[]
+-- array is unnested in impressions_shown below. Per-item field mapping:
+--   item.item_id        -> program_id (programs) / navigator_id (navigators)
+--   item.item_name      -> program_name / navigator_name / document_name
+--   item.item_category  -> parent program_id (navigators / documents)
+--   item.item_list_name -> results_programs | results_navigators | results_documents
+-- Documents are keyed by name (no id).
 impressions_raw as (
     select
         event_date,

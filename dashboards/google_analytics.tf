@@ -76,20 +76,15 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 24, 2026** forward, the first full day the current analytics event contract was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 26, 2026** forward, the first full day the current analytics event contract was live in production."
 
-  # Analytics epoch: the first FULL day the current app-emitted screener_* event
-  # CONTRACT was live in production. Every screener card floors on this so metrics
-  # reflect one contract. The latest contract — per-FIELD screener_form_error
-  # (form_field_name/form_error_reason), batched screener_programs_shown +
-  # resources/navigators/documents impression events, member_index, link_location,
-  # back-to-screener (FE PRs #2163/#2164/#2165 + GTM workspace 12) — shipped to prod
-  # the EVENING of 2026-07-23, so 07-23 is a partial/mixed day. 07-24 is the first
-  # full day of pure new-contract data. Flooring here means every card (new-contract
-  # cards AND the pre-existing ones) reads only post-release data — no pre-release
-  # rows, no partial-day mixing. Trade-off accepted: the older cards lose 07-22/07-23
-  # history. A fixed historical fact.
-  screener_analytics_epoch = "2026-07-24"
+  # Analytics epoch: the first full day the current app-emitted screener_* event
+  # contract was live in production. Every screener card floors on this so metrics
+  # reflect a single contract with no partial-day mixing — a card reads no rows from
+  # before the contract it expects. The contract that adds the view_item_list
+  # impression events went live the evening of 2026-07-25, making 07-26 the first
+  # full day of pure new-contract data.
+  screener_analytics_epoch = "2026-07-26"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`
