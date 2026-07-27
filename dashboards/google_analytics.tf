@@ -76,17 +76,15 @@ locals {
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 22, 2026** forward, the first full day the current analytics event tracking was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 26, 2026** forward, the first full day the current analytics event contract was live in production."
 
-  # Analytics epoch: the first FULL day the current app-emitted screener_* event
-  # CONTRACT was live in production. Every screener card floors on this so metrics
-  # reflect one contract. The contract (stable per-rule error codes, member-basics/
-  # member-details sub-step slugs, results-as-step, help step context) shipped to prod
-  # on 2026-07-21, a partial/mixed day; 07-22 is the first full day with no pre-cutover
-  # rows. Flooring at 07-22 means the cards use the new contract only — no legacy
-  # English error messages or parent household-members slug — which is why the error
-  # mart safely drops its legacy English-message fallback. A fixed historical fact.
-  screener_analytics_epoch = "2026-07-22"
+  # Analytics epoch: the first full day the current app-emitted screener_* event
+  # contract was live in production. Every screener card floors on this so metrics
+  # reflect a single contract with no partial-day mixing — a card reads no rows from
+  # before the contract it expects. The contract that adds the view_item_list
+  # impression events went live the evening of 2026-07-25, making 07-26 the first
+  # full day of pure new-contract data.
+  screener_analytics_epoch = "2026-07-26"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`

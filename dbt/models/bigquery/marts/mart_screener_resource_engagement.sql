@@ -14,7 +14,9 @@
 -- backs several cards; `dimension` holds the tab_name or resource_name depending
 -- on the metric. `contact_method` ('website' | 'phone') is set only on the
 -- resource_click metric — null elsewhere — so the resource funnel reads:
---   resource_more_info (expand)  →  resource_click split by contact_method.
+--   resource_shown (impression) → resource_more_info (expand) → resource_click
+--   split by contact_method.
+-- resource_shown is the denominator for a per-resource shown->clicked rate.
 -- Dedupe by screener_uid for "distinct screenings" (these events fire
 -- post-step-3, so uid exists).
 -- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
@@ -29,6 +31,7 @@ with tab_clicks as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'tab_open' as metric,
         tab_name as dimension,
         cast(null as string) as contact_method
@@ -37,12 +40,29 @@ with tab_clicks as (
         and tab_name is not null
 ),
 
+-- Resource impression — the shown denominator for the resource shown->clicked rate.
+resource_shown as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        screener_uid,
+        is_cesn,
+        'resource_shown' as metric,
+        resource_name as dimension,
+        cast(null as string) as contact_method
+    from {{ ref('stg_ga_screener_resource_engagement') }}
+    where event_name = 'screener_resource_shown'
+        and resource_name is not null
+),
+
 resource_more_info as (
     select
         event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'resource_more_info' as metric,
         resource_name as dimension,
         cast(null as string) as contact_method
@@ -57,6 +77,7 @@ resource_clicks as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        is_cesn,
         'resource_click' as metric,
         resource_name as dimension,
         contact_method
@@ -68,6 +89,8 @@ resource_clicks as (
 combined as (
     select * from tab_clicks
     union all
+    select * from resource_shown
+    union all
     select * from resource_more_info
     union all
     select * from resource_clicks
@@ -77,6 +100,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    is_cesn,
     metric,
     dimension,
     contact_method,
@@ -87,5 +111,5 @@ select
     current_timestamp() as updated_at
 
 from combined
-group by event_date, event_date_parsed, screener_state, metric, dimension, contact_method
+group by event_date, event_date_parsed, screener_state, is_cesn, metric, dimension, contact_method
 order by event_date desc, screener_state, metric, total_clicks desc

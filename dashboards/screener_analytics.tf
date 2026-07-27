@@ -95,6 +95,7 @@ resource "metabase_card" "screener_step_funnel" {
     visualization_settings = {
       "graph.dimensions"        = ["screener_step_label"]
       "graph.metrics"           = ["% of Started"]
+      "column_settings"         = { "[\"name\",\"% of Started\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
@@ -111,7 +112,7 @@ resource "metabase_card" "screener_errors_by_step" {
 
   json = jsonencode({
     name                = "Form Errors by Step"
-    description         = "Of the screenings that viewed each step, the % that hit at least one validation error there — so steps are comparable regardless of traffic. Hover for the screening count and total error attempts."
+    description         = "Of the screenings that viewed each step, the % that hit at least one validation error there — so steps are comparable regardless of traffic. Hover for the screening count and total field-level errors (a submit failing multiple fields counts each field)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -128,6 +129,7 @@ resource "metabase_card" "screener_errors_by_step" {
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
       "graph.metrics"           = ["% of Viewers with 1+ Errors"]
+      "column_settings"         = { "[\"name\",\"% of Viewers with 1+ Errors\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Viewers with 1+ Errors" = { color = "#d64550" } }
@@ -161,6 +163,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
     visualization_settings = {
       "graph.dimensions"        = ["Step"]
       "graph.metrics"           = ["% of Viewers who Went Back"]
+      "column_settings"         = { "[\"name\",\"% of Viewers who Went Back\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Viewers who Went Back" = { color = "#59a14f" } }
@@ -320,7 +323,7 @@ resource "metabase_card" "screener_share_funnel_popup" {
 
   json = jsonencode({
     name                = "Share Funnel — Popup"
-    description         = "Popup share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Popup share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -351,7 +354,7 @@ resource "metabase_card" "screener_share_funnel_footer" {
 
   json = jsonencode({
     name                = "Share Funnel — Footer"
-    description         = "Footer share funnel: distinct SCREENINGS that opened vs sent a share (counted once per screening, so the funnel stays monotonic). Shares by Channel counts total send events instead, so its per-channel total can exceed this 'Sent' stage when a screening sends more than once."
+    description         = "Footer share funnel: distinct screenings that opened vs sent a share. (Shares by Channel counts send events, so it can run higher.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -400,6 +403,7 @@ resource "metabase_card" "screener_shares_by_channel" {
     visualization_settings = {
       "graph.dimensions"      = ["Share Channel"]
       "graph.metrics"         = ["Total Shares"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Total Shares" = { color = "#76b7b2" } }
     }
@@ -468,6 +472,7 @@ resource "metabase_card" "screener_saves_by_channel" {
     visualization_settings = {
       "graph.dimensions"      = ["Save Channel"]
       "graph.metrics"         = ["Total Saves"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Total Saves" = { color = "#ff9da7" } }
     }
@@ -597,7 +602,7 @@ resource "metabase_card" "screener_navigator_engagement" {
 
   json = jsonencode({
     name                = "Navigator Engagement"
-    description         = "Distinct screenings that engaged a navigator, broken out by program, navigator, and contact method."
+    description         = "Per program + navigator: how many screenings were Shown it, then clicked through to the Website, Email, or Phone. Sorted by shown."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -612,8 +617,9 @@ resource "metabase_card" "screener_navigator_engagement" {
     }
     display = "table"
     visualization_settings = {
-      "table.row_index" = false
-      "table.paginate"  = false
+      "table.row_index"     = false
+      "table.paginate"      = false
+      "table.column_widths" = {}
     }
     parameter_mappings = []
     parameters         = []
@@ -627,7 +633,7 @@ resource "metabase_card" "screener_resource_engagement" {
 
   json = jsonencode({
     name                = "Additional Resource Engagement"
-    description         = "Per additional resource: more-info expands and contact clicks split by website vs phone, top 20 by more-info."
+    description         = "Per additional resource, as a funnel: how many screenings were Shown it, expanded More Info, and clicked through to the Website or Phone. Top 20 by shown."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -636,7 +642,7 @@ resource "metabase_card" "screener_resource_engagement" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_resource_engagement, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_resource_engagement, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
@@ -644,7 +650,7 @@ resource "metabase_card" "screener_resource_engagement" {
     visualization_settings = {
       "graph.show_values"       = true
       "graph.dimensions"        = ["Resource"]
-      "graph.metrics"           = ["More Info", "Website", "Phone"]
+      "graph.metrics"           = ["Shown", "More Info", "Website", "Phone"]
       "graph.x_axis.title_text" = "Resource"
       "graph.y_axis.title_text" = "Clicks"
       "graph.y_axis.decimals"   = 0
@@ -712,6 +718,7 @@ resource "metabase_card" "screener_scroll_depth" {
       # labels are numeric-prefixed so the alphabetical axis sort stays Quarter->Full.
       "graph.dimensions"  = ["Depth", "Tab"]
       "graph.metrics"     = ["% of Tab Scrollers"]
+      "column_settings"   = { "[\"name\",\"% of Tab Scrollers\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings" = {
         "Long-Term Benefits"   = { color = "#4e79a7" }
@@ -730,8 +737,8 @@ resource "metabase_card" "screener_help_by_topic" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Help Clicks by Topic"
-    description         = "Help-tooltip clicks by help topic, surfacing which tooltips drive the most confusion. The click event carries only the topic (which is itself step-identifying), so there is no step breakdown."
+    name                = "Help Click Rate by Topic"
+    description         = "Of the screenings that viewed the step a help tooltip lives on, the % that clicked it — surfacing which tooltips drive the most confusion. Raw clicks on hover."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -748,12 +755,9 @@ resource "metabase_card" "screener_help_by_topic" {
     visualization_settings = {
       "graph.show_values" = true
       "graph.dimensions"  = ["Help Topic"]
-      "graph.metrics"     = ["Clicks"]
-      "series_settings"   = { "Clicks" = { color = "#e8a33d" } }
-      # Clicks are whole numbers; force integer axis ticks so a max of 2 doesn't
-      # auto-scale to 0.2/0.4/... gridlines.
-      "graph.y_axis.decimals" = 0
-      "column_settings"       = { "[\"name\",\"Clicks\"]" = { number_style = "decimal", decimals = 0 } }
+      "graph.metrics"     = ["% of Step Viewers"]
+      "series_settings"   = { "% of Step Viewers" = { color = "#e8a33d" } }
+      "column_settings"   = { "[\"name\",\"% of Step Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -766,7 +770,7 @@ resource "metabase_card" "screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "Of the screenings that reached the member step, the % that added, edited, or deleted a member. Hover for the raw screening count and total action events."
+    description         = "How people adjust their household after entering an initial size: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the screening count and total actions."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -783,6 +787,7 @@ resource "metabase_card" "screener_household_member_engagement" {
     visualization_settings = {
       "graph.dimensions"  = ["Action"]
       "graph.metrics"     = ["% of Household-Step Viewers"]
+      "column_settings"   = { "[\"name\",\"% of Household-Step Viewers\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
     }
@@ -796,8 +801,8 @@ resource "metabase_card" "screener_income_source_engagement" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Income Source Actions"
-    description         = "Total add/edit/delete actions on income sources, and the number of distinct screenings doing each."
+    name                = "Income Source Actions per Member Page"
+    description         = "Of the member-detail pages people viewed, the % where they added or deleted an income source. (Income has no edit action.)"
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -813,22 +818,23 @@ resource "metabase_card" "screener_income_source_engagement" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions"  = ["Action"]
-      "graph.metrics"     = ["Total Actions"]
+      "graph.metrics"     = ["% of Member Pages"]
       "graph.show_values" = true
-      "series_settings"   = { "Total Actions" = { color = "#d37295" } }
+      "series_settings"   = { "% of Member Pages" = { color = "#499894" } }
+      "column_settings"   = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
   })
 }
 
-# Get-help clicks — single number. Total clicks on the "More Help / 211" CTA.
+# Get-help clicks — single number. Total clicks on the "More Help?" button.
 resource "metabase_card" "screener_get_help_clicks" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Clicked More Help?"
-    description         = "Of the screenings that reached the results page, the % that clicked the More Help / 211 call-to-action."
+    description         = "Of the screenings that reached the results page, the % that clicked the \"More Help?\" button."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -911,9 +917,11 @@ resource "metabase_card" "screener_confirmation_edits" {
     }
     display = "row"
     visualization_settings = {
-      "graph.dimensions" = ["Section"]
-      "graph.metrics"    = ["% of Confirmation Viewers"]
-      "series_settings"  = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
+      "graph.dimensions"  = ["Section"]
+      "graph.metrics"     = ["% of Confirmation Viewers"]
+      "graph.show_values" = true
+      "column_settings"   = { "[\"name\",\"% of Confirmation Viewers\"]" = { suffix = "%" } }
+      "series_settings"   = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -944,6 +952,7 @@ resource "metabase_card" "screener_signup_consent" {
     visualization_settings = {
       "graph.dimensions"  = ["Channel"]
       "graph.metrics"     = ["% Opted In"]
+      "column_settings"   = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
     }
@@ -984,6 +993,111 @@ resource "metabase_card" "screener_filter_usage" {
   })
 }
 
+# Average interactions per engaged screening — the intensity companions to the reach %
+# scalars above. Each averages total events over the distinct screenings that engaged,
+# so the value is >= 1; > 1 means repeat engagement.
+resource "metabase_card" "screener_filter_usage_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Citizenship Filter — Avg per Screening"
+    description         = "Average number of times an engaged screening used the citizenship filter (uses ÷ screenings that used it). Above 1 means repeat toggling."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_filter_usage_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Uses per Screening" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_resources_tab_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources — Avg Opens per Screening"
+    description         = "Average number of times an engaged screening opened the Additional Resources tab (opens ÷ screenings that opened it). Above 1 means repeat visits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_resources_tab_avg, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Opens per Screening" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_additional_resources_edits_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Additional Resources Edited — Avg per Screening"
+    description         = "Average number of times an engaged screening used the Additional Resources edit link (edits ÷ screenings that edited). Above 1 means repeat edits."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_additional_resources_edits_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Edits per Screening" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
+resource "metabase_card" "screener_more_help_avg" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "More Help? — Avg Clicks per Screening"
+    description         = "Average number of times an engaged screening clicked the \"More Help?\" button (clicks ÷ screenings that clicked). Above 1 means repeat clicking (possible confusion)."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_more_help_avg, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display                = "scalar"
+    visualization_settings = { "scalar.field" = "Avg Clicks per Screening" }
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
 # NPS distribution — bar. Submitted NPS scores bucketed Detractor / Passive /
 # Promoter.
 resource "metabase_card" "screener_nps_distribution" {
@@ -1008,6 +1122,7 @@ resource "metabase_card" "screener_nps_distribution" {
     visualization_settings = {
       "graph.dimensions"      = ["Category"]
       "graph.metrics"         = ["Responses"]
+      "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "series_settings"       = { "Responses" = { color = "#af7aa1" } }
     }
@@ -1027,8 +1142,8 @@ resource "metabase_card" "screener_public_charge_click_rate" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Public Charge Link — Click Rate"
-    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked the Public Charge info link."
+    name                = "Disclaimer Link Clicks"
+    description         = "Of the sessions that viewed the Disclaimer step, the % that clicked each inline link (Public Charge, Privacy Policy, Terms). Hover for the raw click count."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1041,10 +1156,13 @@ resource "metabase_card" "screener_public_charge_click_rate" {
         template-tags = local.ga_date_tags
       }
     }
-    display = "scalar"
+    display = "row"
     visualization_settings = {
-      "scalar.field"    = "% of Disclaimer Viewers"
-      "column_settings" = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+      "graph.dimensions"        = ["Link"]
+      "graph.metrics"           = ["% of Disclaimer Viewers"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Link"
+      "column_settings"         = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1052,15 +1170,15 @@ resource "metabase_card" "screener_public_charge_click_rate" {
 }
 
 
-# Additional Resources edited — scalar (% of results viewers). Clicks on the
-# results-page "edit your selections" link that sends people back to the Additional
-# Resources step, as a share of results viewers. Sits in the results-engagement row.
+# Additional Resources edited — scalar (% of tab openers). Clicks on the results-page
+# "edit your selections" link, as a share of screenings that opened the Additional
+# Resources tab (editing only makes sense once on that tab). Results-engagement row.
 resource "metabase_card" "screener_additional_resources_edits" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
     name                = "Additional Resources Edited (from Results)"
-    description         = "Of the screenings that reached the results page, the % that clicked the link to go back and edit their Additional Resources selections (different from edits made on the confirmation page)."
+    description         = "Of the screenings that opened the Additional Resources tab, the % that clicked the link to go back and edit their selections (different from edits made on the confirmation page)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1077,8 +1195,8 @@ resource "metabase_card" "screener_additional_resources_edits" {
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field"    = "% of Results Viewers"
-      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
+      "scalar.field"    = "% of Tab Openers"
+      "column_settings" = { "[\"name\",\"% of Tab Openers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1093,7 +1211,7 @@ resource "metabase_card" "screener_document_downloads" {
 
   json = jsonencode({
     name                = "Document Downloads"
-    description         = "Which 'Key Information You May Need to Provide' documents were downloaded, and for which program. Screenings = how many screenings downloaded it; Downloads = total download clicks."
+    description         = "Which 'Key Information You May Need to Provide' documents get downloaded, by program, as a rate. Shown = screenings shown the document; Downloaded = screenings that downloaded it; Downloads = total download clicks; Download Rate % = Downloaded ÷ Shown."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1110,6 +1228,68 @@ resource "metabase_card" "screener_document_downloads" {
     visualization_settings = {
       "table.row_index" = false
       "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# More-help page resource clicks — table. Which "Other Resources Near You" links
+# get clicked on the more-help page (FE #2163 gap #7).
+resource "metabase_card" "screener_more_help_resources" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "More Help Resource Clicks"
+    description         = "On the 'More Help' page, which 'Other Resources Near You' Visit-Website links get clicked. Clicks = total; Screenings = distinct screenings."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_more_help_resources, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "table"
+    visualization_settings = {
+      "table.row_index" = false
+      "table.paginate"  = false
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Back to Screener — scalar (% of results viewers who clicked the results-page
+# "Back to Screener" button). Sits in the results-engagement row.
+resource "metabase_card" "screener_back_to_screener" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Back to Screener"
+    description         = "Of the screenings that reached the results page, the % that clicked 'Back to Screener' to go edit their answers (distinct from the in-form Back button)."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_back_to_screener, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field"    = "% of Results Viewers"
+      "column_settings" = { "[\"name\",\"% of Results Viewers\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1400,13 +1580,13 @@ locals {
           visualization_settings = {}
         },
         {
-          # in-step content-link click rates — per-step engagement, so on this tab
+          # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
           card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
           dashboard_tab_id = 7
           row              = 58
           col              = 0
-          size_x           = 6
-          size_y           = 4
+          size_x           = 12
+          size_y           = 6
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
@@ -1431,12 +1611,13 @@ locals {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
-          # ── (1) OVERVIEW: three outcome scalars in a row ──
+          # ── (1) OVERVIEW: four outcome scalars in a row (6-wide) ──
+          # Results Viewed, % Eligible, Results Error Rate %, Back to Screener.
           card_id          = tonumber(metabase_card.screener_results_viewed[key].id)
           dashboard_tab_id = 8
           row              = 2
           col              = 0
-          size_x           = 8
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1457,8 +1638,8 @@ locals {
           card_id          = tonumber(metabase_card.screener_results_pct_eligible[key].id)
           dashboard_tab_id = 8
           row              = 2
-          col              = 8
-          size_x           = 8
+          col              = 6
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1479,8 +1660,8 @@ locals {
           card_id          = tonumber(metabase_card.screener_results_error_rate[key].id)
           dashboard_tab_id = 8
           row              = 2
-          col              = 16
-          size_x           = 8
+          col              = 12
+          size_x           = 6
           size_y           = 4
           parameter_mappings = [
             {
@@ -1491,6 +1672,28 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_results_error_rate[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_back_to_screener[key].id)
+          dashboard_tab_id = 8
+          row              = 2
+          col              = 18
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_back_to_screener[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_back_to_screener[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]
@@ -1610,8 +1813,13 @@ locals {
         },
         {
           # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──
-          # Order: Citizenship Filter, More Help, Viewed Additional Resources,
-          # Additional Resources Edited. 6-wide each across the 24-col row.
+          # Citizenship Filter, More Help, Viewed Additional Resources, Additional
+          # Resources Edited. 6-wide. (Back to Screener lives in the top outcome row.)
+          # NOTE: global reorders "Clicked More Help?" last; this tenant layout keeps
+          # the original order. Kept as-is — these tenant screener tabs are dormant
+          # (ga_tenants_enabled is empty), so the order is invisible; reordering would
+          # require moving blocks to preserve the provider's row/col-ascending rule for
+          # zero rendered benefit. Align if/when a tenant activates screener tabs.
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
           row              = 34
@@ -1699,13 +1907,102 @@ locals {
           series                 = []
           visualization_settings = {}
         },
+        # Avg-per-engaged-screening intensity row, directly below the reach row.
+        {
+          card_id          = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 0
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 6
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 12
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 18
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
         {
           # ── (4) ADDITIONAL RESOURCES section ──
           # Full-width, tall grouped bar (top 20 resources × more-info/website/phone);
           # replaces the old side-by-side Top Resources + Engagement pair.
           card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 42
           col              = 0
           size_x           = 24
           size_y           = 12
@@ -1727,9 +2024,9 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 50
+          row              = 54
           col              = 0
-          size_x           = 12
+          size_x           = 24
           size_y           = 8
           parameter_mappings = [
             {
@@ -1749,8 +2046,8 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_document_downloads[key].id)
           dashboard_tab_id = 8
-          row              = 50
-          col              = 12
+          row              = 62
+          col              = 0
           size_x           = 12
           size_y           = 8
           parameter_mappings = [
@@ -1769,10 +2066,33 @@ locals {
           visualization_settings = {}
         },
         {
+          # More-help page resource clicks (gap #7) — next to Document Downloads.
+          card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
+          dashboard_tab_id = 8
+          row              = 62
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 70
           col              = 0
           size_x           = 16
           size_y           = 8
@@ -1794,7 +2114,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_nps_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 70
           col              = 16
           size_x           = 8
           size_y           = 4
