@@ -1293,7 +1293,10 @@ locals {
   # Paired with the reach % scalars: how many times a session that engaged the
   # action did so (total events / distinct engaged sessions), averaged only over
   # sessions that engaged — so it's >= 1. >1 signals repeat clicking (possible
-  # confusion / unmet need). ROUND to 1 decimal.
+  # confusion / unmet need). ROUND to 1 decimal. distinct_screenings is summed
+  # across any secondary dimension values (e.g. location), so a session that
+  # engaged from two contexts counts once per context — a minor over-count that
+  # only pulls the average toward 1; acceptable at this volume.
   screener_sql_more_help_avg = <<-SQL
     SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Clicks per Session`
     FROM `${local.bq_dataset}.mart_screener_help`
