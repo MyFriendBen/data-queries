@@ -962,7 +962,7 @@ resource "metabase_card" "global_screener_filter_usage_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Uses / Session" }
+    visualization_settings = { "scalar.field" = "Avg Uses per Session" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -989,7 +989,7 @@ resource "metabase_card" "global_screener_resources_tab_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Opens / Session" }
+    visualization_settings = { "scalar.field" = "Avg Opens per Session" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1014,7 +1014,7 @@ resource "metabase_card" "global_screener_additional_resources_edits_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Edits / Session" }
+    visualization_settings = { "scalar.field" = "Avg Edits per Session" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1039,7 +1039,7 @@ resource "metabase_card" "global_screener_more_help_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Clicks / Session" }
+    visualization_settings = { "scalar.field" = "Avg Clicks per Session" }
     parameter_mappings     = []
     parameters             = []
   })
