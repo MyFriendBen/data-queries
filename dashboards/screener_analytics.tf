@@ -993,15 +993,15 @@ resource "metabase_card" "screener_filter_usage" {
   })
 }
 
-# Average interactions per engaged session — the intensity companions to the reach %
-# scalars above. Each averages total events over the distinct sessions that engaged,
+# Average interactions per engaged screening — the intensity companions to the reach %
+# scalars above. Each averages total events over the distinct screenings that engaged,
 # so the value is >= 1; > 1 means repeat engagement.
 resource "metabase_card" "screener_filter_usage_avg" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Citizenship Filter — Avg per Session"
-    description         = "Average number of times an engaged session used the citizenship filter (uses ÷ sessions that used it). Above 1 means repeat toggling."
+    name                = "Citizenship Filter — Avg per Screening"
+    description         = "Average number of times an engaged screening used the citizenship filter (uses ÷ screenings that used it). Above 1 means repeat toggling."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1015,7 +1015,7 @@ resource "metabase_card" "screener_filter_usage_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Uses per Session" }
+    visualization_settings = { "scalar.field" = "Avg Uses per Screening" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1025,8 +1025,8 @@ resource "metabase_card" "screener_resources_tab_avg" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Additional Resources — Avg Opens per Session"
-    description         = "Average number of times an engaged session opened the Additional Resources tab (opens ÷ sessions that opened it). Above 1 means repeat visits."
+    name                = "Additional Resources — Avg Opens per Screening"
+    description         = "Average number of times an engaged screening opened the Additional Resources tab (opens ÷ screenings that opened it). Above 1 means repeat visits."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1042,7 +1042,7 @@ resource "metabase_card" "screener_resources_tab_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Opens per Session" }
+    visualization_settings = { "scalar.field" = "Avg Opens per Screening" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1052,8 +1052,8 @@ resource "metabase_card" "screener_additional_resources_edits_avg" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Additional Resources Edited — Avg per Session"
-    description         = "Average number of times an engaged session used the Additional Resources edit link (edits ÷ sessions that edited). Above 1 means repeat edits."
+    name                = "Additional Resources Edited — Avg per Screening"
+    description         = "Average number of times an engaged screening used the Additional Resources edit link (edits ÷ screenings that edited). Above 1 means repeat edits."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1067,7 +1067,7 @@ resource "metabase_card" "screener_additional_resources_edits_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Edits per Session" }
+    visualization_settings = { "scalar.field" = "Avg Edits per Screening" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1077,8 +1077,8 @@ resource "metabase_card" "screener_more_help_avg" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "More Help? — Avg Clicks per Session"
-    description         = "Average number of times an engaged session clicked the \"More Help?\" button (clicks ÷ sessions that clicked). Above 1 means repeat clicking (possible confusion)."
+    name                = "More Help? — Avg Clicks per Screening"
+    description         = "Average number of times an engaged screening clicked the \"More Help?\" button (clicks ÷ screenings that clicked). Above 1 means repeat clicking (possible confusion)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1092,7 +1092,7 @@ resource "metabase_card" "screener_more_help_avg" {
       }
     }
     display                = "scalar"
-    visualization_settings = { "scalar.field" = "Avg Clicks per Session" }
+    visualization_settings = { "scalar.field" = "Avg Clicks per Screening" }
     parameter_mappings     = []
     parameters             = []
   })
@@ -1907,13 +1907,102 @@ locals {
           series                 = []
           visualization_settings = {}
         },
+        # Avg-per-engaged-screening intensity row, directly below the reach row.
+        {
+          card_id          = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 0
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_filter_usage_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 6
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_resources_tab_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 12
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
+          dashboard_tab_id = 8
+          row              = 38
+          col              = 18
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_avg[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_more_help_avg[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
         {
           # ── (4) ADDITIONAL RESOURCES section ──
           # Full-width, tall grouped bar (top 20 resources × more-info/website/phone);
           # replaces the old side-by-side Top Resources + Engagement pair.
           card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 42
           col              = 0
           size_x           = 24
           size_y           = 12
@@ -1935,7 +2024,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 50
+          row              = 54
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1957,7 +2046,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_document_downloads[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 62
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1980,7 +2069,7 @@ locals {
           # More-help page resource clicks (gap #7) — next to Document Downloads.
           card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
           dashboard_tab_id = 8
-          row              = 58
+          row              = 62
           col              = 12
           size_x           = 12
           size_y           = 8
@@ -2003,7 +2092,7 @@ locals {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 66
+          row              = 70
           col              = 0
           size_x           = 16
           size_y           = 8
@@ -2025,7 +2114,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_nps_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 66
+          row              = 70
           col              = 16
           size_x           = 8
           size_y           = 4

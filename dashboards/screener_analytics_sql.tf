@@ -1289,16 +1289,16 @@ locals {
       COALESCE((SELECT total FROM clicks), 0) AS `More Help Clicks`
   SQL
 
-  # ── Results/Form: average interactions per ENGAGED session ──────────────────────
-  # Paired with the reach % scalars: how many times a session that engaged the
-  # action did so (total events / distinct engaged sessions), averaged only over
-  # sessions that engaged — so it's >= 1. >1 signals repeat clicking (possible
-  # confusion / unmet need). ROUND to 1 decimal. distinct_screenings is summed
-  # across any secondary dimension values (e.g. location), so a session that
-  # engaged from two contexts counts once per context — a minor over-count that
-  # only pulls the average toward 1; acceptable at this volume.
+  # ── Results/Form: average interactions per ENGAGED screening ────────────────────
+  # Paired with the reach % scalars: how many times a screening that engaged the
+  # action did so (total events / distinct engaged screenings, keyed on
+  # screener_uid), averaged only over screenings that engaged — so it's >= 1. >1
+  # signals repeat clicking (possible confusion / unmet need). ROUND to 1 decimal.
+  # The distinct count is summed across any secondary dimension values (e.g.
+  # location), so a screening that engaged from two contexts counts once per
+  # context — a minor over-count that only pulls the average toward 1; acceptable.
   screener_sql_more_help_avg = <<-SQL
-    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Clicks per Session`
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Clicks per Screening`
     FROM `${local.bq_dataset}.mart_screener_help`
     WHERE __STATE_FILTER__
       AND metric = 'get_help_click'
@@ -1308,7 +1308,7 @@ locals {
   SQL
 
   screener_sql_resources_tab_avg = <<-SQL
-    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Opens per Session`
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(distinct_screenings), 0), 1) AS `Avg Opens per Screening`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
     WHERE __STATE_FILTER_CESN__
       AND metric = 'tab_open'
@@ -1319,7 +1319,7 @@ locals {
   SQL
 
   screener_sql_additional_resources_edits_avg = <<-SQL
-    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(screenings), 0), 1) AS `Avg Edits per Session`
+    SELECT ROUND(SUM(total_clicks) / NULLIF(SUM(screenings), 0), 1) AS `Avg Edits per Screening`
     FROM `${local.bq_dataset}.mart_screener_link_clicks`
     WHERE __STATE_FILTER__
       AND link_group = 'edit_nav'
@@ -1330,7 +1330,7 @@ locals {
   SQL
 
   screener_sql_filter_usage_avg = <<-SQL
-    SELECT ROUND(SUM(total_engagements) / NULLIF(SUM(screenings_engaged), 0), 1) AS `Avg Uses per Session`
+    SELECT ROUND(SUM(total_engagements) / NULLIF(SUM(screenings_engaged), 0), 1) AS `Avg Uses per Screening`
     FROM `${local.bq_dataset}.mart_screener_filter_usage`
     WHERE __STATE_FILTER__
       AND filter_type = 'citizenship'
