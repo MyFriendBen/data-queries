@@ -604,15 +604,19 @@ locals {
   SQL
 
   # ── Results: additional-resource engagement (more-info → website/phone) ─────────
-  # Resources treated like programs: the expand ("More Info") count and the
-  # contact clicks split by method, per resource.
+  # Per resource: how many screenings were shown it, then how many went on to
+  # expand it ("More Info") or click through by website/phone. Every series counts
+  # distinct screenings so the bars share a grain and read as a funnel. The mart's
+  # distinct_screenings is per-day, so a multi-day range sums daily distinct counts
+  # (a screening active on two days counts twice); the shown/engagement ordering
+  # holds within a day but isn't a hard cross-day invariant.
   screener_sql_resource_engagement = <<-SQL
     SELECT
       dimension AS `Resource`,
       SUM(CASE WHEN metric = 'resource_shown'     THEN distinct_screenings ELSE 0 END) AS `Shown`,
-      SUM(CASE WHEN metric = 'resource_more_info' THEN total_clicks ELSE 0 END) AS `More Info`,
-      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'website' THEN total_clicks ELSE 0 END) AS `Website`,
-      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'phone'   THEN total_clicks ELSE 0 END) AS `Phone`
+      SUM(CASE WHEN metric = 'resource_more_info' THEN distinct_screenings ELSE 0 END) AS `More Info`,
+      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'website' THEN distinct_screenings ELSE 0 END) AS `Website`,
+      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'phone'   THEN distinct_screenings ELSE 0 END) AS `Phone`
     FROM `${local.bq_dataset}.mart_screener_resource_engagement`
     WHERE __STATE_FILTER_CESN__
       AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
