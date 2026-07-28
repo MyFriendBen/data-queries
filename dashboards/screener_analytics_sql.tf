@@ -606,8 +606,10 @@ locals {
   # ── Results: additional-resource engagement (more-info → website/phone) ─────────
   # Per resource: how many screenings were shown it, then how many went on to
   # expand it ("More Info") or click through by website/phone. Every series counts
-  # distinct screenings so the bars share a grain and read as a funnel — an
-  # engagement bar can never exceed Shown.
+  # distinct screenings so the bars share a grain and read as a funnel. The mart's
+  # distinct_screenings is per-day, so a multi-day range sums daily distinct counts
+  # (a screening active on two days counts twice); the shown/engagement ordering
+  # holds within a day but isn't a hard cross-day invariant.
   screener_sql_resource_engagement = <<-SQL
     SELECT
       dimension AS `Resource`,
