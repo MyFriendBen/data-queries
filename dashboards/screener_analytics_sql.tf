@@ -711,8 +711,8 @@ locals {
   # plain state list on tenant cards, where CESN is its own tenant).
   screener_sql_resources_tab_engagement = <<-SQL
     WITH tab AS (
-      SELECT SUM(distinct_screenings) AS n
-      FROM `${local.bq_dataset}.mart_screener_resource_engagement`
+      SELECT COUNT(DISTINCT screener_uid) AS n
+      FROM `${local.bq_dataset}.mart_screener_resource_engagement_by_screening`
       WHERE __STATE_FILTER_CESN__
         AND metric = 'tab_open'
         AND dimension = 'additional_resources'
