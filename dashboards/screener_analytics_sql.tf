@@ -496,7 +496,7 @@ locals {
       SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
     FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY program_id
@@ -519,7 +519,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
@@ -550,7 +550,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
@@ -579,7 +579,7 @@ locals {
       SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
     FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY program_id, screener_state
@@ -598,7 +598,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, screener_state
@@ -623,7 +623,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, screener_state
@@ -697,7 +697,7 @@ locals {
     FROM `${local.bq_dataset}.mart_screener_resource_engagement_by_screening`
     WHERE __STATE_FILTER_CESN__
       AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY `Resource`

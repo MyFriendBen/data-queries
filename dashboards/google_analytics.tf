@@ -86,6 +86,15 @@ locals {
   # full day of pure new-contract data.
   screener_analytics_epoch = "2026-07-26"
 
+  # Later floor for the program/resource "shown" cards only. The results-page
+  # impression events (results_programs / results_resources view_item_list)
+  # emitted the full program catalog and dropped some resource impressions until
+  # the frontend fix deployed on 2026-07-28; 07-29 is the first full day of
+  # correct shown data. Only the shown-based cards floor on this — every other
+  # card uses screener_analytics_epoch. Temporary: remove once the affected days
+  # age out of normal viewing windows and fold these cards back to the shared epoch.
+  screener_shown_epoch = "2026-07-29"
+
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`
   bq_dataset = "${var.gcp_project_id}.${var.bigquery_analytics_dataset}"
