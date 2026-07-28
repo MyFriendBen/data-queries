@@ -684,6 +684,9 @@ locals {
   # screening-grain mart and counts distinct screener_uid over the whole range, so
   # a screening active on multiple days counts once (the daily-grain mart's
   # distinct_screenings would double-count it when summed across days).
+  # More Info can still exceed Shown when resource_shown under-fires on the
+  # frontend (a screening that expanded a resource with no matching shown
+  # impression) — a frontend instrumentation gap, not a mart regression.
   screener_sql_resource_engagement = <<-SQL
     SELECT
       dimension AS `Resource`,
