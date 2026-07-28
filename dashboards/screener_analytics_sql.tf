@@ -568,6 +568,80 @@ locals {
     ORDER BY `Shown -> Details %` DESC
   SQL
 
+  # Global variants of the three program cards. The same program exists as a
+  # separate row per white label, so on the all-tenant view a bare program name
+  # looks like a duplicate. These append the uppercased white-label code — as a
+  # "(CO)" suffix on the chart labels and a dedicated White Label column in the
+  # table — so each tenant's program reads as its own entry.
+  screener_sql_program_most_shown_global = <<-SQL
+    SELECT
+      CONCAT(MAX(program_name), ' (', UPPER(MAX(screener_state)), ')') AS `Program`,
+      SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
+    FROM `${local.bq_dataset}.mart_screener_program_interactions`
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY program_id, screener_state
+    HAVING `Shown` > 0
+    ORDER BY `Shown` DESC
+    LIMIT 15
+  SQL
+
+  screener_sql_program_engagement_global = <<-SQL
+    WITH per_program AS (
+      SELECT
+        program_id,
+        MAX(program_name) AS program_name,
+        MAX(screener_state) AS screener_state,
+        SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
+        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
+      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY program_id, screener_state
+    )
+    SELECT
+      CONCAT(program_name, ' (', UPPER(screener_state), ')') AS `Program`,
+      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `Viewed-Details Rate %`
+    FROM per_program
+    WHERE shown >= 20
+    ORDER BY `Viewed-Details Rate %` DESC
+    LIMIT 15
+  SQL
+
+  screener_sql_program_conversion_global = <<-SQL
+    WITH per_program AS (
+      SELECT
+        program_id,
+        MAX(program_name) AS program_name,
+        MAX(screener_state) AS screener_state,
+        SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
+        SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
+        SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
+      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY program_id, screener_state
+    )
+    SELECT
+      program_name AS `Program`,
+      UPPER(screener_state) AS `White Label`,
+      shown AS `Shown`,
+      more_info AS `Viewed Details`,
+      applied AS `Applied`,
+      ROUND(more_info * 100.0 / NULLIF(shown, 0), 1)     AS `Shown -> Details %`,
+      ROUND(applied * 100.0 / NULLIF(more_info, 0), 1)   AS `Details -> Applied %`,
+      ROUND(applied * 100.0 / NULLIF(shown, 0), 1)       AS `Shown -> Applied %`
+    FROM per_program
+    WHERE shown >= 20
+    ORDER BY `Shown -> Details %` DESC
+  SQL
+
   # ── Results: navigator engagement (table, one row per program × navigator) ──────
   # One row per (program, navigator) pair with Program and Navigator columns, then
   # the Shown -> Website / Email / Phone funnel as count columns. Shown is the
