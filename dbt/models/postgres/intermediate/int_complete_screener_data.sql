@@ -224,14 +224,10 @@ benefit_aggregates AS (
     SELECT
         pe.eligibility_snapshot_id,
         SUM(
-            CASE WHEN pe.value_type = 'tax_credit' THEN pe.annual_value ELSE 0 END
+            CASE WHEN pe.tax_category THEN pe.annual_value ELSE 0 END
         ) AS tax_credits_annual,
         SUM(
-            CASE
-                WHEN pe.value_type IS DISTINCT FROM 'tax_credit'
-                    THEN pe.annual_value
-                ELSE 0
-            END
+            CASE WHEN NOT pe.tax_category THEN pe.annual_value ELSE 0 END
         ) AS non_tax_credit_benefits_annual
     FROM {{ ref('stg_program_eligibility') }} AS pe
     GROUP BY pe.eligibility_snapshot_id
