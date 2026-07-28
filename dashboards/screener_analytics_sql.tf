@@ -680,18 +680,18 @@ locals {
   # ── Results: additional-resource engagement (more-info → website/phone) ─────────
   # Per resource: how many screenings were shown it, then how many went on to
   # expand it ("More Info") or click through by website/phone. Every series counts
-  # distinct screenings so the bars share a grain and read as a funnel. The mart's
-  # distinct_screenings is per-day, so a multi-day range sums daily distinct counts
-  # (a screening active on two days counts twice); the shown/engagement ordering
-  # holds within a day but isn't a hard cross-day invariant.
+  # distinct screenings so the bars share a grain and read as a funnel. Reads the
+  # screening-grain mart and counts distinct screener_uid over the whole range, so
+  # a screening active on multiple days counts once (the daily-grain mart's
+  # distinct_screenings would double-count it when summed across days).
   screener_sql_resource_engagement = <<-SQL
     SELECT
       dimension AS `Resource`,
-      SUM(CASE WHEN metric = 'resource_shown'     THEN distinct_screenings ELSE 0 END) AS `Shown`,
-      SUM(CASE WHEN metric = 'resource_more_info' THEN distinct_screenings ELSE 0 END) AS `More Info`,
-      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'website' THEN distinct_screenings ELSE 0 END) AS `Website`,
-      SUM(CASE WHEN metric = 'resource_click' AND contact_method = 'phone'   THEN distinct_screenings ELSE 0 END) AS `Phone`
-    FROM `${local.bq_dataset}.mart_screener_resource_engagement`
+      COUNT(DISTINCT IF(metric = 'resource_shown',     screener_uid, NULL)) AS `Shown`,
+      COUNT(DISTINCT IF(metric = 'resource_more_info', screener_uid, NULL)) AS `More Info`,
+      COUNT(DISTINCT IF(metric = 'resource_click' AND contact_method = 'website', screener_uid, NULL)) AS `Website`,
+      COUNT(DISTINCT IF(metric = 'resource_click' AND contact_method = 'phone',   screener_uid, NULL)) AS `Phone`
+    FROM `${local.bq_dataset}.mart_screener_resource_engagement_by_screening`
     WHERE __STATE_FILTER_CESN__
       AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')

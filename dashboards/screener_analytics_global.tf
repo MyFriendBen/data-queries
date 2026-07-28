@@ -461,8 +461,9 @@ resource "metabase_card" "global_screener_resource_engagement" {
       "graph.dimensions"        = ["Resource"]
       "graph.metrics"           = ["Shown", "More Info", "Website", "Phone"]
       "graph.x_axis.title_text" = "Resource"
-      "graph.y_axis.title_text" = "Clicks"
+      "graph.y_axis.title_text" = "Screenings"
       "graph.y_axis.decimals"   = 0
+      "graph.y_axis.auto_split" = false
     }
     parameter_mappings = []
     parameters         = []
