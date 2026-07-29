@@ -47,8 +47,12 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     more_info AS (
-      SELECT SUM(screenings_with_interaction) AS n
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      -- Distinct screenings that viewed any program's details. Counted from the
+      -- screening-grain mart, not SUM(screenings_with_interaction) off the daily
+      -- per-program mart — that sums across programs (a screening that viewed 5
+      -- programs counts 5) and can exceed the Saw Results stage above it.
+      SELECT COUNT(DISTINCT screener_uid) AS n
+      FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
       WHERE __STATE_FILTER__
         AND interaction_type = 'more_info'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -56,8 +60,9 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
     apply AS (
-      SELECT SUM(screenings_with_interaction) AS n
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+      -- Distinct screenings that clicked Apply on any program (same grain fix).
+      SELECT COUNT(DISTINCT screener_uid) AS n
+      FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
       WHERE __STATE_FILTER__
         AND interaction_type = 'apply'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
