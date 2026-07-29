@@ -3,7 +3,17 @@
     description='Complete screener data with eligibility calculations, broken into base tables for clarity'
 ) }}
 
-WITH base_table_1 AS (
+WITH student_flags AS (
+    -- One row per screen: TRUE if ANY household member marked the student
+    -- circumstance. Aggregated here to avoid fanning out screen rows.
+    SELECT
+        screen_id,
+        BOOL_OR(COALESCE(student, FALSE)) AS has_student
+    FROM {{ ref('stg_householdmembers') }}
+    GROUP BY screen_id
+),
+
+base_table_1 AS (
     SELECT
         ss.id,
         les.latest_snapshot_id,
@@ -92,6 +102,9 @@ WITH base_table_1 AS (
         secs.needs_hvac,
         secs.needs_stove,
         secs.needs_water_heater,
+
+        -- Student household flag (any member is a student)
+        COALESCE(sf.has_student, FALSE) AS has_student,
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
             WHEN ss.referrer_code IS NOT NULL AND TRIM(ss.referrer_code) <> ''
@@ -218,11 +231,15 @@ WITH base_table_1 AS (
     LEFT JOIN {{ ref('stg_monthly_expenses') }} AS me ON ss.id = me.screen_id
     LEFT JOIN {{ ref('stg_household_demographics') }} AS hd ON ss.id = hd.screen_id
     LEFT JOIN {{ source('django_apps', 'screener_energycalculatorscreen') }} AS secs ON ss.id = secs.screen_id
+    LEFT JOIN student_flags AS sf ON ss.id = sf.screen_id
 ),
 
 benefit_aggregates AS (
     SELECT
         pe.eligibility_snapshot_id,
+        -- Count of distinct eligible programs matched for this snapshot
+        -- (stg_program_eligibility is already filtered to eligible = TRUE)
+        COUNT(DISTINCT pe.name_abbreviated) AS programs_matched,
         SUM(
             CASE WHEN pe.tax_category THEN pe.annual_value ELSE 0 END
         ) AS tax_credits_annual,
@@ -236,6 +253,7 @@ benefit_aggregates AS (
 base_table_2 AS (
     SELECT
         bt1.*,
+        COALESCE(ba.programs_matched, 0) AS programs_matched,
         COALESCE(ba.non_tax_credit_benefits_annual, 0) AS non_tax_credit_benefits_annual,
         COALESCE(ba.tax_credits_annual, 0) AS tax_credits_annual
     FROM base_table_1 AS bt1

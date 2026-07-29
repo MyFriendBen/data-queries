@@ -187,6 +187,15 @@ resource "metabase_collection" "tenant_collection_co_tax_calculator" {
   depends_on = [metabase_collection.tenant_collection_cesn]
 }
 
+# Referrer overlay collection (not a tenant / white label). CU Denver is the
+# `cudenver` referrer inside the CO white label; its dashboard is scoped by a
+# hard-coded referrer predicate on top of the CO connection's white-label RLS.
+# See cu_denver_dashboard.tf (MFB-1568).
+resource "metabase_collection" "cu_denver" {
+  name       = "CU Denver"
+  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+}
+
 # Map for other resources to reference tenant collections by key
 locals {
   tenant_collection_map = {

@@ -46,6 +46,16 @@ resource "metabase_permissions_group" "tenant_editor" {
   name = "${each.value.display_name} Editors"
 }
 
+# --- CU Denver referrer viewer group (MFB-1568) ------------------------------
+# CU Denver is a referrer inside the CO white label, not a tenant. This group is
+# view-only: read on the CU Denver collection (below) and NO ad-hoc DB query
+# access anywhere (the dashboard cards are pre-scoped to referrer=cudenver, so
+# viewers cannot broaden the scope). Members are added manually in the Metabase
+# UI (local logins — existing pattern).
+resource "metabase_permissions_group" "cu_denver" {
+  name = "CU Denver Viewers"
+}
+
 # =============================================================================
 # Collection Permissions Graph
 # =============================================================================
@@ -105,6 +115,15 @@ resource "metabase_collection_graph" "graph" {
         collection = local.tenant_collection_map[key].id
         permission = "write"
       } if contains(keys(local.tenant_collection_map), key)
+    ],
+
+    # --- CU Denver referrer group: read on the CU Denver collection only ------
+    [
+      {
+        group      = metabase_permissions_group.cu_denver.id
+        collection = metabase_collection.cu_denver.id
+        permission = "read"
+      }
     ]
   )
 }
@@ -179,6 +198,7 @@ locals {
   all_managed_group_ids = concat(
     [1], # All Users group
     [metabase_permissions_group.global.id],
+    [metabase_permissions_group.cu_denver.id],
     [for k, g in metabase_permissions_group.tenant : g.id],
     [for k, g in metabase_permissions_group.tenant_editor : g.id]
   )
@@ -327,6 +347,21 @@ resource "metabase_permissions_graph" "graph" {
           }
         ]
       )
-    ])
+    ]),
+
+    # --- CU Denver referrer group: NO query access to any database -----------
+    # View-only via collection read; the dashboard cards are pre-scoped to
+    # referrer=cudenver, so no query-builder access is granted anywhere.
+    # Must cover ALL databases (managed + unmanaged) to satisfy the API.
+    [
+      for db_id in local.all_known_db_ids : {
+        group          = metabase_permissions_group.cu_denver.id
+        database       = tonumber(db_id)
+        view_data      = "unrestricted"
+        create_queries = "no"
+        download       = { schemas = "full" }
+        data_model     = null
+      }
+    ]
   )
 }
