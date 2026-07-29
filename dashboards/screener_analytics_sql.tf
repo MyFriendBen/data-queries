@@ -671,8 +671,43 @@ locals {
       GROUP BY program_id, navigator_id
     )
     SELECT
-      program_name   AS `Program`,
       navigator_name AS `Navigator`,
+      program_name   AS `Program`,
+      shown   AS `Shown`,
+      website AS `Website`,
+      email   AS `Email`,
+      phone   AS `Phone`
+    FROM per_pair
+    WHERE (shown + website + email + phone) > 0
+    ORDER BY shown DESC, website + email + phone DESC
+  SQL
+
+  # Global variant of the navigator engagement table. The same navigator/program
+  # pair exists per white label, so a bare name looks like a duplicate on the
+  # all-tenant view; add the uppercased white-label code as its own column.
+  screener_sql_navigator_engagement_global = <<-SQL
+    WITH per_pair AS (
+      SELECT
+        program_id,
+        navigator_id,
+        screener_state,
+        MAX(program_name) AS program_name,
+        MAX(navigator_name) AS navigator_name,
+        SUM(CASE WHEN contact_method = '__shown__' THEN screenings_with_engagement ELSE 0 END) AS shown,
+        SUM(CASE WHEN contact_method = 'website' THEN total_engagements ELSE 0 END) AS website,
+        SUM(CASE WHEN contact_method = 'email'   THEN total_engagements ELSE 0 END) AS email,
+        SUM(CASE WHEN contact_method = 'phone'   THEN total_engagements ELSE 0 END) AS phone
+      FROM `${local.bq_dataset}.mart_screener_navigator_engagement`
+      WHERE __STATE_FILTER__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY program_id, navigator_id, screener_state
+    )
+    SELECT
+      navigator_name AS `Navigator`,
+      program_name   AS `Program`,
+      UPPER(screener_state) AS `White Label`,
       shown   AS `Shown`,
       website AS `Website`,
       email   AS `Email`,
@@ -1230,25 +1265,22 @@ locals {
   # true download RATE: of screenings shown the document, the % that downloaded it.
   #   Shown         = distinct screenings shown the document (denominator)
   #   Downloaded    = distinct screenings that downloaded it (numerator)
-  #   Downloads     = total download clicks (>= Downloaded if repeat clicks)
   #   Download Rate % = Downloaded / Shown
-  # Grouped by (document_name, program_id) — the same document name shown under two
-  # programs stays as two rows (grouping by name alone would merge their counts and
-  # show an arbitrary program). program_id is the stable key; MAX(program_name) is the
-  # display label. LEAST(...,100) clamps the daily-grain residual (shown/downloaded are
-  # per-day distinct SUMs). NOTE: shown↔downloaded join is on program_id + document_name;
-  # if the exploded shown-array name and the scalar download name drift in casing/
-  # punctuation they won't line up — on the PR verification checklist.
+  # Both counts are distinct screenings over the whole range (screening-grain mart),
+  # so Downloaded can never exceed Shown and no rate clamp is needed. document_name
+  # rides in program_id via the shown/download rows; grouped by (program_id,
+  # document_name) so the same document under two programs stays two rows.
+  # NOTE: shown↔downloaded line up on program_id + document_name; if the exploded
+  # shown-array name and the scalar download name drift in casing/punctuation they
+  # won't match — on the PR verification checklist.
   screener_sql_document_downloads = <<-SQL
     WITH per_doc AS (
       SELECT
         program_id,
         document_name,
-        max(program_name) AS program_name,
-        SUM(CASE WHEN interaction_type = 'document_shown'    THEN screenings_with_interaction ELSE 0 END) AS shown,
-        SUM(CASE WHEN interaction_type = 'document_download' THEN screenings_with_interaction ELSE 0 END) AS downloaded,
-        SUM(CASE WHEN interaction_type = 'document_download' THEN total_interactions ELSE 0 END) AS downloads
-      FROM `${local.bq_dataset}.mart_screener_program_interactions`
+        COUNT(DISTINCT IF(interaction_type = 'document_shown',    screener_uid, NULL)) AS shown,
+        COUNT(DISTINCT IF(interaction_type = 'document_download', screener_uid, NULL)) AS downloaded
+      FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
       WHERE __STATE_FILTER__
         AND interaction_type IN ('document_shown', 'document_download')
         AND document_name IS NOT NULL
@@ -1258,15 +1290,16 @@ locals {
       GROUP BY program_id, document_name
     )
     SELECT
-      document_name AS `Document`,
-      program_name  AS `Program`,
+      per_doc.document_name AS `Document`,
+      COALESCE(pn.program_name, per_doc.program_id) AS `Program`,
       shown         AS `Shown`,
       downloaded    AS `Downloaded`,
-      downloads     AS `Downloads`,
-      LEAST(ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1), 100.0) AS `Download Rate %`
+      ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1) AS `Download Rate %`
     FROM per_doc
-    WHERE (shown + downloads) > 0
-    ORDER BY `Downloads` DESC
+    LEFT JOIN `${local.bq_dataset}.int_screener_program_names` pn
+      ON pn.program_id = per_doc.program_id
+    WHERE (shown + downloaded) > 0
+    ORDER BY `Downloaded` DESC, `Shown` DESC
   SQL
 
   # ── Results (more-help page): which "Other Resources Near You" links get clicked ─
@@ -1275,8 +1308,8 @@ locals {
   screener_sql_more_help_resources = <<-SQL
     SELECT
       dimension AS `Resource`,
-      SUM(total_clicks) AS `Clicks`,
-      SUM(distinct_screenings) AS `Screenings`
+      SUM(distinct_screenings) AS `Screenings`,
+      SUM(total_clicks) AS `Clicks`
     FROM `${local.bq_dataset}.mart_screener_help`
     WHERE __STATE_FILTER__
       AND metric = 'more_help_resource_click'
