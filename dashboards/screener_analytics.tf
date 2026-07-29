@@ -652,8 +652,9 @@ resource "metabase_card" "screener_resource_engagement" {
       "graph.dimensions"        = ["Resource"]
       "graph.metrics"           = ["Shown", "More Info", "Website", "Phone"]
       "graph.x_axis.title_text" = "Resource"
-      "graph.y_axis.title_text" = "Clicks"
+      "graph.y_axis.title_text" = "Screenings"
       "graph.y_axis.decimals"   = 0
+      "graph.y_axis.auto_split" = false
     }
     parameter_mappings = []
     parameters         = []
@@ -2048,7 +2049,7 @@ locals {
           dashboard_tab_id = 8
           row              = 62
           col              = 0
-          size_x           = 12
+          size_x           = 24
           size_y           = 8
           parameter_mappings = [
             {
@@ -2066,12 +2067,12 @@ locals {
           visualization_settings = {}
         },
         {
-          # More-help page resource clicks (gap #7) — next to Document Downloads.
+          # More-help page resource clicks (gap #7) — full width, below Document Downloads.
           card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
           dashboard_tab_id = 8
-          row              = 62
-          col              = 12
-          size_x           = 12
+          row              = 70
+          col              = 0
+          size_x           = 24
           size_y           = 8
           parameter_mappings = [
             {
@@ -2092,7 +2093,7 @@ locals {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 70
+          row              = 78
           col              = 0
           size_x           = 16
           size_y           = 8
@@ -2114,7 +2115,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_nps_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 70
+          row              = 78
           col              = 16
           size_x           = 8
           size_y           = 4

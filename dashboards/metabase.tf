@@ -1441,13 +1441,13 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Document Downloads + More-help resource clicks (gap #7), side by side.
+      # Document Downloads + More-help resource clicks (gap #7), each full width.
       {
         card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
         dashboard_tab_id       = 6
         row                    = 65
         col                    = 0
-        size_x                 = 12
+        size_x                 = 24
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1456,9 +1456,9 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_help_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 65
-        col                    = 12
-        size_x                 = 12
+        row                    = 73
+        col                    = 0
+        size_x                 = 24
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1468,7 +1468,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 73
+        row                    = 81
         col                    = 0
         size_x                 = 16
         size_y                 = 8
@@ -1479,7 +1479,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 73
+        row                    = 81
         col                    = 16
         size_x                 = 8
         size_y                 = 4

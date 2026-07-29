@@ -422,7 +422,7 @@ resource "metabase_card" "global_screener_navigator_engagement" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_navigator_engagement, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_navigator_engagement_global, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -461,8 +461,9 @@ resource "metabase_card" "global_screener_resource_engagement" {
       "graph.dimensions"        = ["Resource"]
       "graph.metrics"           = ["Shown", "More Info", "Website", "Phone"]
       "graph.x_axis.title_text" = "Resource"
-      "graph.y_axis.title_text" = "Clicks"
+      "graph.y_axis.title_text" = "Screenings"
       "graph.y_axis.decimals"   = 0
+      "graph.y_axis.auto_split" = false
     }
     parameter_mappings = []
     parameters         = []
