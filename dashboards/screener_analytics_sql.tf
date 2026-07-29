@@ -593,7 +593,7 @@ locals {
       SELECT
         program_id,
         MAX(program_name) AS program_name,
-        MAX(screener_state) AS screener_state,
+        screener_state,
         SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
@@ -617,7 +617,7 @@ locals {
       SELECT
         program_id,
         MAX(program_name) AS program_name,
-        MAX(screener_state) AS screener_state,
+        screener_state,
         SUM(CASE WHEN interaction_type = 'shown'     THEN screenings_with_interaction ELSE 0 END) AS shown,
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info,
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
