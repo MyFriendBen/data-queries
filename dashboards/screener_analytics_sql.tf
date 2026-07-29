@@ -1278,6 +1278,7 @@ locals {
       SELECT
         program_id,
         document_name,
+        COALESCE(MAX(program_name), program_id) AS program_name,
         COUNT(DISTINCT IF(interaction_type = 'document_shown',    screener_uid, NULL)) AS shown,
         COUNT(DISTINCT IF(interaction_type = 'document_download', screener_uid, NULL)) AS downloaded
       FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
@@ -1290,14 +1291,12 @@ locals {
       GROUP BY program_id, document_name
     )
     SELECT
-      per_doc.document_name AS `Document`,
-      COALESCE(pn.program_name, per_doc.program_id) AS `Program`,
+      document_name AS `Document`,
+      program_name  AS `Program`,
       shown         AS `Shown`,
       downloaded    AS `Downloaded`,
       ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1) AS `Download Rate %`
     FROM per_doc
-    LEFT JOIN `${local.bq_dataset}.int_screener_program_names` pn
-      ON pn.program_id = per_doc.program_id
     WHERE (shown + downloaded) > 0
     ORDER BY `Downloaded` DESC, `Shown` DESC
   SQL

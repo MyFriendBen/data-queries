@@ -18,6 +18,7 @@ with interactions as (
         screener_state,
         screener_uid,
         program_id,
+        document_name,
         case event_name
             when 'screener_apply_click' then 'apply'
             when 'screener_program_more_info' then 'more_info'
@@ -40,15 +41,32 @@ with interactions as (
         'screener_program_shown'
     )
     and program_id is not null
+),
+
+-- One row per screening × state × interaction_type × program (× document, for
+-- document rows). program_name is resolved by a join below, not kept in this
+-- grain, so a name that drifts in spelling can't split a screening into two rows.
+distinct_rows as (
+    select distinct
+        event_date_parsed,
+        screener_state,
+        interaction_type,
+        program_id,
+        document_name,
+        screener_uid
+    from interactions
 )
 
--- One row per screening × state × interaction_type × program across all history.
--- A card counts distinct screener_uid over its date range for a true cross-day
--- distinct.
-select distinct
-    event_date_parsed,
-    screener_state,
-    interaction_type,
-    program_id,
-    screener_uid
-from interactions
+-- Program display name from the shared name-resolution model (document/apply
+-- events carry program_id but not the name); fall back to the id.
+select
+    d.event_date_parsed,
+    d.screener_state,
+    d.interaction_type,
+    d.program_id,
+    coalesce(pn.program_name, d.program_id) as program_name,
+    d.document_name,
+    d.screener_uid
+from distinct_rows d
+left join {{ ref('int_screener_program_names') }} pn
+    on d.program_id = pn.program_id
