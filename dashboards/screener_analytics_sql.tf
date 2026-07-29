@@ -1266,10 +1266,13 @@ locals {
   #   Shown         = distinct screenings shown the document (denominator)
   #   Downloaded    = distinct screenings that downloaded it (numerator)
   #   Download Rate % = Downloaded / Shown
-  # Both counts are distinct screenings over the whole range (screening-grain mart),
-  # so Downloaded can never exceed Shown and no rate clamp is needed. document_name
-  # rides in program_id via the shown/download rows; grouped by (program_id,
-  # document_name) so the same document under two programs stays two rows.
+  # Both counts are distinct screenings over the range. document_shown comes from
+  # the results_programs view_item_list impressions, which under-fired before the
+  # 07-28 frontend fix — so this card floors on screener_shown_epoch (like the
+  # other impression cards) to exclude the bad window, and LEAST(...,100) clamps
+  # any residual download-without-a-matching-impression so the rate can't exceed
+  # 100%. Grouped by (program_id, document_name) so the same document under two
+  # programs stays two rows.
   # NOTE: shown↔downloaded line up on program_id + document_name; if the exploded
   # shown-array name and the scalar download name drift in casing/punctuation they
   # won't match — on the PR verification checklist.
@@ -1278,14 +1281,14 @@ locals {
       SELECT
         program_id,
         document_name,
-        COALESCE(MAX(program_name), program_id) AS program_name,
+        MAX(program_name) AS program_name,
         COUNT(DISTINCT IF(interaction_type = 'document_shown',    screener_uid, NULL)) AS shown,
         COUNT(DISTINCT IF(interaction_type = 'document_download', screener_uid, NULL)) AS downloaded
       FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
       WHERE __STATE_FILTER__
         AND interaction_type IN ('document_shown', 'document_download')
         AND document_name IS NOT NULL
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, document_name
@@ -1295,7 +1298,7 @@ locals {
       program_name  AS `Program`,
       shown         AS `Shown`,
       downloaded    AS `Downloaded`,
-      ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1) AS `Download Rate %`
+      LEAST(ROUND(downloaded * 100.0 / NULLIF(shown, 0), 1), 100.0) AS `Download Rate %`
     FROM per_doc
     WHERE (shown + downloaded) > 0
     ORDER BY `Downloaded` DESC, `Shown` DESC
