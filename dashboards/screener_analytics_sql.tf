@@ -1071,20 +1071,33 @@ locals {
   # shows. Category (Detractor 0-6 / Passive 7-8 / Promoter 9-10) rides along as a
   # series so the bar chart can color each score by its NPS bucket. Response
   # follow-through (reasons, feedback clicks) is on the detail mart if needed later.
+  # Zero-filled 0-10 scale so every score has a bar (missing scores show as 0),
+  # keeping the x-axis evenly spaced and aligned. Category is derived from the
+  # score, so a zero-response score still colors into its bucket.
   screener_sql_nps_distribution = <<-SQL
+    WITH scale AS (
+      SELECT
+        score,
+        CASE WHEN score <= 6 THEN 'Detractor' WHEN score <= 8 THEN 'Passive' ELSE 'Promoter' END AS category
+      FROM UNNEST(GENERATE_ARRAY(0, 10)) AS score
+    ),
+    counts AS (
+      SELECT nps_score, SUM(scores_submitted) AS responses
+      FROM `${local.bq_dataset}.mart_screener_nps`
+      WHERE __STATE_FILTER__
+        AND nps_score IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      GROUP BY nps_score
+    )
     SELECT
-      CAST(nps_score AS STRING) AS `Score`,
-      nps_category AS `Category`,
-      SUM(scores_submitted) AS `Responses`
-    FROM `${local.bq_dataset}.mart_screener_nps`
-    WHERE __STATE_FILTER__
-      AND nps_score IS NOT NULL
-    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY nps_score, nps_category
-    HAVING SUM(scores_submitted) > 0
-    ORDER BY nps_score
+      CAST(scale.score AS STRING) AS `Score`,
+      scale.category AS `Category`,
+      COALESCE(counts.responses, 0) AS `Responses`
+    FROM scale
+    LEFT JOIN counts ON counts.nps_score = scale.score
+    ORDER BY scale.score
   SQL
 
   # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────

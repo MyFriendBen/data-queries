@@ -1153,8 +1153,6 @@ resource "metabase_card" "screener_nps_distribution" {
       "graph.metrics"         = ["Responses"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
-      "graph.y_axis.auto_range" = false
-      "graph.y_axis.min"        = 0
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       "series_settings" = {
         "Detractor" = { color = "#d64550" }
