@@ -895,7 +895,9 @@ resource "metabase_card" "global_screener_confirmation_edits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", local.all_screener_global_predicate)
+        query = replace(
+          replace(local.screener_sql_confirmation_edits, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }

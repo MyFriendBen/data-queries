@@ -976,9 +976,10 @@ locals {
   # session-grain step-facts, deduped across days). Raw screening count on hover.
   screener_sql_confirmation_edits = <<-SQL
     WITH viewers AS (
+      -- step_facts carries is_cesn (+ retains null-state rows) → CESN sentinel.
       SELECT COUNT(DISTINCT session_key) AS n
       FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE __STATE_FILTER__
+      WHERE __STATE_FILTER_CESN__
         AND screener_step_name = 'confirm-information'
         AND viewed
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
