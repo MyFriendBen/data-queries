@@ -1081,13 +1081,12 @@ locals {
     )
     SELECT
       CAST(scale.score AS STRING) AS `Score`,
-      -- One metric column per category, non-null only for that bucket, so the
-      -- chart has Score as its single dimension (bars centered under each label)
-      -- with three colored series. NULL (not 0) leaves empty scores bar-less and
-      -- label-less while the scale join keeps their x-axis slot.
-      IF(scale.category = 'Detractor', counts.responses, NULL) AS `Detractor`,
-      IF(scale.category = 'Passive',   counts.responses, NULL) AS `Passive`,
-      IF(scale.category = 'Promoter',  counts.responses, NULL) AS `Promoter`
+      -- Single metric so Score is the sole dimension and bars center under each
+      -- label (a second series/dimension makes Metabase reserve per-category
+      -- sub-slots and offsets the bars). Per-bar category color is set in the
+      -- card's series_settings, keyed by score. NULL (not 0) for empty scores:
+      -- no bar, no "0" label, but the scale join keeps the x-axis slot.
+      counts.responses AS `Responses`
     FROM scale
     LEFT JOIN counts ON counts.nps_score = scale.score
     ORDER BY scale.score
