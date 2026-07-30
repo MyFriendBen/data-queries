@@ -1069,26 +1069,24 @@ locals {
   SQL
 
   # ── Results: NPS score distribution ──────────────────────────────────
-  # Count of submitted NPS scores by category (Detractor 0-6 / Passive 7-8 /
-  # Promoter 9-10). Response follow-through (reasons, feedback clicks) is on the
-  # detail mart if needed later.
+  # Count of submitted NPS scores by raw 0-10 score, so the full distribution
+  # shows. Category (Detractor 0-6 / Passive 7-8 / Promoter 9-10) rides along as a
+  # series so the bar chart can color each score by its NPS bucket. Response
+  # follow-through (reasons, feedback clicks) is on the detail mart if needed later.
   screener_sql_nps_distribution = <<-SQL
     SELECT
-      `Category`, `Responses` FROM (
-        SELECT
-          CASE nps_category WHEN 'Detractor' THEN 1 WHEN 'Passive' THEN 2 WHEN 'Promoter' THEN 3 ELSE 4 END AS sort_key,
-          nps_category AS `Category`,
-          SUM(scores_submitted) AS `Responses`
-        FROM `${local.bq_dataset}.mart_screener_nps`
-        WHERE __STATE_FILTER__
-          AND nps_category IS NOT NULL
-        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-        GROUP BY nps_category, sort_key
-      )
-    WHERE `Responses` > 0
-    ORDER BY sort_key
+      CAST(nps_score AS STRING) AS `Score`,
+      nps_category AS `Category`,
+      SUM(scores_submitted) AS `Responses`
+    FROM `${local.bq_dataset}.mart_screener_nps`
+    WHERE __STATE_FILTER__
+      AND nps_score IS NOT NULL
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY nps_score, nps_category
+    HAVING SUM(scores_submitted) > 0
+    ORDER BY nps_score
   SQL
 
   # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────

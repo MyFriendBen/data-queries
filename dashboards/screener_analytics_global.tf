@@ -1066,11 +1066,16 @@ resource "metabase_card" "global_screener_nps_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Category"]
+      "graph.dimensions"      = ["Score", "Category"]
       "graph.metrics"         = ["Responses"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
-      "series_settings"       = { "Responses" = { color = "#af7aa1" } }
+      "graph.x_axis.title_text" = "NPS Score (0-10)"
+      "series_settings" = {
+        "Detractor" = { color = "#d64550" }
+        "Passive"   = { color = "#8a8f98" }
+        "Promoter"  = { color = "#59a14f" }
+      }
     }
     parameter_mappings = []
     parameters         = []
