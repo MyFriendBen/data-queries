@@ -115,13 +115,15 @@ locals {
   # (avoids placing a tab whose cards were never built). The all-states versions
   # of these cards live on the internal Global dashboard independently of this.
   tenant_tabs = {
-    nc                = ["all_time", "households", "benefits_needs"]
-    co                = ["all_time", "households", "benefits_needs"]
-    tx                = ["all_time", "households", "benefits_needs"]
-    wa                = ["all_time", "households", "benefits_needs"]
-    il                = ["all_time", "households", "benefits_needs"]
-    ma                = ["all_time", "households", "benefits_needs"]
-    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters"]
+    nc                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    co                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    tx                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    wa                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    il                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    ma                = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    cesn              = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    # co_tax_calculator is a separate calculator without its own GA screener_state
+    # mapping, so it gets no screener analytics tabs.
     co_tax_calculator = ["all_time", "households", "benefits_needs"]
   }
 
