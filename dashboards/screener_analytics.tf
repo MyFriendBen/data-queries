@@ -40,7 +40,7 @@ resource "metabase_card" "screener_macro_funnel" {
 
   json = jsonencode({
     name                = "Screener Conversion Funnel"
-    description         = "Of screeners created, how many reached results, viewed a program's details ('More info'), and clicked Apply. Every stage counts distinct screeners, so each bar is a true share of the one above it. The earlier journey (landing → language → disclaimer drop-off) is the session-grain Form Step Reached funnel; the share of sessions that go on to create a screener is the 'Sessions That Start a Screener' card."
+    description         = "Of screeners created, how many reached results, viewed a program ('More info'), and clicked Apply. Each bar counts distinct screeners. Pre-screener drop-off is the Form Step Reached funnel."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -70,7 +70,7 @@ resource "metabase_card" "screener_session_to_screener" {
 
   json = jsonencode({
     name                = "Sessions That Start a Screener"
-    description         = "Of sessions that entered the form (viewed the first step), the share that went on to create a screener. This is the session → screening handoff, shown as its own rate rather than a funnel stage because a screener can span multiple sessions."
+    description         = "Of sessions that reach the screener, the share that get past the terms & conditions step, which creates the screener. Shown as a rate, not a funnel stage, because a screener can span multiple sessions."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -85,7 +85,8 @@ resource "metabase_card" "screener_session_to_screener" {
     }
     display = "scalar"
     visualization_settings = {
-      "scalar.field" = "% of Sessions That Start a Screener"
+      "scalar.field"    = "% of Sessions That Start a Screener"
+      "column_settings" = { "[\"name\",\"% of Sessions That Start a Screener\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -105,7 +106,7 @@ resource "metabase_card" "screener_step_funnel" {
 
   json = jsonencode({
     name                = "Form Step Reached"
-    description         = "How far people get through the form: each bar is the share of visits that reached at least that step, so bars always shrink down the list. Counted per visit (session), not per screening — the first steps happen before a screening exists. Hover for the count. Because it counts visits, 'Reached Results' runs higher than 'Results Viewed' on the Results Page tab (which counts distinct screenings). Referral Source and Select State are excluded (only shown to some users)."
+    description         = "Share of visits that reached at least each step, so bars shrink down the list. Counted per visit (session), since the first steps happen before a screener exists. Referral Source and Select State are excluded (only shown to some users)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
