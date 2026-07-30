@@ -15,8 +15,8 @@
 --     (how fragmented a screening is across visits).
 --
 -- Stage flags:
---   saw_results   = reached results at any outcome
---                   (results_loaded OR results_error OR results_none_eligible)
+--   saw_results   = fired screener_results_loaded (clean load; matches the
+--                   Results-Page "Results Viewed" card so the two agree)
 --   viewed_details= clicked "More info" on any program (screener_program_more_info)
 --   applied       = clicked Apply on any program (screener_apply_click)
 -- created is implicit — the screener exists (one row here).
@@ -35,23 +35,33 @@ with events as (
         event_timestamp,
         event_name
     from {{ source('google_analytics', 'events_*') }}
-    -- Bound the wildcard scan: the app-emitted screener_* contract went live
-    -- 2026-07-25, so nothing before that carries a usable screener_uid.
-    where _table_suffix >= '20260725'
-        and (select value.string_value from unnest(event_params) where key = 'screener_uid' limit 1) is not null
+    -- No date bound here: every screener mart reads the full events_* history and
+    -- the dashboard cards apply the single analytics epoch. Bounding this mart on a
+    -- different date desynced first-event dates from the other marts (a screener
+    -- that first loaded results pre-epoch but revisited in-window landed in
+    -- different date buckets across marts). The card-level epoch is the one floor.
+    where (select value.string_value from unnest(event_params) where key = 'screener_uid' limit 1) is not null
 ),
 
 per_screener as (
     select
         screener_uid,
-        -- attribute the screener to the state/date of its earliest event
-        array_agg(screener_state ignore nulls order by event_timestamp limit 1)[safe_offset(0)] as screener_state,
+        -- Attribute the screener to the earliest event whose state is a known
+        -- lowercase code — a screening's early events can carry the legacy
+        -- display-name format (e.g. "Colorado") that the dashboard state IN-list
+        -- doesn't recognize, which would drop the screener from state-filtered
+        -- cards even though its later events use the clean code ("co").
+        array_agg(
+            if(screener_state in ('co','nc','tx','wa','il','ma','cesn'), screener_state, null)
+            ignore nulls order by event_timestamp limit 1
+        )[safe_offset(0)] as screener_state,
         min(event_date_parsed) as event_date_parsed,
         logical_or(lower(screener_state) = 'cesn') as is_cesn,
         count(distinct ga_session_id) as distinct_sessions,
-        logical_or(event_name in (
-            'screener_results_loaded', 'screener_results_error', 'screener_results_none_eligible'
-        )) as reached_results,
+        -- Clean results load only (matches the Results-Page "Results Viewed"
+        -- card, mart_screener_results_revisits). Error / none-eligible outcomes
+        -- are deliberately excluded so the two cards agree.
+        logical_or(event_name = 'screener_results_loaded') as reached_results,
         logical_or(event_name = 'screener_program_more_info') as clicked_more_info,
         logical_or(event_name = 'screener_apply_click') as clicked_apply
     from events

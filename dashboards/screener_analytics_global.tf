@@ -381,7 +381,7 @@ resource "metabase_card" "global_screener_results_revisits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_results_revisits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_results_revisits, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
@@ -608,7 +608,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action. Hover for the screening count and total actions."
+    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -895,7 +895,7 @@ resource "metabase_card" "global_screener_confirmation_edits" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_confirmation_edits, "__STATE_FILTER__", local.all_screener_global_predicate)
         template-tags = local.ga_date_tags
       }
     }
