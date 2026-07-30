@@ -803,7 +803,7 @@ resource "metabase_card" "screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action."
+    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action. Note: each action has its own visibility rules (e.g. delete needs 3+ members), so the bars share one denominator and understate the gated actions."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
