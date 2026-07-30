@@ -1035,9 +1035,21 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
       {
-        card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
+        # Sessions-per-screener distribution, directly below the conversion funnel.
+        card_id                = tonumber(metabase_card.global_screener_sessions_per_screener[0].id)
         dashboard_tab_id       = 4
         row                    = 10
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
+        dashboard_tab_id       = 4
+        row                    = 18
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1050,7 +1062,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_chrome_nav[0].id)
         dashboard_tab_id       = 4
-        row                    = 18
+        row                    = 26
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1061,7 +1073,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_social_clicks[0].id)
         dashboard_tab_id       = 4
-        row                    = 26
+        row                    = 34
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1072,7 +1084,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_footer_feedback_share[0].id)
         dashboard_tab_id       = 4
-        row                    = 26
+        row                    = 34
         col                    = 12
         size_x                 = 12
         size_y                 = 6
@@ -1298,13 +1310,13 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # ── (2) PROGRAMS: two row charts side-by-side, then conversion table ──
+      # ── (2) PROGRAMS: two row charts full width, then conversion table ──
       {
         card_id                = tonumber(metabase_card.global_screener_program_most_shown[0].id)
         dashboard_tab_id       = 6
         row                    = 14
         col                    = 0
-        size_x                 = 12
+        size_x                 = 24
         size_y                 = 10
         parameter_mappings     = []
         series                 = []
@@ -1313,9 +1325,9 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_program_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 14
-        col                    = 12
-        size_x                 = 12
+        row                    = 24
+        col                    = 0
+        size_x                 = 24
         size_y                 = 10
         parameter_mappings     = []
         series                 = []
@@ -1324,7 +1336,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_program_conversion[0].id)
         dashboard_tab_id       = 6
-        row                    = 24
+        row                    = 34
         col                    = 0
         size_x                 = 24
         size_y                 = 10
@@ -1338,7 +1350,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage[0].id)
         dashboard_tab_id       = 6
-        row                    = 34
+        row                    = 44
         col                    = 0
         size_x                 = 6
         size_y                 = 4
@@ -1349,7 +1361,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_resources_tab_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 34
+        row                    = 44
         col                    = 6
         size_x                 = 6
         size_y                 = 4
@@ -1360,7 +1372,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_additional_resources_edits[0].id)
         dashboard_tab_id       = 6
-        row                    = 34
+        row                    = 44
         col                    = 12
         size_x                 = 6
         size_y                 = 4
@@ -1371,7 +1383,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_get_help_clicks[0].id)
         dashboard_tab_id       = 6
-        row                    = 34
+        row                    = 44
         col                    = 18
         size_x                 = 6
         size_y                 = 4
@@ -1383,7 +1395,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_filter_usage_avg[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 48
         col                    = 0
         size_x                 = 6
         size_y                 = 4
@@ -1394,7 +1406,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_resources_tab_avg[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 48
         col                    = 6
         size_x                 = 6
         size_y                 = 4
@@ -1405,7 +1417,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_additional_resources_edits_avg[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 48
         col                    = 12
         size_x                 = 6
         size_y                 = 4
@@ -1416,7 +1428,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_help_avg[0].id)
         dashboard_tab_id       = 6
-        row                    = 38
+        row                    = 48
         col                    = 18
         size_x                 = 6
         size_y                 = 4
@@ -1430,7 +1442,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_resource_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 42
+        row                    = 52
         col                    = 0
         size_x                 = 24
         size_y                 = 15
@@ -1442,7 +1454,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_navigator_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 57
+        row                    = 67
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1454,7 +1466,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_document_downloads[0].id)
         dashboard_tab_id       = 6
-        row                    = 65
+        row                    = 75
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1465,7 +1477,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_more_help_resources[0].id)
         dashboard_tab_id       = 6
-        row                    = 73
+        row                    = 83
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1477,7 +1489,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_distribution[0].id)
         dashboard_tab_id       = 6
-        row                    = 81
+        row                    = 91
         col                    = 0
         size_x                 = 16
         size_y                 = 8
@@ -1488,7 +1500,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_nps_engagement[0].id)
         dashboard_tab_id       = 6
-        row                    = 81
+        row                    = 91
         col                    = 16
         size_x                 = 8
         size_y                 = 4
