@@ -14,17 +14,27 @@
 --   * Sessions per Screener: distribution of distinct_sessions across screeners
 --     (how fragmented a screening is across visits).
 --
--- Stage flags:
---   saw_results   = fired screener_results_loaded (clean load; matches the
---                   Results-Page "Results Viewed" card so the two agree)
+-- Stage flags (cumulative — a later stage implies every earlier one):
+--   saw_results   = fired screener_results_loaded (clean load) OR any later stage.
+--                   The base signal is the same event the Results-Page "Results
+--                   Viewed" card counts, so the two are CLOSE but not guaranteed
+--                   equal: this flag is cumulative (a screener that clicked
+--                   More-info/Apply with no recorded results_loaded still counts
+--                   here), and date attribution differs (see below), so under a
+--                   date filter a screener can bucket differently in the two marts.
 --   viewed_details= clicked "More info" on any program (screener_program_more_info)
 --   applied       = clicked Apply on any program (screener_apply_click)
 -- created is implicit — the screener exists (one row here).
 --
 -- A screener is attributed to the state + date of its FIRST event, so it lands in
--- one (date, state) bucket regardless of how many sessions/days it spans. is_cesn
--- is logical_or across the screener's events. distinct_sessions counts the distinct
--- ga_session_ids the screener_uid appeared under.
+-- one (date, state) bucket regardless of how many sessions/days it spans.
+-- is_cesn is logical_or(state='cesn') over the screener's events — NOT
+-- session-windowed like the staging models. Those window it because CESN's
+-- top-of-funnel events carry a null state; but this mart is uid-grain and a uid
+-- only exists post-disclaimer (after the white label is set), so every event here
+-- carries the resolved state and per-event derivation is equivalent (verified: 0
+-- of 66 CESN uids carry a mixed/non-cesn state).
+-- distinct_sessions counts the distinct ga_session_ids the screener_uid appeared under.
 
 with events as (
     select
@@ -58,9 +68,11 @@ per_screener as (
         min(event_date_parsed) as event_date_parsed,
         logical_or(lower(screener_state) = 'cesn') as is_cesn,
         count(distinct ga_session_id) as distinct_sessions,
-        -- Clean results load only (matches the Results-Page "Results Viewed"
-        -- card, mart_screener_results_revisits). Error / none-eligible outcomes
-        -- are deliberately excluded so the two cards agree.
+        -- Base "reached results" = clean results load only, the same event the
+        -- Results-Page "Results Viewed" card counts (error / none-eligible
+        -- outcomes excluded). Note saw_results below is the CUMULATIVE flag, so it
+        -- can exceed Results Viewed for a screener that engaged programs without a
+        -- recorded results_loaded.
         logical_or(event_name = 'screener_results_loaded') as reached_results,
         logical_or(event_name = 'screener_program_more_info') as clicked_more_info,
         logical_or(event_name = 'screener_apply_click') as clicked_apply
