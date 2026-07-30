@@ -204,7 +204,7 @@ resource "metabase_card" "global_screener_back_nav_by_step" {
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       # Blue = neutral navigation behavior (distinct from the red errors bar).
-      "series_settings" = { "% of Viewers who Went Back" = { color = "#6b6ecf" } }
+      "series_settings" = { "% of Viewers who Went Back" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -392,7 +392,7 @@ resource "metabase_card" "global_screener_results_revisits" {
       "graph.metrics"           = ["Screenings"]
       "graph.x_axis.title_text" = "Times Results Viewed"
       "graph.y_axis.decimals"   = 0
-      "series_settings"         = { "Screenings" = { color = "#af7aa1" } }
+      "series_settings"         = { "Screenings" = { color = "#9c755f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -562,8 +562,8 @@ resource "metabase_card" "global_screener_scroll_depth" {
       "column_settings"   = { "[\"name\",\"% of Tab Scrollers\"]" = { suffix = "%" } }
       "graph.show_values" = true
       "series_settings" = {
-        "Long-Term Benefits"   = { color = "#4e79a7" }
-        "Additional Resources" = { color = "#59a14f" }
+        "Long-Term Benefits"   = { color = "#af7aa1" }
+        "Additional Resources" = { color = "#edc948" }
       }
     }
     parameter_mappings = []
@@ -627,7 +627,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
       "graph.metrics"     = ["% of Household-Step Viewers"]
       "column_settings"   = { "[\"name\",\"% of Household-Step Viewers\"]" = { suffix = "%" } }
       "graph.show_values" = true
-      "series_settings"   = { "% of Household-Step Viewers" = { color = "#499894" } }
+      "series_settings"   = { "% of Household-Step Viewers" = { color = "#edc948" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -980,8 +980,8 @@ resource "metabase_card" "global_screener_filter_usage_avg" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Citizenship Filter — Avg per Screening"
-    description         = "Average number of times an engaged screening used the citizenship filter (uses ÷ screenings that used it). Above 1 means repeat toggling."
+    name                = "Citizenship Filter — Avg Uses (Among Users)"
+    description         = "Among screenings that used the citizenship filter, the average number of times they used it (uses ÷ screenings that used it). Screenings that never used it are excluded. Above 1 means repeat toggling."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1005,8 +1005,8 @@ resource "metabase_card" "global_screener_resources_tab_avg" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Additional Resources — Avg Opens per Screening"
-    description         = "Average number of times an engaged screening opened the Additional Resources tab (opens ÷ screenings that opened it). Above 1 means repeat visits."
+    name                = "Additional Resources — Avg Opens (Among Users)"
+    description         = "Among screenings that opened the Additional Resources tab, the average number of times they opened it (opens ÷ screenings that opened it). Screenings that never opened it are excluded. Above 1 means repeat visits."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1032,8 +1032,8 @@ resource "metabase_card" "global_screener_additional_resources_edits_avg" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Additional Resources Edited — Avg per Screening"
-    description         = "Average number of times an engaged screening used the Additional Resources edit link (edits ÷ screenings that edited). Above 1 means repeat edits."
+    name                = "Additional Resources Edited — Avg Edits (Among Users)"
+    description         = "Among screenings that used the Additional Resources edit link, the average number of times they used it (edits ÷ screenings that edited). Screenings that never edited are excluded. Above 1 means repeat edits."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1057,8 +1057,8 @@ resource "metabase_card" "global_screener_more_help_avg" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "More Help? — Avg Clicks per Screening"
-    description         = "Average number of times an engaged screening clicked the \"More Help?\" button (clicks ÷ screenings that clicked). Above 1 means repeat clicking (possible confusion)."
+    name                = "More Help? — Avg Clicks (Among Users)"
+    description         = "Among screenings that clicked the \"More Help?\" button, the average number of times they clicked it (clicks ÷ screenings that clicked). Screenings that never clicked are excluded. Above 1 means repeat clicking (possible confusion)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1098,8 +1098,8 @@ resource "metabase_card" "global_screener_nps_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Score", "Category"]
-      "graph.metrics"         = ["Responses"]
+      "graph.dimensions"      = ["Score"]
+      "graph.metrics"         = ["Detractor", "Passive", "Promoter"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "graph.x_axis.scale"      = "ordinal"
