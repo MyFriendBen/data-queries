@@ -8,6 +8,14 @@ on:
       - "!dbt/README.md"
       - ".github/workflows/dbt-on-merge.yml"
 
+# Serialize prod deploys: terraform-apply shares this group, so a dbt build and
+# a terraform apply never run against the same Metabase/warehouse at once, and
+# two rapid merges queue rather than overlap. Don't cancel in progress — a
+# partial dbt build would leave stale marts for terraform to read.
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
 jobs:
   dbt-build:
     runs-on: ubuntu-latest
