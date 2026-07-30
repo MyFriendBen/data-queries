@@ -392,7 +392,7 @@ resource "metabase_card" "global_screener_results_revisits" {
       "graph.metrics"           = ["Screenings"]
       "graph.x_axis.title_text" = "Times Results Viewed"
       "graph.y_axis.decimals"   = 0
-      "series_settings"         = { "Screenings" = { color = "#f28e2b" } }
+      "series_settings"         = { "Screenings" = { color = "#e8a33d" } }
     }
     parameter_mappings = []
     parameters         = []
