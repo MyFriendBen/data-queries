@@ -1082,7 +1082,9 @@ locals {
     SELECT
       CAST(scale.score AS STRING) AS `Score`,
       scale.category AS `Category`,
-      COALESCE(counts.responses, 0) AS `Responses`
+      -- NULL (not 0) for scores with no responses: keeps the x-axis slot/label
+      -- via the scale join, but renders no bar and no "0" value label.
+      counts.responses AS `Responses`
     FROM scale
     LEFT JOIN counts ON counts.nps_score = scale.score
     ORDER BY scale.score

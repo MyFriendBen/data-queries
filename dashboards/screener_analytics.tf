@@ -110,7 +110,7 @@ resource "metabase_card" "screener_step_funnel" {
 
   json = jsonencode({
     name                = "Form Step Reached"
-    description         = "Share of visits that reached at least each step, so bars shrink down the list. Counted per visit (session), since the first steps happen before a screener exists. Referral Source and Select State are excluded (only shown to some users)."
+    description         = "Share of visits that reached at least each step, so bars shrink down the list. Counted per visit (session), since the first steps happen before a screener is generated in our database. Referral Source and Select State are excluded (only shown to some users)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -198,7 +198,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
       "column_settings"         = { "[\"name\",\"% of Viewers who Went Back\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
-      "series_settings"         = { "% of Viewers who Went Back" = { color = "#e8a33d" } }
+      "series_settings"         = { "% of Viewers who Went Back" = { color = "#6b6ecf" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1157,6 +1157,7 @@ resource "metabase_card" "screener_nps_distribution" {
       "graph.metrics"         = ["Responses"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
+      "graph.x_axis.scale"      = "ordinal"
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       "series_settings" = {
         "Detractor" = { color = "#d64550" }
