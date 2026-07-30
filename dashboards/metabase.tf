@@ -1015,9 +1015,21 @@ resource "metabase_dashboard" "analytics" {
     }] : [],
     var.bigquery_enabled ? [
       {
-        card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
+        # Session -> screener bridge scalar, sitting above the screening funnel.
+        card_id                = tonumber(metabase_card.global_screener_session_to_screener[0].id)
         dashboard_tab_id       = 4
         row                    = 2
+        col                    = 0
+        size_x                 = 24
+        size_y                 = 3
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
+        dashboard_tab_id       = 4
+        row                    = 5
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1028,7 +1040,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
         dashboard_tab_id       = 4
-        row                    = 10
+        row                    = 13
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1041,7 +1053,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_chrome_nav[0].id)
         dashboard_tab_id       = 4
-        row                    = 18
+        row                    = 21
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1052,7 +1064,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_social_clicks[0].id)
         dashboard_tab_id       = 4
-        row                    = 26
+        row                    = 29
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1063,7 +1075,7 @@ resource "metabase_dashboard" "analytics" {
       {
         card_id                = tonumber(metabase_card.global_screener_footer_feedback_share[0].id)
         dashboard_tab_id       = 4
-        row                    = 26
+        row                    = 29
         col                    = 12
         size_x                 = 12
         size_y                 = 6

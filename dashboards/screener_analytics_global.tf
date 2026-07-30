@@ -20,8 +20,8 @@ resource "metabase_card" "global_screener_macro_funnel" {
   count = var.bigquery_enabled ? 1 : 0
 
   json = jsonencode({
-    name                = "Screener Macro Funnel"
-    description         = "Visitors -> Started -> Saw Results -> Viewed Details -> Clicked Apply. 'Viewed Details' = clicked 'More info' on a program. Note: Visitors/Started are counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3). Read stage-to-stage conversion as directional, not an exact ratio."
+    name                = "Screener Conversion Funnel"
+    description         = "Of screeners created, how many reached results, viewed a program's details ('More info'), and clicked Apply. Every stage counts distinct screeners, so each bar is a true share of the one above it. The earlier journey (landing → language → disclaimer drop-off) is the session-grain Form Step Reached funnel; the share of sessions that go on to create a screener is the 'Sessions That Start a Screener' card."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -40,6 +40,33 @@ resource "metabase_card" "global_screener_macro_funnel" {
     visualization_settings = {
       "graph.dimensions" = ["Funnel Step"]
       "graph.metrics"    = ["Screenings"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "global_screener_session_to_screener" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Sessions That Start a Screener"
+    description         = "Of sessions that entered the form (viewed the first step), the share that went on to create a screener. This is the session → screening handoff, shown as its own rate rather than a funnel stage because a screener can span multiple sessions."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_session_to_screener, "__STATE_FILTER_CESN__", local.all_screener_global_predicate)
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "% of Sessions That Start a Screener"
     }
     parameter_mappings = []
     parameters         = []

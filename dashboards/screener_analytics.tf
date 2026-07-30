@@ -39,8 +39,8 @@ resource "metabase_card" "screener_macro_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Screener Macro Funnel"
-    description         = "Started -> Saw Results -> Viewed Details -> Clicked Apply. 'Viewed Details' = clicked 'More info' on a program. Started is counted per browsing session; Saw Results and later are counted per screening (a screening ID isn't created until step 3), so read stage-to-stage conversion as directional, not an exact ratio."
+    name                = "Screener Conversion Funnel"
+    description         = "Of screeners created, how many reached results, viewed a program's details ('More info'), and clicked Apply. Every stage counts distinct screeners, so each bar is a true share of the one above it. The earlier journey (landing → language → disclaimer drop-off) is the session-grain Form Step Reached funnel; the share of sessions that go on to create a screener is the 'Sessions That Start a Screener' card."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -59,6 +59,33 @@ resource "metabase_card" "screener_macro_funnel" {
     visualization_settings = {
       "graph.dimensions" = ["Funnel Step"]
       "graph.metrics"    = ["Screenings"]
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "screener_session_to_screener" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Sessions That Start a Screener"
+    description         = "Of sessions that entered the form (viewed the first step), the share that went on to create a screener. This is the session → screening handoff, shown as its own rate rather than a funnel stage because a screener can span multiple sessions."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_session_to_screener, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "% of Sessions That Start a Screener"
     }
     parameter_mappings = []
     parameters         = []
@@ -1357,9 +1384,32 @@ locals {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
-          card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
+          # Session -> screener bridge scalar, above the screening funnel.
+          card_id          = tonumber(metabase_card.screener_session_to_screener[key].id)
           dashboard_tab_id = 10
           row              = 0
+          col              = 0
+          size_x           = 24
+          size_y           = 3
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_session_to_screener[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_session_to_screener[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
+          dashboard_tab_id = 10
+          row              = 3
           col              = 0
           size_x           = 24
           size_y           = 8

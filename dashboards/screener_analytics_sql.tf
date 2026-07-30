@@ -21,66 +21,64 @@
 # versions.
 
 locals {
-  # ── Tab 10 (Overview): Macro funnel ─────────────────────────────────────────
-  # NOTE: this body uses TWO state sentinels. __STATE_FILTER_CESN__ goes on the
-  # marts that carry the is_cesn flag and retain null-state rows (form funnel,
-  # results outcomes); __STATE_FILTER__ goes on program_interactions, which fires
-  # post-white-label (no null-state / no cesn rows, no is_cesn column). The global
-  # consumer substitutes the is_cesn predicate for the former and the plain IN-list
-  # for the latter; the tenant consumer substitutes its own IN-list for both.
+  # ── Tab 10 (Overview): Screening conversion funnel ──────────────────────────
+  # SCREENING-grain funnel: of screeners created, how many converted through to
+  # applying. Every stage is a distinct screener_uid from one mart, so each bar is
+  # a true subset of the one above it — no cross-grain ratio. The pre-screening
+  # journey (landing/language/disclaimer drop-off) is the session-grain step funnel
+  # on the Form Journey tab; the session -> screener handoff is its own scalar
+  # (screener_sql_session_to_screener). __STATE_FILTER_CESN__ (mart carries is_cesn).
   screener_sql_macro_funnel = <<-SQL
-    WITH started AS (
+    WITH agg AS (
+      SELECT
+        SUM(screenings_created)        AS created,
+        SUM(screenings_saw_results)    AS saw_results,
+        SUM(screenings_viewed_details) AS viewed_details,
+        SUM(screenings_applied)        AS applied
+      FROM `${local.bq_dataset}.mart_screener_screening_funnel`
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
+    FROM (
+      SELECT 'Screeners Created' AS funnel_step, (SELECT created) AS screenings, 1 AS step_order FROM agg
+      UNION ALL SELECT 'Saw Results',    (SELECT saw_results),    2 FROM agg
+      UNION ALL SELECT 'Viewed Details', (SELECT viewed_details), 3 FROM agg
+      UNION ALL SELECT 'Clicked Apply',  (SELECT applied),        4 FROM agg
+    )
+    ORDER BY step_order
+  SQL
+
+  # ── Tab 10 (Overview): session -> screener conversion (bridge scalar) ────────
+  # What share of sessions that entered the form (viewed step 1 / language) went
+  # on to create a screener. This is the ONE place the session -> screening grain
+  # change is surfaced — as an explicit rate, never as a funnel stage (~15%+ of
+  # screenings span multiple sessions, so a cross-grain funnel bar would be wrong).
+  # Denominator is session-grain (form funnel, is_cesn + null-state) so it uses the
+  # CESN sentinel; numerator is screening-grain from the screening funnel mart.
+  screener_sql_session_to_screener = <<-SQL
+    WITH sessions AS (
       SELECT SUM(screenings_viewed_step) AS n
       FROM `${local.bq_dataset}.mart_screener_form_funnel`
       WHERE __STATE_FILTER_CESN__
-        AND screener_step_name = '__form_start__'
+        AND screener_step_name = 'language'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
-    results AS (
-      SELECT SUM(screenings_results_loaded) AS n
-      FROM `${local.bq_dataset}.mart_screener_results_outcomes`
+    screeners AS (
+      SELECT SUM(screenings_created) AS n
+      FROM `${local.bq_dataset}.mart_screener_screening_funnel`
       WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    more_info AS (
-      -- Distinct screenings that viewed any program's details. Counted from the
-      -- screening-grain mart, not SUM(screenings_with_interaction) off the daily
-      -- per-program mart — that sums across programs (a screening that viewed 5
-      -- programs counts 5) and can exceed the Saw Results stage above it.
-      SELECT COUNT(DISTINCT screener_uid) AS n
-      FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
-      WHERE __STATE_FILTER__
-        AND interaction_type = 'more_info'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    apply AS (
-      -- Distinct screenings that clicked Apply on any program (same grain fix).
-      SELECT COUNT(DISTINCT screener_uid) AS n
-      FROM `${local.bq_dataset}.mart_screener_program_interactions_by_screening`
-      WHERE __STATE_FILTER__
-        AND interaction_type = 'apply'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
-    -- Funnel starts at "Started" (form_start), not raw site Visitors: the old
-    -- Visitors stage read the legacy all-time mart_ga_kpi_summary, a different
-    -- population/window that produced a meaningless ~99% first-stage drop. All
-    -- stages here come from the new event marts on the same epoch-floored window.
-    SELECT funnel_step AS `Funnel Step`, screenings AS `Screenings`
-    FROM (
-      SELECT 'Started'            AS funnel_step, (SELECT n FROM started)   AS screenings, 1 AS step_order
-      UNION ALL SELECT 'Saw Results',        (SELECT n FROM results),   2
-      UNION ALL SELECT 'Viewed Details',     (SELECT n FROM more_info), 3
-      UNION ALL SELECT 'Clicked Apply',      (SELECT n FROM apply),     4
-    )
-    ORDER BY step_order
+    SELECT
+      ROUND((SELECT n FROM screeners) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions That Start a Screener`,
+      (SELECT n FROM screeners) AS `Screeners Created`
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
