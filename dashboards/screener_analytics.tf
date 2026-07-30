@@ -40,7 +40,7 @@ resource "metabase_card" "screener_macro_funnel" {
 
   json = jsonencode({
     name                = "Screener Conversion Funnel"
-    description         = "Of screeners created, how many reached results, viewed a program ('More info'), and clicked Apply. Each bar counts distinct screeners. Pre-screener drop-off is the Form Step Reached funnel."
+    description         = "Of screeners created, how many reached results, viewed a program ('More info'), and clicked Apply. Each bar counts unique screeners. A screener is \"created\" as soon as a user passes the Terms & Conditions Disclaimer step."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -65,12 +65,12 @@ resource "metabase_card" "screener_macro_funnel" {
   })
 }
 
-resource "metabase_card" "screener_session_to_screener" {
+resource "metabase_card" "screener_sessions_per_screener" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Sessions That Start a Screener"
-    description         = "Of sessions that reach the screener, the share that get past the terms & conditions step, which creates the screener. Shown as a rate, not a funnel stage, because a screener can span multiple sessions."
+    name                = "Sessions per Screener"
+    description         = "How many browsing sessions a screener spans — the share of screeners finished in one sitting vs. spread across return visits. Bars are % of all screeners and sum to 100%."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -79,14 +79,18 @@ resource "metabase_card" "screener_session_to_screener" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_session_to_screener, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        query         = replace(local.screener_sql_sessions_per_screener, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
         template-tags = local.ga_date_tags
       }
     }
-    display = "scalar"
+    display = "bar"
     visualization_settings = {
-      "scalar.field"    = "% of Sessions That Start a Screener"
-      "column_settings" = { "[\"name\",\"% of Sessions That Start a Screener\"]" = { suffix = "%" } }
+      "graph.dimensions"        = ["Sessions"]
+      "graph.metrics"           = ["% of Screeners"]
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Sessions per Screener"
+      "column_settings"         = { "[\"name\",\"% of Screeners\"]" = { suffix = "%" } }
+      "series_settings"         = { "% of Screeners" = { color = "#b07aa1" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -194,7 +198,7 @@ resource "metabase_card" "screener_back_nav_by_step" {
       "column_settings"         = { "[\"name\",\"% of Viewers who Went Back\"]" = { suffix = "%" } }
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
-      "series_settings"         = { "% of Viewers who Went Back" = { color = "#59a14f" } }
+      "series_settings"         = { "% of Viewers who Went Back" = { color = "#e8a33d" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -849,7 +853,7 @@ resource "metabase_card" "screener_income_source_engagement" {
       "graph.dimensions"  = ["Action"]
       "graph.metrics"     = ["% of Member Pages"]
       "graph.show_values" = true
-      "series_settings"   = { "% of Member Pages" = { color = "#499894" } }
+      "series_settings"   = { "% of Member Pages" = { color = "#af7aa1" } }
       "column_settings"   = { "[\"name\",\"% of Member Pages\"]" = { suffix = "%" } }
     }
     parameter_mappings = []
@@ -950,7 +954,7 @@ resource "metabase_card" "screener_confirmation_edits" {
       "graph.metrics"     = ["% of Confirmation Viewers"]
       "graph.show_values" = true
       "column_settings"   = { "[\"name\",\"% of Confirmation Viewers\"]" = { suffix = "%" } }
-      "series_settings"   = { "% of Confirmation Viewers" = { color = "#4e79a7" } }
+      "series_settings"   = { "% of Confirmation Viewers" = { color = "#9c755f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1197,6 +1201,7 @@ resource "metabase_card" "screener_public_charge_click_rate" {
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Link"
       "column_settings"         = { "[\"name\",\"% of Disclaimer Viewers\"]" = { suffix = "%" } }
+      "series_settings"         = { "% of Disclaimer Viewers" = { color = "#ff9da7" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1383,32 +1388,9 @@ locals {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
-          # Session -> screener bridge scalar, above the screening funnel.
-          card_id          = tonumber(metabase_card.screener_session_to_screener[key].id)
-          dashboard_tab_id = 10
-          row              = 0
-          col              = 0
-          size_x           = 24
-          size_y           = 3
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_session_to_screener[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_session_to_screener[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
           card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
           dashboard_tab_id = 10
-          row              = 3
+          row              = 0
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1421,6 +1403,29 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_macro_funnel[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # Sessions-per-screener distribution, directly below the conversion funnel.
+          card_id          = tonumber(metabase_card.screener_sessions_per_screener[key].id)
+          dashboard_tab_id = 10
+          row              = 8
+          col              = 0
+          size_x           = 24
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_sessions_per_screener[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_sessions_per_screener[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

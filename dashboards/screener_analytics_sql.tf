@@ -23,18 +23,17 @@
 locals {
   # ── Tab 10 (Overview): Screening conversion funnel ──────────────────────────
   # SCREENING-grain funnel: of screeners created, how many converted through to
-  # applying. Every stage is a distinct screener_uid from one mart, so each bar is
-  # a true subset of the one above it — no cross-grain ratio. The pre-screening
-  # journey (landing/language/disclaimer drop-off) is the session-grain step funnel
-  # on the Form Journey tab; the session -> screener handoff is its own scalar
-  # (screener_sql_session_to_screener). __STATE_FILTER_CESN__ (mart carries is_cesn).
+  # applying. The mart is one row per screener_uid, so COUNTIF over the stage flags
+  # gives a true distinct-screener subset chain (each bar ⊆ the one above). The
+  # pre-screening journey (landing/language/disclaimer drop-off) is the session-grain
+  # step funnel on the Form Journey tab. __STATE_FILTER_CESN__ (mart carries is_cesn).
   screener_sql_macro_funnel = <<-SQL
     WITH agg AS (
       SELECT
-        SUM(screenings_created)        AS created,
-        SUM(screenings_saw_results)    AS saw_results,
-        SUM(screenings_viewed_details) AS viewed_details,
-        SUM(screenings_applied)        AS applied
+        COUNT(*)                    AS created,
+        COUNTIF(saw_results)        AS saw_results,
+        COUNTIF(viewed_details)     AS viewed_details,
+        COUNTIF(applied)            AS applied
       FROM `${local.bq_dataset}.mart_screener_screening_funnel`
       WHERE __STATE_FILTER_CESN__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -51,34 +50,23 @@ locals {
     ORDER BY step_order
   SQL
 
-  # ── Tab 10 (Overview): session -> screener conversion (bridge scalar) ────────
-  # What share of sessions that entered the form (viewed step 1 / language) went
-  # on to create a screener. This is the ONE place the session -> screening grain
-  # change is surfaced — as an explicit rate, never as a funnel stage (~15%+ of
-  # screenings span multiple sessions, so a cross-grain funnel bar would be wrong).
-  # Denominator is session-grain (form funnel, is_cesn + null-state) so it uses the
-  # CESN sentinel; numerator is screening-grain from the screening funnel mart.
-  screener_sql_session_to_screener = <<-SQL
-    WITH sessions AS (
-      SELECT SUM(screenings_viewed_step) AS n
-      FROM `${local.bq_dataset}.mart_screener_form_funnel`
-      WHERE __STATE_FILTER_CESN__
-        AND screener_step_name = 'language'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    screeners AS (
-      SELECT SUM(screenings_created) AS n
-      FROM `${local.bq_dataset}.mart_screener_screening_funnel`
-      WHERE __STATE_FILTER_CESN__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    )
+  # ── Tab 10 (Overview): sessions per screener (distribution) ──────────────────
+  # How many GA sessions a screener spans — the share of screeners completed in 1
+  # session vs. spread across 2, 3, ... visits. One bar per distinct-session count;
+  # bars are % of all screeners (buckets partition every screener, so they sum to
+  # 100%). Reads the per-screener screening mart. __STATE_FILTER_CESN__.
+  screener_sql_sessions_per_screener = <<-SQL
     SELECT
-      ROUND((SELECT n FROM screeners) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions That Start a Screener`,
-      (SELECT n FROM screeners) AS `Screeners Created`
+      CAST(distinct_sessions AS STRING) AS `Sessions`,
+      ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS `% of Screeners`
+    FROM `${local.bq_dataset}.mart_screener_screening_funnel`
+    WHERE __STATE_FILTER_CESN__
+      AND distinct_sessions > 0
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+    [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY distinct_sessions
+    ORDER BY distinct_sessions
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
