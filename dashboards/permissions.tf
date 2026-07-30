@@ -99,6 +99,18 @@ resource "metabase_collection_graph" "graph" {
       }
     ],
 
+    # --- Global group: read on the CU Denver referrer collection -------------
+    # cu_denver is a referrer overlay, not a tenant, so it isn't in
+    # tenant_collection_map above — grant it to global explicitly so super users
+    # (Global Viewers) can see every dashboard.
+    [
+      {
+        group      = metabase_permissions_group.global.id
+        collection = metabase_collection.cu_denver.id
+        permission = "read"
+      }
+    ],
+
     # --- Per-tenant group: read-only access to their own collection ----------
     [
       for key, tenant in var.tenants : {
