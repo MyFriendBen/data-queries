@@ -3,14 +3,19 @@
 # (metabase_database.postgres) and has no partner filter.
 
 # =============================================================================
-# Helper: strip the Metabase partner template-tag placeholder from SQL files
+# Helper: strip ALL Metabase optional-clause placeholders from SQL files
 # =============================================================================
+# Global cards query the unfiltered database and declare no template-tags, so
+# every "[[AND {{...}}]]" optional clause in the shared SQL files must be
+# removed before the query reaches Postgres — otherwise the literal "[[" is
+# sent as SQL and Postgres throws "syntax error at or near \"[\"".
+#
+# The SQL files carry six such clauses (submission_date, partner, county,
+# utm_campaign, utm_medium, utm_source). A regex strips them all in one pass,
+# so adding a new filter to the SQL files never silently breaks a global card.
+# Pattern: optional leading whitespace, then "[[ ... ]]".
 locals {
-  # For SQL files: remove the partner and county filter clauses
-  _partner_clause     = " [[AND {{partner}}]]"
-  _partner_clause_alt = "\n    [[AND {{partner}}]]"
-  _county_clause      = " [[AND {{county}}]]"
-  _county_clause_alt  = "\n    [[AND {{county}}]]"
+  _optional_clause_regex = "/\\s*\\[\\[[^]]*\\]\\]/"
 
   # Base config for global cards (no template-tags, no partner filter)
   global_card_base_config = {
@@ -181,18 +186,17 @@ resource "metabase_card" "global_top_partners" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/top_partners.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/top_partners.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )
@@ -209,18 +213,17 @@ resource "metabase_card" "global_top_counties" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/top_counties.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/top_counties.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
     visualization_settings = merge(local.global_table_card_config.visualization_settings, {
+      "table.row_index" = true
       "column_settings" = {
-        "[\"name\",\"#\"]" = local.show_minibar_true
-        "[\"name\",\"%\"]" = merge(
+        "[\"name\",\"# of Screeners\"]" = local.show_minibar_true
+        "[\"name\",\"% of Screeners\"]" = merge(
           local.show_minibar_true,
           local.number_format_percent_0
         )
@@ -329,11 +332,9 @@ resource "metabase_card" "global_head_of_household_ages" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_head_ages.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_head_ages.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -350,11 +351,9 @@ resource "metabase_card" "global_household_member_ages" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_member_ages.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_member_ages.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -371,11 +370,9 @@ resource "metabase_card" "global_household_sizes" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_sizes.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_sizes.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -392,11 +389,9 @@ resource "metabase_card" "global_household_languages" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_languages.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_languages.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -419,11 +414,9 @@ resource "metabase_card" "global_household_income_distribution" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_income_distribution.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_income_distribution.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -440,11 +433,9 @@ resource "metabase_card" "global_household_assets_distribution" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/household_assets_distribution.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/household_assets_distribution.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -460,11 +451,9 @@ resource "metabase_card" "global_income_streams" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/income_streams.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/income_streams.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -482,11 +471,9 @@ resource "metabase_card" "global_common_expenses" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
-          replace(replace(
-            templatefile("${path.module}/sql/common_expenses.sql", {}),
-          local._partner_clause_alt, ""), local._partner_clause, ""),
-          local._county_clause_alt, ""), local._county_clause, ""
+        query = replace(
+          templatefile("${path.module}/sql/common_expenses.sql", {}),
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -525,9 +512,9 @@ resource "metabase_card" "global_current_benefits_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
+        query = replace(
           templatefile("${path.module}/sql/current_benefits.sql", {}),
-          local._partner_clause, ""), local._county_clause, ""
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -551,9 +538,9 @@ resource "metabase_card" "global_qualified_benefits_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
+        query = replace(
           templatefile("${path.module}/sql/qualified_benefits.sql", {}),
-          local._partner_clause, ""), local._county_clause, ""
+          local._optional_clause_regex, ""
         )
       }
     }
@@ -576,9 +563,9 @@ resource "metabase_card" "global_immediate_needs_table" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = replace(replace(
+        query = replace(
           templatefile("${path.module}/sql/immediate_needs.sql", {}),
-          local._partner_clause, ""), local._county_clause, ""
+          local._optional_clause_regex, ""
         )
       }
     }

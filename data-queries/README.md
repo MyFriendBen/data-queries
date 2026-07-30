@@ -20,7 +20,6 @@ data_referrer_codes
         ├── data_current_benefits
         ├── data_householdmembers
         ├── data_immediate_needs
-        ├── data_previous_benefits
         └── data_tenant (security view with row-level security)
 ```
 
@@ -111,7 +110,7 @@ DROP MATERIALIZED VIEW data_referrer_codes CASCADE;
 **Warning**: This will also drop:
 
 - `data` materialized view
-- All views that depend on `data`: `data_current_benefits`, `data_householdmembers`, `data_immediate_needs`, `data_previous_benefits`
+- All views that depend on `data`: `data_current_benefits`, `data_householdmembers`, `data_immediate_needs`
 - `data_tenant` security view (and any associated permissions)
 
 ### Step 3: Recreate data_referrer_codes
@@ -146,7 +145,6 @@ Execute each of these SQL files in any order (they all depend on `data`, not on 
 - `data_current_benefits.sql`
 - `data_householdmembers.sql`
 - `data_immediate_needs.sql`
-- `data_previous_benefits.sql`
 - `data_income.sql`
 - `data_expenses.sql`
 
@@ -168,7 +166,6 @@ WHERE matviewname IN (
     'data_current_benefits',
     'data_householdmembers',
     'data_immediate_needs',
-    'data_previous_benefits',
     'data_income',
     'data_expenses'
 );
@@ -239,7 +236,6 @@ INSERT INTO referrer_codes_table VALUES ('newcode', 'Partner Name');
    - `/data-queries/data_current_benefits.sql`
    - `/data-queries/data_householdmembers.sql`
    - `/data-queries/data_immediate_needs.sql`
-   - `/data-queries/data_previous_benefits.sql`
 4. Recreate data_tenant view and permissions (see Step 6)
 
 ## Rollback Plan
