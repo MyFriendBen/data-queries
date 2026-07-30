@@ -46,7 +46,7 @@ resource "metabase_permissions_group" "tenant_editor" {
   name = "${each.value.display_name} Editors"
 }
 
-# --- CU Denver referrer viewer group (MFB-1568) ------------------------------
+# --- CU Denver referrer viewer group ------------------------------
 # CU Denver is a referrer inside the CO white label, not a tenant. This group is
 # view-only: read on the CU Denver collection (below) and NO ad-hoc DB query
 # access anywhere (the dashboard cards are pre-scoped to referrer=cudenver, so

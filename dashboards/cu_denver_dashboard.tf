@@ -1,5 +1,5 @@
 # =============================================================================
-# CU Denver referrer dashboard (MFB-1568)
+# CU Denver referrer dashboard
 # =============================================================================
 # CU Denver is the `cudenver` referrer inside the CO white label — NOT a tenant.
 # These cards query the CO tenant connection (so white-label RLS limits rows to
@@ -8,8 +8,8 @@
 # CU Denver viewer group has collection-read only + no ad-hoc DB query access
 # (see permissions.tf), so viewers cannot broaden the scope.
 #
-# Aggregate / de-identified only — no PII. Completed screeners only; no global
-# comparison in v1 (both are deliberate v1 cuts — see the ticket).
+# Aggregate / de-identified only — no PII. Scope: completed screeners only
+# (excludes started-but-incomplete) and no cross-partner/global comparison.
 
 locals {
   cudenver_db_id  = tonumber(metabase_database.tenant_postgres["co"].id)
