@@ -537,7 +537,7 @@ resource "metabase_card" "global_screener_scroll_depth" {
 
   json = jsonencode({
     name                = "Results Scroll Depth"
-    description         = "Of the screenings that scrolled a results tab, how far the deepest scroll got (each screening counted once, in its furthest bucket). Bars are the % of that tab's scrollers; hover for the raw count. Split by tab."
+    description         = "Of the screenings that scrolled a results tab, how far the deepest scroll got (each screening counted once, in its furthest bucket). Bars are the % of that tab's scrollers. Split by tab."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -608,7 +608,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people adjust their household after entering an initial size: of the screenings that reached the member basic-info step, the % that added, edited, or deleted a member. Hover for the screening count and total actions."
+    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action. Hover for the screening count and total actions."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -639,7 +639,7 @@ resource "metabase_card" "global_screener_income_source_engagement" {
 
   json = jsonencode({
     name                = "Income Source Actions per Member Page"
-    description         = "Of the member-detail pages people viewed, the % where they added or deleted an income source. (Income has no edit action.)"
+    description         = "Of the Household Member pages people viewed, the % where they added or deleted an income source."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -700,7 +700,7 @@ resource "metabase_card" "global_screener_errors_detail" {
 
   json = jsonencode({
     name                = "Validation Errors Detail"
-    description         = "Which fields fail validation and why, by screener step, ordered by error count. Field and Problem are humanized from the PII-safe error code; counts are consolidated across repeated fields (e.g. all income rows roll up to Income)."
+    description         = "Which fields fail validation and why, by screener step, ordered by error count. Field and Problem are humanized from the PII-safe error code."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1279,7 +1279,7 @@ resource "metabase_card" "global_screener_document_downloads" {
 
   json = jsonencode({
     name                = "Document Downloads"
-    description         = "Which 'Key Information You May Need to Provide' documents get downloaded, by program, as a rate. Shown = screenings shown the document; Downloaded = screenings that downloaded it; Downloads = total download clicks; Download Rate % = Downloaded ÷ Shown."
+    description         = "Which 'Key Information You May Need to Provide' documents get downloaded, by program, as a rate. Shown = screenings shown the document; Downloaded = screenings that downloaded it; Download Rate % = Downloaded ÷ Shown."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

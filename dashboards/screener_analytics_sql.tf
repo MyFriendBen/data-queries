@@ -1185,6 +1185,13 @@ locals {
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),
+    -- Fixed set of the three inline disclaimer links, so all three bars always
+    -- show even before any are clicked. link_name values match the FE emit.
+    links AS (
+      SELECT 1 AS sort_key, 'Public Charge'        AS link_label
+      UNION ALL SELECT 2, 'Privacy Policy'
+      UNION ALL SELECT 3, 'Terms and Conditions'
+    ),
     link_clicks AS (
       SELECT
         link_label,
@@ -1199,15 +1206,19 @@ locals {
       GROUP BY link_label
     )
     SELECT
-      link_label AS `Link`,
+      links.link_label AS `Link`,
       -- Rate = distinct screenings that clicked the link ÷ distinct disclaimer
-      -- viewers (a true "clicked at least once" %, not clicks-per-viewer). Both are
-      -- per-day-distinct summed vs a cross-day distinct denominator, so a residual
-      -- multi-day over-count is possible — LEAST clamps it.
-      LEAST(ROUND(clicked_screenings * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1), 100.0) AS `% of Disclaimer Viewers`,
-      c AS `Clicks`
-    FROM link_clicks
-    ORDER BY `% of Disclaimer Viewers` DESC
+      -- viewers (a true "clicked at least once" %, not clicks-per-viewer). NULL
+      -- (not 0) for links no one clicked so the bar/label is blank rather than a
+      -- "0%". Both counts are per-day-distinct vs a cross-day distinct denominator,
+      -- so a residual multi-day over-count is possible — LEAST clamps it.
+      CASE WHEN link_clicks.clicked_screenings > 0
+        THEN LEAST(ROUND(link_clicks.clicked_screenings * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1), 100.0)
+      END AS `% of Disclaimer Viewers`,
+      link_clicks.c AS `Clicks`
+    FROM links
+    LEFT JOIN link_clicks ON link_clicks.link_label = links.link_label
+    ORDER BY links.sort_key
   SQL
 
   # ── Results: "edit Additional Resources" from the results Needs section ───────
