@@ -1306,7 +1306,7 @@ resource "metabase_card" "global_screener_more_help_resources" {
 
   json = jsonencode({
     name                = "More Help Resource Clicks"
-    description         = "On the 'More Help' page, which 'Other Resources Near You' Visit-Website links get clicked. Clicks = total; Screenings = distinct screenings."
+    description         = "On the 'More Help' page, which 'Other Resources Near You' Visit-Website links get clicked. Distinct Screeners = screenings that clicked; Total Clicks = all clicks (higher when a screening clicks more than once)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

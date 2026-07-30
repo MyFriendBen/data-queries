@@ -57,7 +57,7 @@ locals {
   # 100%). Reads the per-screener screening mart. __STATE_FILTER_CESN__.
   screener_sql_sessions_per_screener = <<-SQL
     SELECT
-      CAST(distinct_sessions AS STRING) AS `Sessions`,
+      distinct_sessions AS `Sessions`,
       ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS `% of Screeners`
     FROM `${local.bq_dataset}.mart_screener_screening_funnel`
     WHERE __STATE_FILTER_CESN__
@@ -1080,11 +1080,11 @@ locals {
       GROUP BY nps_score
     )
     SELECT
-      CAST(scale.score AS STRING) AS `Score`,
+      scale.score AS `Score`,
       -- Single metric so Score is the sole dimension and bars center under each
       -- label (a second series/dimension makes Metabase reserve per-category
-      -- sub-slots and offsets the bars). Per-bar category color is set in the
-      -- card's series_settings, keyed by score. NULL (not 0) for empty scores:
+      -- sub-slots and offsets the bars). Score stays numeric so the axis orders
+      -- 0..10 (a string dimension sorts 0,1,10,2). NULL (not 0) for empty scores:
       -- no bar, no "0" label, but the scale join keeps the x-axis slot.
       counts.responses AS `Responses`
     FROM scale

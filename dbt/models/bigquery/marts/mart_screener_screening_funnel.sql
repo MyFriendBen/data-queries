@@ -35,22 +35,41 @@ with events as (
         event_timestamp,
         event_name
     from {{ source('google_analytics', 'events_*') }}
-    where (select value.string_value from unnest(event_params) where key = 'screener_uid' limit 1) is not null
+    -- Bound the wildcard scan: the app-emitted screener_* contract went live
+    -- 2026-07-25, so nothing before that carries a usable screener_uid.
+    where _table_suffix >= '20260725'
+        and (select value.string_value from unnest(event_params) where key = 'screener_uid' limit 1) is not null
+),
+
+per_screener as (
+    select
+        screener_uid,
+        -- attribute the screener to the state/date of its earliest event
+        array_agg(screener_state ignore nulls order by event_timestamp limit 1)[safe_offset(0)] as screener_state,
+        min(event_date_parsed) as event_date_parsed,
+        logical_or(lower(screener_state) = 'cesn') as is_cesn,
+        count(distinct ga_session_id) as distinct_sessions,
+        logical_or(event_name in (
+            'screener_results_loaded', 'screener_results_error', 'screener_results_none_eligible'
+        )) as reached_results,
+        logical_or(event_name = 'screener_program_more_info') as clicked_more_info,
+        logical_or(event_name = 'screener_apply_click') as clicked_apply
+    from events
+    group by screener_uid
 )
 
--- One row per screener_uid.
+-- Cumulative funnel flags: a later stage implies every earlier one, so the
+-- dashboard COUNTIFs form a true monotonic subset chain (created >= saw_results
+-- >= viewed_details >= applied) even if a screener fired a later event without a
+-- recorded earlier one.
 select
     screener_uid,
-    -- attribute the screener to the state/date of its earliest event
-    array_agg(screener_state ignore nulls order by event_timestamp limit 1)[safe_offset(0)] as screener_state,
-    min(event_date_parsed) as event_date_parsed,
-    logical_or(lower(screener_state) = 'cesn') as is_cesn,
-    count(distinct ga_session_id) as distinct_sessions,
-    logical_or(event_name in (
-        'screener_results_loaded', 'screener_results_error', 'screener_results_none_eligible'
-    )) as saw_results,
-    logical_or(event_name = 'screener_program_more_info') as viewed_details,
-    logical_or(event_name = 'screener_apply_click') as applied,
+    screener_state,
+    event_date_parsed,
+    is_cesn,
+    distinct_sessions,
+    reached_results or clicked_more_info or clicked_apply as saw_results,
+    clicked_more_info or clicked_apply                    as viewed_details,
+    clicked_apply                                         as applied,
     current_timestamp() as updated_at
-from events
-group by screener_uid
+from per_screener
