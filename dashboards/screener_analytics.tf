@@ -70,7 +70,7 @@ resource "metabase_card" "screener_sessions_per_screener" {
 
   json = jsonencode({
     name                = "Sessions per Screener"
-    description         = "How many browsing sessions a screener spans — the share of screeners finished in one sitting vs. spread across return visits. Bars are % of all screeners and sum to 100%."
+    description         = "How many browsing sessions a screener spans — the share worked on in a single session vs. picked back up across return visits (whether or not they finished). Bars are % of all screeners and sum to 100%."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
