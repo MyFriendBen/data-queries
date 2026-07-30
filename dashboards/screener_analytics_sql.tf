@@ -501,7 +501,7 @@ locals {
       SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
     FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY program_id
@@ -524,7 +524,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
@@ -555,7 +555,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id
@@ -584,7 +584,7 @@ locals {
       SUM(CASE WHEN interaction_type = 'shown' THEN screenings_with_interaction ELSE 0 END) AS `Shown`
     FROM `${local.bq_dataset}.mart_screener_program_interactions`
     WHERE __STATE_FILTER__
-    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY program_id, screener_state
@@ -603,7 +603,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'more_info' THEN screenings_with_interaction ELSE 0 END) AS more_info
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, screener_state
@@ -628,7 +628,7 @@ locals {
         SUM(CASE WHEN interaction_type = 'apply'     THEN screenings_with_interaction ELSE 0 END) AS applied
       FROM `${local.bq_dataset}.mart_screener_program_interactions`
       WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, screener_state
@@ -737,7 +737,7 @@ locals {
     FROM `${local.bq_dataset}.mart_screener_resource_engagement_by_screening`
     WHERE __STATE_FILTER_CESN__
       AND metric IN ('resource_shown', 'resource_more_info', 'resource_click')
-    AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY `Resource`
@@ -1267,12 +1267,10 @@ locals {
   #   Downloaded    = distinct screenings that downloaded it (numerator)
   #   Download Rate % = Downloaded / Shown
   # Both counts are distinct screenings over the range. document_shown comes from
-  # the results_programs view_item_list impressions, which under-fired before the
-  # 07-28 frontend fix — so this card floors on screener_shown_epoch (like the
-  # other impression cards) to exclude the bad window, and LEAST(...,100) clamps
-  # any residual download-without-a-matching-impression so the rate can't exceed
-  # 100%. Grouped by (program_id, document_name) so the same document under two
-  # programs stays two rows.
+  # the view_item_list impressions; LEAST(...,100) clamps any residual
+  # download-without-a-matching-impression so the rate can't exceed 100%. Grouped
+  # by (program_id, document_name) so the same document under two programs stays
+  # two rows.
   # NOTE: shown↔downloaded line up on program_id + document_name; if the exploded
   # shown-array name and the scalar download name drift in casing/punctuation they
   # won't match — on the PR verification checklist.
@@ -1288,7 +1286,7 @@ locals {
       WHERE __STATE_FILTER__
         AND interaction_type IN ('document_shown', 'document_download')
         AND document_name IS NOT NULL
-      AND event_date_parsed >= DATE('${local.screener_shown_epoch}')
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
       GROUP BY program_id, document_name
@@ -1310,8 +1308,8 @@ locals {
   screener_sql_more_help_resources = <<-SQL
     SELECT
       dimension AS `Resource`,
-      SUM(distinct_screenings) AS `Screenings`,
-      SUM(total_clicks) AS `Clicks`
+      SUM(distinct_screenings) AS `Distinct Screeners`,
+      SUM(total_clicks) AS `Total Clicks`
     FROM `${local.bq_dataset}.mart_screener_help`
     WHERE __STATE_FILTER__
       AND metric = 'more_help_resource_click'
@@ -1319,7 +1317,7 @@ locals {
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY `Resource`
-    ORDER BY `Clicks` DESC
+    ORDER BY `Total Clicks` DESC
   SQL
 
   # ── Results: "Back to Screener" rate (% of results viewers who went back) ───────
