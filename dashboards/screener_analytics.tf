@@ -567,7 +567,7 @@ resource "metabase_card" "screener_program_engagement" {
 
   json = jsonencode({
     name                = "Program Engagement (Top 15)"
-    description         = "The 15 programs with the highest Viewed-Details Rate % (share of screenings shown the program that clicked 'More info' to view its details). Only programs shown to ≥20 screenings, so small-denominator flukes don't top the ranking."
+    description         = "The 15 programs with the highest Viewed-Details Rate % (share of screenings shown the program that clicked 'More info' to view its details)."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1125,6 +1125,8 @@ resource "metabase_card" "screener_nps_distribution" {
       "graph.metrics"         = ["Responses"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
+      "graph.y_axis.auto_range" = false
+      "graph.y_axis.min"        = 0
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       "series_settings" = {
         "Detractor" = { color = "#d64550" }
@@ -1751,12 +1753,12 @@ locals {
           visualization_settings = {}
         },
         {
-          # ── (2) PROGRAMS: two row charts side-by-side, then conversion table ──
+          # ── (2) PROGRAMS: two row charts full width, then conversion table ──
           card_id          = tonumber(metabase_card.screener_program_most_shown[key].id)
           dashboard_tab_id = 8
           row              = 14
           col              = 0
-          size_x           = 12
+          size_x           = 24
           size_y           = 10
           parameter_mappings = [
             {
@@ -1776,9 +1778,9 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_program_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 14
-          col              = 12
-          size_x           = 12
+          row              = 24
+          col              = 0
+          size_x           = 24
           size_y           = 10
           parameter_mappings = [
             {
@@ -1798,7 +1800,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_program_conversion[key].id)
           dashboard_tab_id = 8
-          row              = 24
+          row              = 34
           col              = 0
           size_x           = 24
           size_y           = 10
@@ -1828,7 +1830,7 @@ locals {
           # zero rendered benefit. Align if/when a tenant activates screener tabs.
           card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 44
           col              = 0
           size_x           = 6
           size_y           = 4
@@ -1850,7 +1852,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 44
           col              = 6
           size_x           = 6
           size_y           = 4
@@ -1872,7 +1874,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_resources_tab_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 44
           col              = 12
           size_x           = 6
           size_y           = 4
@@ -1894,7 +1896,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_additional_resources_edits[key].id)
           dashboard_tab_id = 8
-          row              = 34
+          row              = 44
           col              = 18
           size_x           = 6
           size_y           = 4
@@ -1917,7 +1919,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_filter_usage_avg[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 48
           col              = 0
           size_x           = 6
           size_y           = 4
@@ -1939,7 +1941,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_resources_tab_avg[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 48
           col              = 6
           size_x           = 6
           size_y           = 4
@@ -1961,7 +1963,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 48
           col              = 12
           size_x           = 6
           size_y           = 4
@@ -1983,7 +1985,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
           dashboard_tab_id = 8
-          row              = 38
+          row              = 48
           col              = 18
           size_x           = 6
           size_y           = 4
@@ -2008,7 +2010,7 @@ locals {
           # replaces the old side-by-side Top Resources + Engagement pair.
           card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 42
+          row              = 52
           col              = 0
           size_x           = 24
           size_y           = 12
@@ -2030,7 +2032,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 54
+          row              = 64
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -2052,7 +2054,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_document_downloads[key].id)
           dashboard_tab_id = 8
-          row              = 62
+          row              = 72
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -2075,7 +2077,7 @@ locals {
           # More-help page resource clicks (gap #7) — full width, below Document Downloads.
           card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
           dashboard_tab_id = 8
-          row              = 70
+          row              = 80
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -2098,7 +2100,7 @@ locals {
           # ── (5) FEEDBACK ──
           card_id          = tonumber(metabase_card.screener_nps_distribution[key].id)
           dashboard_tab_id = 8
-          row              = 78
+          row              = 88
           col              = 0
           size_x           = 16
           size_y           = 8
@@ -2120,7 +2122,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_nps_engagement[key].id)
           dashboard_tab_id = 8
-          row              = 78
+          row              = 88
           col              = 16
           size_x           = 8
           size_y           = 4

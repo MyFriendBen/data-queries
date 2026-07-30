@@ -304,7 +304,7 @@ resource "metabase_card" "global_screener_program_engagement" {
 
   json = jsonencode({
     name                = "Program Engagement (Top 15)"
-    description         = "The 15 programs with the highest Viewed-Details Rate % (share of screenings shown the program that clicked 'More info' to view its details). Only programs shown to ≥20 screenings, so small-denominator flukes don't top the ranking."
+    description         = "The 15 programs with the highest Viewed-Details Rate % (share of screenings shown the program that clicked 'More info' to view its details)."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1070,6 +1070,8 @@ resource "metabase_card" "global_screener_nps_distribution" {
       "graph.metrics"         = ["Responses"]
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
+      "graph.y_axis.auto_range" = false
+      "graph.y_axis.min"        = 0
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       "series_settings" = {
         "Detractor" = { color = "#d64550" }
