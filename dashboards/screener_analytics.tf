@@ -245,7 +245,7 @@ resource "metabase_card" "screener_results_revisits" {
       "graph.metrics"           = ["Screenings"]
       "graph.x_axis.title_text" = "Times Results Viewed"
       "graph.y_axis.decimals"   = 0
-      "series_settings"         = { "Screenings" = { color = "#9c755f" } }
+      "series_settings"         = { "Screenings" = { color = "#f28e2b" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1157,10 +1157,11 @@ resource "metabase_card" "screener_nps_distribution" {
       "graph.metrics"           = ["Responses"]
       "graph.show_values"       = true
       "graph.y_axis.decimals"   = 0
+      "graph.x_axis.scale"      = "ordinal"
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       # Single series (one color) so bars stay centered under each score; the NPS
       # bucket reads from score position (low = detractor, high = promoter).
-      "series_settings" = { "Responses" = { color = "#6b6ecf" } }
+      "series_settings" = { "Responses" = { color = "#499894" } }
     }
     parameter_mappings = []
     parameters         = []

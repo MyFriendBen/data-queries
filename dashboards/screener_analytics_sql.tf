@@ -1080,12 +1080,14 @@ locals {
       GROUP BY nps_score
     )
     SELECT
-      scale.score AS `Score`,
-      -- Single metric so Score is the sole dimension and bars center under each
-      -- label (a second series/dimension makes Metabase reserve per-category
-      -- sub-slots and offsets the bars). Score stays numeric so the axis orders
-      -- 0..10 (a string dimension sorts 0,1,10,2). NULL (not 0) for empty scores:
-      -- no bar, no "0" label, but the scale join keeps the x-axis slot.
+      -- Score is a STRING so the axis renders as an ordinal category: every 0-10
+      -- label shows and bars center under them (a numeric axis switches to a
+      -- linear scale that skips odd labels and left-aligns the bars). The card
+      -- sets graph.x_axis.scale = "ordinal" so the categories keep this SQL order
+      -- (0..10) rather than sorting alphabetically (0,1,10,2). Single metric so
+      -- there's one series (a second series offsets the bars). NULL (not 0) for
+      -- empty scores: no bar, no "0" label, but the scale join keeps the slot.
+      CAST(scale.score AS STRING) AS `Score`,
       counts.responses AS `Responses`
     FROM scale
     LEFT JOIN counts ON counts.nps_score = scale.score
