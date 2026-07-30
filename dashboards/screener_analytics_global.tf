@@ -1098,10 +1098,10 @@ resource "metabase_card" "global_screener_nps_distribution" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Score"]
-      "graph.metrics"         = ["Responses"]
-      "graph.show_values"     = true
-      "graph.y_axis.decimals" = 0
+      "graph.dimensions"        = ["Score"]
+      "graph.metrics"           = ["Responses"]
+      "graph.show_values"       = true
+      "graph.y_axis.decimals"   = 0
       "graph.x_axis.title_text" = "NPS Score (0-10)"
       # Single series (one color) so bars stay centered under each score; the NPS
       # bucket reads from score position (low = detractor, high = promoter).
