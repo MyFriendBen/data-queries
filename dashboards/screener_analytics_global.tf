@@ -1103,20 +1103,9 @@ resource "metabase_card" "global_screener_nps_distribution" {
       "graph.show_values"     = true
       "graph.y_axis.decimals" = 0
       "graph.x_axis.title_text" = "NPS Score (0-10)"
-      # Per-bar color by NPS bucket (0-6 Detractor red, 7-8 Passive gray, 9-10 Promoter green).
-      "series_settings" = {
-        "0"  = { color = "#d64550" }
-        "1"  = { color = "#d64550" }
-        "2"  = { color = "#d64550" }
-        "3"  = { color = "#d64550" }
-        "4"  = { color = "#d64550" }
-        "5"  = { color = "#d64550" }
-        "6"  = { color = "#d64550" }
-        "7"  = { color = "#8a8f98" }
-        "8"  = { color = "#8a8f98" }
-        "9"  = { color = "#59a14f" }
-        "10" = { color = "#59a14f" }
-      }
+      # Single series (one color) so bars stay centered under each score; the NPS
+      # bucket reads from score position (low = detractor, high = promoter).
+      "series_settings" = { "Responses" = { color = "#6b6ecf" } }
     }
     parameter_mappings = []
     parameters         = []
