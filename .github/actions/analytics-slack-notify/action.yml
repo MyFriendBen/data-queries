@@ -42,6 +42,11 @@ runs:
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
         COMMIT_AUTHOR: ${{ inputs.commit-author }}
       run: |
+        if [ -z "$SLACK_WEBHOOK_URL" ]; then
+          echo "::warning::SLACK_WEBHOOK_URL is not set — skipping Slack notification"
+          exit 0
+        fi
+
         if [ "$STATUS" = "success" ]; then
           EMOJI="✅"
           TITLE="${WORKFLOW_NAME} Succeeded"
