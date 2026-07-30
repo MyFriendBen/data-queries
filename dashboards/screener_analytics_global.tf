@@ -917,7 +917,7 @@ resource "metabase_card" "global_screener_signup_consent" {
 
   json = jsonencode({
     name                = "Sign-up Consent Rates"
-    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact. Hover for the opt-in count."
+    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -932,12 +932,11 @@ resource "metabase_card" "global_screener_signup_consent" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Channel"]
-      "graph.metrics"         = ["% Opted In"]
-      "column_settings"       = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
-      "graph.show_values"     = true
-      "graph.tooltip_columns" = ["Opt-Ins"]
-      "series_settings"       = { "% Opted In" = { color = "#59a14f" } }
+      "graph.dimensions"  = ["Channel"]
+      "graph.metrics"     = ["% Opted In"]
+      "column_settings"   = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
+      "graph.show_values" = true
+      "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []

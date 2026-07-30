@@ -968,7 +968,7 @@ resource "metabase_card" "screener_signup_consent" {
 
   json = jsonencode({
     name                = "Sign-up Consent Rates"
-    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact. Hover for the opt-in count."
+    description         = "Of screenings that completed sign-up, the % opting into SMS vs email contact."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -983,12 +983,11 @@ resource "metabase_card" "screener_signup_consent" {
     }
     display = "bar"
     visualization_settings = {
-      "graph.dimensions"      = ["Channel"]
-      "graph.metrics"         = ["% Opted In"]
-      "column_settings"       = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
-      "graph.show_values"     = true
-      "series_settings"       = { "% Opted In" = { color = "#59a14f" } }
-      "graph.tooltip_columns" = ["Opt-Ins"]
+      "graph.dimensions"  = ["Channel"]
+      "graph.metrics"     = ["% Opted In"]
+      "column_settings"   = { "[\"name\",\"% Opted In\"]" = { suffix = "%" } }
+      "graph.show_values" = true
+      "series_settings"   = { "% Opted In" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []
