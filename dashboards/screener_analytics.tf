@@ -105,7 +105,7 @@ resource "metabase_card" "screener_language_distribution" {
 
   json = jsonencode({
     name                = "Header Language Switches"
-    description         = "Which languages people switch to using the header language selector — not the language the household speaks. Counted per language, so a session that switches more than once is counted under each."
+    description         = "Which languages people switch to using the header language selector. Counted per language, so a session that switches more than once is counted under each."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
