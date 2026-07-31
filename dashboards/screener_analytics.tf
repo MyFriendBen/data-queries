@@ -2313,53 +2313,13 @@ locals {
             visualization_settings = {}
           },
           {
-            card_id          = tonumber(metabase_card.screener_navigator_engagement[key].id)
-            dashboard_tab_id = 8
-            row              = 48
-            col              = 0
-            size_x           = 24
-            size_y           = 8
-            parameter_mappings = [
-              {
-                parameter_id = local._ga_start_date_param_id
-                card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
-                target       = ["variable", ["template-tag", "start_date"]]
-              },
-              {
-                parameter_id = local._ga_end_date_param_id
-                card_id      = tonumber(metabase_card.screener_navigator_engagement[key].id)
-                target       = ["variable", ["template-tag", "end_date"]]
-              }
-            ]
-            series                 = []
-            visualization_settings = {}
-          },
-          {
-            card_id          = tonumber(metabase_card.screener_document_downloads[key].id)
-            dashboard_tab_id = 8
-            row              = 56
-            col              = 0
-            size_x           = 24
-            size_y           = 8
-            parameter_mappings = [
-              {
-                parameter_id = local._ga_start_date_param_id
-                card_id      = tonumber(metabase_card.screener_document_downloads[key].id)
-                target       = ["variable", ["template-tag", "start_date"]]
-              },
-              {
-                parameter_id = local._ga_end_date_param_id
-                card_id      = tonumber(metabase_card.screener_document_downloads[key].id)
-                target       = ["variable", ["template-tag", "end_date"]]
-              }
-            ]
-            series                 = []
-            visualization_settings = {}
-          },
-          {
+            # Navigator Engagement and Document Downloads are omitted for CESN: 0 of
+            # its programs have navigators, and none of its documents are
+            # downloadable (they're informational "what you'll need" text with no
+            # link), so neither card can ever populate.
             card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
             dashboard_tab_id = 8
-            row              = 64
+            row              = 48
             col              = 0
             size_x           = 24
             size_y           = 8

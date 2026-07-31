@@ -541,8 +541,10 @@ locals {
   SQL
 
   # Program engagement — top 15 by Viewed-Details Rate % (more-info ÷ shown), for a row
-  # bar chart. Same shown >= 20 floor as the Conversion Rates table so a program with a
-  # handful of impressions and a fluky rate can't top the ranking. Bounded to 15 for
+  # bar chart. Same shown floor as the Conversion Rates table so a program with a
+  # handful of impressions and a fluky rate can't top the ranking. This per-tenant
+  # version uses shown >= 5 (vs. 20 on the all-states global card) so a single
+  # lower-volume white label still surfaces something. Bounded to 15 for
   # readability and to avoid the "Other" bucket. Rate % also appears in the table below
   # (intentional: this is the at-a-glance visual, the table is the sortable detail).
   screener_sql_program_engagement = <<-SQL
@@ -563,18 +565,20 @@ locals {
       program_name AS `Program`,
       ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `Viewed-Details Rate %`
     FROM per_program
-    WHERE shown >= 20
+    WHERE shown >= 5
     ORDER BY `Viewed-Details Rate %` DESC
     LIMIT 15
   SQL
 
-  # Program conversion RATES. Only programs shown to >= 20 screenings, because
+  # Program conversion RATES. Only programs shown to >= 5 screenings on this
+  # per-tenant card (vs. 20 on the all-states global card, where volume is pooled):
   # program_shown events are dropped by GA4 when a screening's ~40 impressions fire
   # in one tick (verified: hundreds of more_info clicks have no matching shown
   # event) — so per-program rates on a tiny Shown denominator are unreliable and can
-  # exceed 100%. The >= 20 floor also just excludes statistically-noisy low-n rates.
-  # Once the FE batches the shown events (FE gaps ticket), this can relax toward a
-  # smaller noise-only floor, but should never be 0. No "Other" bucket.
+  # exceed 100%. The floor excludes statistically-noisy low-n rates; a single
+  # lower-volume white label needs a smaller floor than the pooled global view to
+  # surface anything. Once the FE batches the shown events (FE gaps ticket), this
+  # can relax further, but should never be 0. No "Other" bucket.
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
@@ -599,7 +603,7 @@ locals {
       ROUND(applied * 100.0 / NULLIF(more_info, 0), 1)   AS `Details -> Applied %`,
       ROUND(applied * 100.0 / NULLIF(shown, 0), 1)       AS `Shown -> Applied %`
     FROM per_program
-    WHERE shown >= 20
+    WHERE shown >= 5
     ORDER BY `Shown -> Details %` DESC
   SQL
 
