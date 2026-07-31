@@ -1380,11 +1380,6 @@ resource "metabase_card" "screener_nps_distribution" {
   })
 }
 
-# NOTE: the footer / site-chrome cards (chrome nav, social, feedback & share) are
-# GLOBAL-only — site chrome fires without screener_state, so it can't be attributed
-# per tenant. They live in screener_analytics_global.tf. Per-tenant versions are
-# blocked on the FE attaching state (see the FE gaps ticket).
-
 # Public Charge link click rate — scalar. % of Disclaimer-step viewers who clicked
 # the Public Charge link. Raw click count as the scalar's secondary value.
 resource "metabase_card" "screener_public_charge_click_rate" {
@@ -1454,8 +1449,8 @@ resource "metabase_card" "screener_additional_resources_edits" {
 }
 
 # Document downloads — table. Which "Key Information" documents get downloaded, by
-# program. Count card (no impression event exists → no true download rate; see FE
-# gaps ticket). Sits next to the Navigator table.
+# program. Count card (no impression event exists, so there's no true download
+# rate). Sits next to the Navigator table.
 resource "metabase_card" "screener_document_downloads" {
   for_each = local.ga_tenants_enabled
 
@@ -2573,8 +2568,7 @@ locals {
           },
           {
             # ── (4) ADDITIONAL RESOURCES section ──
-            # Full-width, tall grouped bar (top 20 resources × more-info/website/phone);
-            # replaces the old side-by-side Top Resources + Engagement pair.
+            # Full-width, tall grouped bar (top 20 resources × more-info/website/phone).
             card_id          = tonumber(metabase_card.screener_resource_engagement[key].id)
             dashboard_tab_id = 8
             row              = 52

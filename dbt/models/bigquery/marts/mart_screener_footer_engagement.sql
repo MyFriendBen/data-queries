@@ -9,10 +9,10 @@
 -- compute an exact "% of sessions that clicked X" (COUNT(DISTINCT session_key) over
 -- the window) without the multi-day double-count a daily-grain SUM would suffer.
 --
--- Site chrome fires largely WITHOUT screener_state (logo/language/social/feedback
--- happen on global chrome, often pre-white-label), so these are GLOBAL-only cards
--- with no state filter. Attaching state on the FE is tracked on the FE gaps ticket;
--- once it lands, per-tenant versions + a state column can be added here.
+-- Site chrome (logo/language/social/feedback) often fires without the
+-- screener_state param, so screener_state here is the param when present, else
+-- the white label parsed from the page URL (see the coalesce below) — enough to
+-- power per-tenant chrome cards, not just the all-states global ones.
 --
 -- element_group buckets by user intent, one card each:
 --   'nav'            — logo, About/Privacy/Terms, language switch (wayfinding)

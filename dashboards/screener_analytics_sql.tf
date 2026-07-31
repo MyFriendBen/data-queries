@@ -572,14 +572,10 @@ locals {
   SQL
 
   # Program conversion RATES. Only programs shown to >= 5 screenings on this
-  # per-tenant card (vs. 20 on the all-states global card, where volume is pooled):
-  # program_shown events are dropped by GA4 when a screening's ~40 impressions fire
-  # in one tick (verified: hundreds of more_info clicks have no matching shown
-  # event) — so per-program rates on a tiny Shown denominator are unreliable and can
-  # exceed 100%. The floor excludes statistically-noisy low-n rates; a single
-  # lower-volume white label needs a smaller floor than the pooled global view to
-  # surface anything. Once the FE batches the shown events (FE gaps ticket), this
-  # can relax further, but should never be 0. No "Other" bucket.
+  # per-tenant card (vs. 20 on the all-states global card, where volume is pooled),
+  # so a rate on a handful of impressions can't read as a fluky 100% and top the
+  # ranking. A single lower-volume white label needs a smaller floor than the
+  # pooled global view to surface anything. No "Other" bucket.
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
@@ -1557,9 +1553,10 @@ locals {
   # language selector. This is header-selector engagement, NOT "language the
   # household speaks" (that intake answer lives on the Households tab). Deduped
   # per session.
-  # GLOBAL-only + no state filter: language-switch events fire without screener_state
-  # (stateless chrome, often pre-white-label), so a state IN(...) filter drops 100% of
-  # rows. Per-tenant version is blocked on the FE attaching state (FE gaps ticket).
+  # Language-switch events often fire without the screener_state param, so state
+  # here is the param when present, else the white label parsed from the page URL
+  # (see mart_screener_language). Switches on the bare landing page have no white
+  # label either way and only appear on the all-states global card.
   screener_sql_language_distribution = <<-SQL
     SELECT
       language_name AS `Switched To`,

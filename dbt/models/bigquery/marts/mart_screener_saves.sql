@@ -32,12 +32,9 @@ with saves as (
     where event_name = 'screener_results_save'
 ),
 
--- Save-popup opens — the middle "Opened Save Popup" funnel stage. This is the
--- save modal being opened (screener_results_save, save_action = 'open'), NOT the
--- share popup: they are different flows, and counting share-popup impressions
--- here broke the funnel (Saved could exceed Opened). Some white labels (e.g.
--- CESN) emit only save_action = 'send', so they have no open rows — their card
--- drops this middle stage.
+-- Save-popup opens — the middle "Opened Save Popup" funnel stage: the save modal
+-- being opened (screener_results_save, save_action = 'open'). This is the save
+-- flow, distinct from the share popup.
 popup_shown as (
     select
         event_date,

@@ -24,9 +24,9 @@ with results_loaded as (
     where event_name = 'screener_results_loaded'
 ),
 
--- "None eligible" from the emitted event. A FE guard bug meant this event never
--- fired before mid-2026, so on its own it undercounts historical screenings that
--- qualified for no programs.
+-- "None eligible" from the emitted event. Unioned with the impression proxy
+-- below because the event is not present on every screening that qualified for
+-- no programs.
 none_eligible_event as (
     select
         event_date,
@@ -41,9 +41,8 @@ none_eligible_event as (
 -- Proxy for the same "qualified for no programs" signal, recovered from the
 -- results-page impression: GA4 stamps an empty view_item_list (results_programs)
 -- item as '(not set)', so a screening whose ONLY program item is empty saw zero
--- eligible programs. This backfills the pre-fix history the event misses and
--- stays valid alongside the event going forward (both keyed on screener_uid, so
--- the union de-dupes). One row per screening that had an all-empty impression.
+-- eligible programs. Keyed on screener_uid so the union with the event de-dupes.
+-- One row per screening that had an all-empty impression.
 none_eligible_proxy as (
     select
         vil.event_date,

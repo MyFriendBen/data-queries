@@ -16,11 +16,8 @@
 --
 -- cesn_path is the session-level classification from staging (emitted param, else
 -- step-inference). Sessions with no resolvable path are excluded — they can't be
--- attributed to either funnel. Most are pure landing bounces; the rest are
--- homeowners who dropped before the appliance step (the homeowner divergence
--- point, late in the flow) so step-inference can't reach them. The emitted param
--- classifies those from the first step, so this exclusion shrinks as
--- param-carrying data accumulates.
+-- attributed to either funnel (mostly landing bounces, plus homeowners who drop
+-- before the appliance step that step-inference keys on).
 
 with ladder as (
     select cesn_path, screener_step_name, funnel_rank

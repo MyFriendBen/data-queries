@@ -45,8 +45,8 @@ with per_event as (
         -- Screener identifiers (sent directly as params)
         max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
         max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
-        -- CESN homeowner/renter branch. Emitted on CESN events by the app; null
-        -- on pre-param historical data and on non-CESN events.
+        -- CESN homeowner/renter branch. Present on CESN events that carry the
+        -- param; null on non-CESN events and events without it.
         max(case when ep.key = 'screener_path' then ep.value.string_value end) as screener_path,
 
         -- Step details
@@ -104,9 +104,9 @@ select
     -- Session-level CESN path (homeowner / renter / null). Prefer the emitted
     -- screener_path param; fall back to inferring from which exclusive step the
     -- session reached (appliances is homeowner-only, energy-expenses renter-only).
-    -- The param covers early drop-offs the step-inference can't; the inference
-    -- covers historical sessions from before the param was emitted. Null when
-    -- neither is available (dropped before diverging, pre-param).
+    -- The param classifies early drop-offs the step-inference can't; the inference
+    -- classifies sessions without the param. Null when neither is available (the
+    -- session dropped before the paths diverge and carries no param).
     coalesce(
         max(screener_path) over (partition by user_pseudo_id, ga_session_id),
         case
