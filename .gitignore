@@ -31,3 +31,4 @@ dashboards/scripts/generated/
 
 # macOS
 .DS_Store
+*.tfstate.lock.info
