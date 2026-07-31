@@ -2001,10 +2001,13 @@ locals {
           },
           {
             # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
+            # CESN has no sign-up card beside Confirmation Edits, so pull this up
+            # into that empty slot (row 52, col 12); other tenants keep it on its
+            # own row below sign-up.
             card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
             dashboard_tab_id = 7
-            row              = 60
-            col              = 0
+            row              = local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? 52 : 60
+            col              = local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? 12 : 0
             size_x           = 12
             size_y           = 6
             parameter_mappings = [
