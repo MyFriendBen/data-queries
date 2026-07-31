@@ -1595,13 +1595,30 @@ locals {
   # local._ga_start_date_param_id / _ga_end_date_param_id).
 
   # Overview tab (tab id 10): macro funnel at the top, language distribution below.
+  # Epoch note pinned to row 0 of each screener tab, so every screener tab opens
+  # with the same "data starts <epoch>" banner the global dashboard shows. Keyed
+  # by dashboard_tab_id; a single item so it can be spliced in as its own list.
+  tenant_screener_epoch_note_card = {
+    for tab_id in [7, 8, 9, 10] : tab_id => {
+      card_id                = null
+      dashboard_tab_id       = tab_id
+      row                    = 0
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 2
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.screener_epoch_note }
+    }
+  }
+
   tenant_dashboard_screener_overview_layout = {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
         {
           card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
           dashboard_tab_id = 10
-          row              = 0
+          row              = 2
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1624,7 +1641,7 @@ locals {
           # Sessions-per-screener distribution, directly below the conversion funnel.
           card_id          = tonumber(metabase_card.screener_sessions_per_screener[key].id)
           dashboard_tab_id = 10
-          row              = 8
+          row              = 10
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1647,7 +1664,7 @@ locals {
           # Header & footer link engagement + language switches share a row.
           card_id          = tonumber(metabase_card.screener_chrome_nav[key].id)
           dashboard_tab_id = 10
-          row              = 16
+          row              = 18
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1669,7 +1686,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
           dashboard_tab_id = 10
-          row              = 16
+          row              = 18
           col              = 12
           size_x           = 12
           size_y           = 8
@@ -1692,7 +1709,7 @@ locals {
           # Social clicks + footer feedback/share share the next row.
           card_id          = tonumber(metabase_card.screener_social_clicks[key].id)
           dashboard_tab_id = 10
-          row              = 24
+          row              = 26
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1714,7 +1731,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_footer_feedback_share[key].id)
           dashboard_tab_id = 10
-          row              = 24
+          row              = 26
           col              = 12
           size_x           = 12
           size_y           = 8
@@ -1749,7 +1766,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
           dashboard_tab_id = 7
-          row              = 0
+          row              = 2
           col              = 0
           size_x           = 12
           size_y           = 12
@@ -1771,7 +1788,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
           dashboard_tab_id = 7
-          row              = 0
+          row              = 2
           col              = 12
           size_x           = 12
           size_y           = 12
@@ -1794,7 +1811,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_step_funnel[key].id)
           dashboard_tab_id = 7
-          row              = 0
+          row              = 2
           col              = 0
           size_x           = 24
           size_y           = 12
@@ -1826,7 +1843,7 @@ locals {
             # Errors full-width; Back Nav + Help Clicks share the row below it.
             card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
             dashboard_tab_id = 7
-            row              = 16
+            row              = 18
             col              = 0
             size_x           = 24
             size_y           = 9
@@ -1848,7 +1865,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
             dashboard_tab_id = 7
-            row              = 25
+            row              = 27
             col              = 0
             size_x           = 12
             size_y           = 9
@@ -1870,7 +1887,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_help_by_topic[key].id)
             dashboard_tab_id = 7
-            row              = 25
+            row              = 27
             col              = 12
             size_x           = 12
             size_y           = 9
@@ -1892,7 +1909,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_errors_detail[key].id)
             dashboard_tab_id = 7
-            row              = 34
+            row              = 36
             col              = 0
             size_x           = 24
             size_y           = 8
@@ -1914,7 +1931,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_household_member_engagement[key].id)
             dashboard_tab_id = 7
-            row              = 42
+            row              = 44
             col              = 0
             size_x           = 12
             size_y           = 8
@@ -1936,7 +1953,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_income_source_engagement[key].id)
             dashboard_tab_id = 7
-            row              = 42
+            row              = 44
             col              = 12
             size_x           = 12
             size_y           = 8
@@ -1959,7 +1976,7 @@ locals {
             # confirmation-page edits by section
             card_id          = tonumber(metabase_card.screener_confirmation_edits[key].id)
             dashboard_tab_id = 7
-            row              = 50
+            row              = 52
             col              = 0
             size_x           = 12
             size_y           = 8
@@ -1982,7 +1999,7 @@ locals {
             # sign-up consent opt-in rates
             card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
             dashboard_tab_id = 7
-            row              = 50
+            row              = 52
             col              = 12
             size_x           = 12
             size_y           = 8
@@ -2005,7 +2022,7 @@ locals {
             # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
             card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
             dashboard_tab_id = 7
-            row              = 58
+            row              = 60
             col              = 0
             size_x           = 12
             size_y           = 6
@@ -2567,7 +2584,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_share_funnel_popup[key].id)
           dashboard_tab_id = 9
-          row              = 0
+          row              = 2
           col              = 0
           size_x           = 12
           size_y           = 6
@@ -2589,7 +2606,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_share_funnel_footer[key].id)
           dashboard_tab_id = 9
-          row              = 0
+          row              = 2
           col              = 12
           size_x           = 12
           size_y           = 6
@@ -2611,7 +2628,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_shares_by_channel[key].id)
           dashboard_tab_id = 9
-          row              = 6
+          row              = 8
           col              = 0
           size_x           = 24
           size_y           = 6
@@ -2633,7 +2650,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_save_funnel[key].id)
           dashboard_tab_id = 9
-          row              = 12
+          row              = 14
           col              = 0
           size_x           = 12
           size_y           = 6
@@ -2655,7 +2672,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_saves_by_channel[key].id)
           dashboard_tab_id = 9
-          row              = 12
+          row              = 14
           col              = 12
           size_x           = 12
           size_y           = 6

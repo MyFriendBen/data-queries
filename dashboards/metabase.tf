@@ -2218,6 +2218,14 @@ resource "metabase_dashboard" "tenant_analytics" {
     local.tenant_dashboard_benefits_needs_layout[each.key],
     # Tab 6: Homeowners vs Renters (CESN only)
     flatten([for k in [each.key] : local.tenant_dashboard_cesn_hvr_layout if local.tenant_has_tab[k]["cesn_homeowners_vs_renters"]]),
+    # Screener-tab epoch notes (row 0 of each). In their own single-item lists so
+    # the text-card object type doesn't clash with the data-card tuple in the
+    # ternaries, matching the global dashboard. The data cards on these tabs start
+    # at row 2 to sit below the note.
+    local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
+    local.tenant_has_tab[each.key]["screener_form_journey"] ? [local.tenant_screener_epoch_note_card[7]] : [],
+    local.tenant_has_tab[each.key]["screener_results"] ? [local.tenant_screener_epoch_note_card[8]] : [],
+    local.tenant_has_tab[each.key]["screener_sharing_saving"] ? [local.tenant_screener_epoch_note_card[9]] : [],
     # Tab 7: Form Journey (screener analytics)
     local.tenant_has_tab[each.key]["screener_form_journey"] ? local.tenant_dashboard_screener_form_journey_layout[each.key] : [],
     # Tab 8: Results (screener analytics)
