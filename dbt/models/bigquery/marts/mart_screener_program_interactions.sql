@@ -49,8 +49,11 @@ with interactions as (
         'screener_program_shown'
     )
     -- program_id is expected on every one of these events; guard against
-    -- unmapped/legacy rows polluting the grain
+    -- unmapped/legacy rows polluting the grain. '(not set)' is GA4's placeholder
+    -- for an event that fired with an empty program_id param, which would
+    -- otherwise surface as a "(not set)" program on the program cards.
     and program_id is not null
+    and program_id != '(not set)'
 ),
 
 aggregated as (

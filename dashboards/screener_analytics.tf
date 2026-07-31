@@ -1614,7 +1614,7 @@ locals {
 
   tenant_dashboard_screener_overview_layout = {
     for key, tenant in var.tenants : key => (
-      var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
+      var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? concat([
         {
           card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
           dashboard_tab_id = 10
@@ -1705,52 +1705,56 @@ locals {
           series                 = []
           visualization_settings = {}
         },
-        {
-          # Social clicks + footer feedback/share share the next row.
-          card_id          = tonumber(metabase_card.screener_social_clicks[key].id)
-          dashboard_tab_id = 10
-          row              = 26
-          col              = 0
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_footer_feedback_share[key].id)
-          dashboard_tab_id = 10
-          row              = 26
-          col              = 12
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-      ] : []
+        ],
+        # Social links and footer feedback/share are omitted for CESN — its footer
+        # (energysavings.colorado.gov chrome) has neither, so the cards would be empty.
+        local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? [] : [
+          {
+            # Social clicks + footer feedback/share share the next row.
+            card_id          = tonumber(metabase_card.screener_social_clicks[key].id)
+            dashboard_tab_id = 10
+            row              = 26
+            col              = 0
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_footer_feedback_share[key].id)
+            dashboard_tab_id = 10
+            row              = 26
+            col              = 12
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+      ]) : []
     )
   }
 
@@ -1996,29 +2000,6 @@ locals {
             visualization_settings = {}
           },
           {
-            # sign-up consent opt-in rates
-            card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
-            dashboard_tab_id = 7
-            row              = 52
-            col              = 12
-            size_x           = 12
-            size_y           = 8
-            parameter_mappings = [
-              {
-                parameter_id = local._ga_start_date_param_id
-                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
-                target       = ["variable", ["template-tag", "start_date"]]
-              },
-              {
-                parameter_id = local._ga_end_date_param_id
-                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
-                target       = ["variable", ["template-tag", "end_date"]]
-              }
-            ]
-            series                 = []
-            visualization_settings = {}
-          },
-          {
             # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
             card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
             dashboard_tab_id = 7
@@ -2035,6 +2016,31 @@ locals {
               {
                 parameter_id = local._ga_end_date_param_id
                 card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+        ],
+        # Sign-up consent opt-in rates — omitted for CESN, which has no sign-up step.
+        local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? [] : [
+          {
+            card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
+            dashboard_tab_id = 7
+            row              = 52
+            col              = 12
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
                 target       = ["variable", ["template-tag", "end_date"]]
               }
             ]
