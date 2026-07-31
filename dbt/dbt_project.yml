@@ -12,6 +12,12 @@ vars:
   # Previously regex_user (role name); switched to session_guc to enable index scans.
   mfb_rls_policy_mode: session_guc
 
+  # White-label slugs that appear as the first path segment of a screener URL.
+  # Used to parse state from page_location for chrome events that fire before the
+  # screener_state param is set (see the url_screener_state macro). Keep in sync
+  # with tenant_ga_state_codes in the dashboards Terraform when a WL launches.
+  screener_state_slugs: ['co', 'nc', 'tx', 'wa', 'il', 'ma', 'cesn']
+
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]

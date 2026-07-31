@@ -39,10 +39,13 @@ none_eligible_event as (
 ),
 
 -- Proxy for the same "qualified for no programs" signal, recovered from the
--- results-page impression: GA4 stamps an empty view_item_list (results_programs)
--- item as '(not set)', so a screening whose ONLY program item is empty saw zero
--- eligible programs. Keyed on screener_uid so the union with the event de-dupes.
--- One row per screening that had an all-empty impression.
+-- results-page impression. When the results_programs list is empty, GA4 can't
+-- send an empty items array, so it fabricates a single placeholder item with
+-- item_id = '(not set)'. That exact shape — a results_programs list of exactly
+-- one item, and that item is '(not set)' — means the screening saw zero eligible
+-- programs. A real program (or a mix of real + placeholder) never matches, so
+-- this can't mislabel a screening that had eligible programs. Keyed on
+-- screener_uid so the union with the event de-dupes.
 none_eligible_proxy as (
     select
         vil.event_date,
@@ -57,7 +60,10 @@ none_eligible_proxy as (
         (select value.string_value from unnest(vil.event_params) where key = 'screener_uid' limit 1) as screener_uid
     from {{ source('google_analytics', 'events_*') }} vil
     where vil.event_name = 'view_item_list'
-        -- every results_programs item on this impression is empty ('(not set)')
+        -- exactly one results_programs item and it's the '(not set)' placeholder
+        and (
+            select count(*) from unnest(vil.items) item where item.item_list_name = 'results_programs'
+        ) = 1
         and (
             select logical_and(item.item_id = '(not set)')
             from unnest(vil.items) item

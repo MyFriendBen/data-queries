@@ -92,7 +92,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -1132,7 +1132,7 @@ resource "metabase_card" "global_screener_chrome_nav" {
       native = {
         query = replace(
           replace(local.screener_sql_chrome_nav, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
-        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -1166,7 +1166,7 @@ resource "metabase_card" "global_screener_social_clicks" {
       native = {
         query = replace(
           replace(local.screener_sql_social_clicks, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
-        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -1200,7 +1200,7 @@ resource "metabase_card" "global_screener_footer_feedback_share" {
       native = {
         query = replace(
           replace(local.screener_sql_footer_feedback_share, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
-        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }

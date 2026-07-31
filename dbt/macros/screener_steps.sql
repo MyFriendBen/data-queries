@@ -87,7 +87,7 @@
     {%- set paths = [('homeowner', 'cesn_home'), ('renter', 'cesn_rent')] %}
     {%- set rows = [] %}
     {# rank 0 = the synthetic form-start rung both paths share (the funnel top). #}
-    {%- for path_name, rank_key in paths %}
+    {%- for path_name, _ in paths %}
         {%- do rows.append((path_name, '__form_start__', 'Started Screener', 0)) %}
     {%- endfor %}
     {%- for step in _screener_steps() %}

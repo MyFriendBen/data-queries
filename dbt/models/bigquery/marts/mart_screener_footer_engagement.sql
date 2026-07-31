@@ -32,7 +32,7 @@ with ui_events as (
         social_network,
         -- Prefer the emitted state param; fall back to the URL-parsed white label
         -- for chrome events fired before the param is set (see staging).
-        coalesce(screener_state, url_screener_state) as screener_state
+        coalesce(screener_state, url_screener_state) as row_state
     from {{ ref('stg_ga_screener_ui_events') }}
     where event_name in (
         'screener_logo_click',
@@ -47,7 +47,7 @@ shares as (
     select
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         event_date_parsed,
-        screener_state
+        coalesce(screener_state, url_screener_state) as row_state
     from {{ ref('stg_ga_screener_shares') }}
     where share_location = 'footer'
         and share_action = 'open'
@@ -75,13 +75,27 @@ classified as (
             when link_name in ('About Us', 'Privacy Policy', 'Terms and Conditions') then link_name
             else null  -- in-step content / edit-nav link_clicks: not footer chrome
         end as element,
-        screener_state
+        row_state
     from ui_events
 
     union all
 
-    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element, screener_state
+    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element, row_state
     from shares
+),
+
+-- Resolve state at the SESSION level: a chrome click can happen before the white
+-- label is known (null row_state), so take the session's best resolved state
+-- across all its rows. Done here, before the per-element grouping, so an
+-- element whose own row had no state still inherits the session's state.
+with_session_state as (
+    select
+        session_key,
+        event_date_parsed,
+        element_group,
+        element,
+        max(row_state) over (partition by session_key) as screener_state
+    from classified
 )
 
 select
@@ -89,12 +103,10 @@ select
     element,
     session_key,
     max(event_date_parsed) as event_date_parsed,
-    -- State is a session property; MAX ignores nulls so a session's resolved
-    -- state (param or URL) wins over its null-state chrome rows.
     max(screener_state) as screener_state,
 
     current_timestamp() as updated_at
 
-from classified
+from with_session_state
 where element is not null
 group by element_group, element, session_key
