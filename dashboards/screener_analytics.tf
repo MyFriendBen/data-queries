@@ -137,6 +137,75 @@ resource "metabase_card" "screener_step_funnel" {
   })
 }
 
+# CESN homeowner-path step funnel — CESN's energy flow orders steps differently
+# per path, so it gets one funnel per path in place of the shared Form Step
+# Reached card. Placed only on the CESN dashboard (see the form-journey layout).
+resource "metabase_card" "screener_cesn_funnel_homeowner" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Form Step Reached — Homeowners"
+    description         = "Share of homeowner-path visits that reached at least each step, so bars shrink down the list. Counted per visit (session). Homeowners answer the appliance question; the path is known from the landing-page choice, with a fallback to the steps a visit reached."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_cesn_path_funnel, "__CESN_PATH__", "homeowner")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "column_settings"         = { "[\"name\",\"% of Started\"]" = { suffix = "%" } }
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
+      "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# CESN renter-path step funnel — the renter flow starts with the energy-expenses
+# step and has no appliance step.
+resource "metabase_card" "screener_cesn_funnel_renter" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Form Step Reached — Renters"
+    description         = "Share of renter-path visits that reached at least each step, so bars shrink down the list. Counted per visit (session). Renters start with the energy-expenses question; the path is known from the landing-page choice, with a fallback to the steps a visit reached."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_cesn_path_funnel, "__CESN_PATH__", "renter")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"        = ["screener_step_label"]
+      "graph.metrics"           = ["% of Started"]
+      "column_settings"         = { "[\"name\",\"% of Started\"]" = { suffix = "%" } }
+      "graph.show_values"       = true
+      "graph.x_axis.title_text" = "Screener Step"
+      "series_settings"         = { "% of Started" = { color = "#59a14f" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
 # Errors by step — horizontal bar. Raw error count is the bar; hover shows the
 # error rate (errors / step views) now that every step has a clean view count.
 resource "metabase_card" "screener_errors_by_step" {
@@ -1438,9 +1507,59 @@ locals {
   }
 
   # Tab 7: Form Journey
-  tenant_dashboard_screener_form_journey_layout = {
+  # CESN replaces the shared Form Step Reached funnel with two path-specific
+  # funnels side by side (its energy flow branches by homeowner/renter); every
+  # other tenant keeps the single shared funnel. Both occupy the same row 0 / 12
+  # rows of grid, so the rest of the tab layout below is unchanged either way.
+  tenant_dashboard_screener_form_journey_top = {
     for key, tenant in var.tenants : key => (
-      var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? [
+      !contains(keys(local.ga_tenants_enabled), key) ? [] :
+      local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? [
+        {
+          card_id          = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
+          dashboard_tab_id = 7
+          row              = 0
+          col              = 0
+          size_x           = 12
+          size_y           = 12
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
+          dashboard_tab_id = 7
+          row              = 0
+          col              = 12
+          size_x           = 12
+          size_y           = 12
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        ] : [
         {
           card_id          = tonumber(metabase_card.screener_step_funnel[key].id)
           dashboard_tab_id = 7
@@ -1463,209 +1582,219 @@ locals {
           series                 = []
           visualization_settings = {}
         },
-        {
-          # Errors full-width; Back Nav + Help Clicks share the row below it.
-          card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
-          dashboard_tab_id = 7
-          row              = 16
-          col              = 0
-          size_x           = 24
-          size_y           = 9
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_errors_by_step[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_errors_by_step[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
-          dashboard_tab_id = 7
-          row              = 25
-          col              = 0
-          size_x           = 12
-          size_y           = 9
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_help_by_topic[key].id)
-          dashboard_tab_id = 7
-          row              = 25
-          col              = 12
-          size_x           = 12
-          size_y           = 9
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_errors_detail[key].id)
-          dashboard_tab_id = 7
-          row              = 34
-          col              = 0
-          size_x           = 24
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_household_member_engagement[key].id)
-          dashboard_tab_id = 7
-          row              = 42
-          col              = 0
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_household_member_engagement[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_household_member_engagement[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_income_source_engagement[key].id)
-          dashboard_tab_id = 7
-          row              = 42
-          col              = 12
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_income_source_engagement[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_income_source_engagement[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # confirmation-page edits by section
-          card_id          = tonumber(metabase_card.screener_confirmation_edits[key].id)
-          dashboard_tab_id = 7
-          row              = 50
-          col              = 0
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # sign-up consent opt-in rates
-          card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
-          dashboard_tab_id = 7
-          row              = 50
-          col              = 12
-          size_x           = 12
-          size_y           = 8
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
-          card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
-          dashboard_tab_id = 7
-          row              = 58
-          col              = 0
-          size_x           = 12
-          size_y           = 6
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-      ] : []
+      ]
+    )
+  }
+
+  tenant_dashboard_screener_form_journey_layout = {
+    for key, tenant in var.tenants : key => (
+      var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? concat(
+        local.tenant_dashboard_screener_form_journey_top[key],
+        [
+          {
+            # Errors full-width; Back Nav + Help Clicks share the row below it.
+            card_id          = tonumber(metabase_card.screener_errors_by_step[key].id)
+            dashboard_tab_id = 7
+            row              = 16
+            col              = 0
+            size_x           = 24
+            size_y           = 9
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_errors_by_step[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_errors_by_step[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_back_nav_by_step[key].id)
+            dashboard_tab_id = 7
+            row              = 25
+            col              = 0
+            size_x           = 12
+            size_y           = 9
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_back_nav_by_step[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_help_by_topic[key].id)
+            dashboard_tab_id = 7
+            row              = 25
+            col              = 12
+            size_x           = 12
+            size_y           = 9
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_help_by_topic[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_errors_detail[key].id)
+            dashboard_tab_id = 7
+            row              = 34
+            col              = 0
+            size_x           = 24
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_errors_detail[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_household_member_engagement[key].id)
+            dashboard_tab_id = 7
+            row              = 42
+            col              = 0
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_household_member_engagement[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_household_member_engagement[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_income_source_engagement[key].id)
+            dashboard_tab_id = 7
+            row              = 42
+            col              = 12
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_income_source_engagement[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_income_source_engagement[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            # confirmation-page edits by section
+            card_id          = tonumber(metabase_card.screener_confirmation_edits[key].id)
+            dashboard_tab_id = 7
+            row              = 50
+            col              = 0
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_confirmation_edits[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            # sign-up consent opt-in rates
+            card_id          = tonumber(metabase_card.screener_signup_consent[key].id)
+            dashboard_tab_id = 7
+            row              = 50
+            col              = 12
+            size_x           = 12
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_signup_consent[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            # Disclaimer link clicks (3-bar row chart) — sized 12x6 to match global.
+            card_id          = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+            dashboard_tab_id = 7
+            row              = 58
+            col              = 0
+            size_x           = 12
+            size_y           = 6
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_public_charge_click_rate[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+        ]
+      ) : []
     )
   }
 
