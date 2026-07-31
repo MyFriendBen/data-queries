@@ -29,7 +29,10 @@ with ui_events as (
         link_name,
         location,
         feedback_channel,
-        social_network
+        social_network,
+        -- Prefer the emitted state param; fall back to the URL-parsed white label
+        -- for chrome events fired before the param is set (see staging).
+        coalesce(screener_state, url_screener_state) as screener_state
     from {{ ref('stg_ga_screener_ui_events') }}
     where event_name in (
         'screener_logo_click',
@@ -43,7 +46,8 @@ with ui_events as (
 shares as (
     select
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
-        event_date_parsed
+        event_date_parsed,
+        screener_state
     from {{ ref('stg_ga_screener_shares') }}
     where share_location = 'footer'
         and share_action = 'open'
@@ -70,12 +74,13 @@ classified as (
             when event_name = 'screener_feedback_click' and feedback_channel = 'email' then 'Contact Us'
             when link_name in ('About Us', 'Privacy Policy', 'Terms and Conditions') then link_name
             else null  -- in-step content / edit-nav link_clicks: not footer chrome
-        end as element
+        end as element,
+        screener_state
     from ui_events
 
     union all
 
-    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element
+    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element, screener_state
     from shares
 )
 
@@ -84,6 +89,9 @@ select
     element,
     session_key,
     max(event_date_parsed) as event_date_parsed,
+    -- State is a session property; MAX ignores nulls so a session's resolved
+    -- state (param or URL) wins over its null-state chrome rows.
+    max(screener_state) as screener_state,
 
     current_timestamp() as updated_at
 

@@ -97,6 +97,147 @@ resource "metabase_card" "screener_sessions_per_screener" {
   })
 }
 
+# Header language switches — bar. State comes from the emitted param, so pre-white-
+# label switches (most language changes happen on the landing page) don't appear
+# here; the all-states version on the global dashboard covers those.
+resource "metabase_card" "screener_language_distribution" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Header Language Switches"
+    description         = "Which languages people switch to using the header language selector — not the language the household speaks. Counted per language, so a session that switches more than once is counted under each."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"      = ["Switched To"]
+      "graph.metrics"         = ["Sessions"]
+      "graph.show_values"     = true
+      "series_settings"       = { "Sessions" = { color = "#edc948" } }
+      "graph.y_axis.decimals" = 0
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Header & footer link engagement — logo, legal links, language switcher. State is
+# the emitted param or, when absent on chrome events, the white label parsed from
+# the page URL. Both sentinels resolve to the tenant's state (a tenant is one state).
+resource "metabase_card" "screener_chrome_nav" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Header & Footer Links"
+    description         = "Of all sessions, the % that used each persistent header/footer element: the logo, the footer About/Privacy/Terms links, and the language switcher. Hover for the session count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_chrome_nav, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Element"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.show_values"     = true
+      "column_settings"       = { "[\"name\",\"% of Sessions\"]" = { suffix = "%" } }
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#76b7b2" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Footer social icon clicks by network.
+resource "metabase_card" "screener_social_clicks" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Social Link Clicks"
+    description         = "Of all sessions, the % that clicked a footer social icon, by network. Hover for the session count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_social_clicks, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Network"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.show_values"     = true
+      "column_settings"       = { "[\"name\",\"% of Sessions\"]" = { suffix = "%" } }
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#b07aa1" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+# Footer support/share actions — Report a Bug, Contact Us, Share.
+resource "metabase_card" "screener_footer_feedback_share" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Footer Feedback & Share"
+    description         = "Of all sessions, the % that clicked a footer support/share action: Report a Bug, Contact Us, or Share. Share is explored in depth on the Sharing & Saving tab. Hover for the session count."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query = replace(
+          replace(local.screener_sql_footer_feedback_share, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})"),
+        "__STATE_FILTER__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "row"
+    visualization_settings = {
+      "graph.dimensions"      = ["Action"]
+      "graph.metrics"         = ["% of Sessions"]
+      "graph.show_values"     = true
+      "column_settings"       = { "[\"name\",\"% of Sessions\"]" = { suffix = "%" } }
+      "graph.tooltip_columns" = ["Sessions"]
+      "series_settings"       = { "% of Sessions" = { color = "#f28e2b" } }
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Tab 7 (Form Journey)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1496,6 +1637,96 @@ locals {
             {
               parameter_id = local._ga_end_date_param_id
               card_id      = tonumber(metabase_card.screener_sessions_per_screener[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # Header & footer link engagement + language switches share a row.
+          card_id          = tonumber(metabase_card.screener_chrome_nav[key].id)
+          dashboard_tab_id = 10
+          row              = 16
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_chrome_nav[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_chrome_nav[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
+          dashboard_tab_id = 10
+          row              = 16
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_language_distribution[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          # Social clicks + footer feedback/share share the next row.
+          card_id          = tonumber(metabase_card.screener_social_clicks[key].id)
+          dashboard_tab_id = 10
+          row              = 24
+          col              = 0
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_social_clicks[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_footer_feedback_share[key].id)
+          dashboard_tab_id = 10
+          row              = 24
+          col              = 12
+          size_x           = 12
+          size_y           = 8
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_footer_feedback_share[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

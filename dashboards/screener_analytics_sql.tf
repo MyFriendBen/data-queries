@@ -1139,21 +1139,26 @@ locals {
     ORDER BY scale.score
   SQL
 
-  # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────
-  # Site chrome fires largely without screener_state, so these three cards live only
-  # on the global dashboard and do NOT use the __STATE_FILTER__ sentinel. Each reads
-  # the session-grain mart_screener_footer_engagement and reports "% of sessions that
-  # clicked X" — denominator = distinct sessions in the window (from the session-grain
-  # step-facts), so the rate is exact (no multi-day double-count). Raw session count
-  # on hover. element_group selects which card. Attaching state on the FE (tracked on
-  # the FE gaps ticket) will later enable per-tenant versions.
+  # ── Footer / site-chrome cards ───────────────────────────────────────────────
+  # Each reads the session-grain mart_screener_footer_engagement and reports "% of
+  # sessions that clicked X" — denominator = distinct sessions in the window (from
+  # the session-grain step-facts), so the rate is exact (no multi-day double-count).
+  # Raw session count on hover. element_group selects which card.
   #
-  # A shared session denominator CTE is spliced into each card via __SESSIONS_CTE__.
+  # State comes from the emitted param or, for chrome events fired before the param
+  # is set, the white label parsed from the page URL (see mart_screener_footer_
+  # engagement / stg_ga_screener_ui_events), so these run per-tenant as well as
+  # global. Two sentinels because the two marts differ: the denominator's
+  # step_facts carries is_cesn (__STATE_FILTER_CESN__), the footer mart does not
+  # (plain __STATE_FILTER__).
+  #
+  # A shared session denominator CTE is spliced into each card.
   _footer_sessions_cte = <<-SQL
     sessions AS (
       SELECT COUNT(DISTINCT session_key) AS n
       FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
@@ -1167,7 +1172,8 @@ locals {
       ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'nav'
+    WHERE __STATE_FILTER__
+    AND element_group = 'nav'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1183,7 +1189,8 @@ locals {
       ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'social'
+    WHERE __STATE_FILTER__
+    AND element_group = 'social'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1199,7 +1206,8 @@ locals {
       ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'feedback_share'
+    WHERE __STATE_FILTER__
+    AND element_group = 'feedback_share'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1552,7 +1560,8 @@ locals {
       language_name AS `Switched To`,
       SUM(distinct_screenings) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_language`
-    WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name

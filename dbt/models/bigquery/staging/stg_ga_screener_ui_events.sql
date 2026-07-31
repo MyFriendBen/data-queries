@@ -44,6 +44,24 @@ select
     max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
     max(case when ep.key = 'screener_step_name' then ep.value.string_value end) as screener_step_name,
 
+    -- White-label slug parsed from the page URL's first path segment
+    -- (screener.myfriendben.org/<wl>/... and energysavings.colorado.gov/cesn/...).
+    -- Site-chrome events (logo/social/feedback/language) often fire before the
+    -- screener_state param is set, but the URL already carries the white label, so
+    -- this recovers state for the per-tenant chrome cards. Null on the bare landing
+    -- page (no wl segment yet); restricted to known slugs so a non-wl first segment
+    -- (e.g. 'step-1', 'select-state') doesn't masquerade as a state.
+    case
+        when regexp_extract(
+            max(case when ep.key = 'page_location' then ep.value.string_value end),
+            r'https?://[^/]+/([a-z_]+)'
+        ) in ('co', 'nc', 'tx', 'wa', 'il', 'ma', 'cesn')
+        then regexp_extract(
+            max(case when ep.key = 'page_location' then ep.value.string_value end),
+            r'https?://[^/]+/([a-z_]+)'
+        )
+    end as url_screener_state,
+
     -- event-specific params
     max(case when ep.key = 'section' then ep.value.string_value end) as section,
     max(case when ep.key = 'filter_type' then ep.value.string_value end) as filter_type,

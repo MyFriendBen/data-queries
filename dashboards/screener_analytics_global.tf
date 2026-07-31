@@ -92,7 +92,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_language_distribution
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -1130,7 +1130,9 @@ resource "metabase_card" "global_screener_chrome_nav" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_chrome_nav
+        query = replace(
+          replace(local.screener_sql_chrome_nav, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -1162,7 +1164,9 @@ resource "metabase_card" "global_screener_social_clicks" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_social_clicks
+        query = replace(
+          replace(local.screener_sql_social_clicks, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
@@ -1194,7 +1198,9 @@ resource "metabase_card" "global_screener_footer_feedback_share" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_footer_feedback_share
+        query = replace(
+          replace(local.screener_sql_footer_feedback_share, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", "screener_state IN (${local.all_screener_state_filter})")
         template-tags = local.ga_date_tags
       }
     }
