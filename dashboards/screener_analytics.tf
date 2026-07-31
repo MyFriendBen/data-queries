@@ -2267,8 +2267,13 @@ locals {
         local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? [
           {
             # CESN keeps only the two "More Help?" scalars from the engagement row —
-            # it has no citizenship filter or additional-resources features. Paired
-            # here, with Navigator/Documents/More-Help pulled up to close the gaps.
+            # it has no citizenship filter or additional-resources features. The two
+            # scalars stack on the left with the More-Help resource table filling the
+            # row to their right, so the section reads as one band. Navigator
+            # Engagement and Document Downloads are omitted entirely: 0 of CESN's
+            # programs have navigators, and none of its documents are downloadable
+            # (they're informational "what you'll need" text with no link), so
+            # neither card can ever populate.
             card_id          = tonumber(metabase_card.screener_get_help_clicks[key].id)
             dashboard_tab_id = 8
             row              = 44
@@ -2291,10 +2296,32 @@ locals {
             visualization_settings = {}
           },
           {
-            card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
+            card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
             dashboard_tab_id = 8
             row              = 44
             col              = 6
+            size_x           = 18
+            size_y           = 8
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
+            dashboard_tab_id = 8
+            row              = 48
+            col              = 0
             size_x           = 6
             size_y           = 4
             parameter_mappings = [
@@ -2306,32 +2333,6 @@ locals {
               {
                 parameter_id = local._ga_end_date_param_id
                 card_id      = tonumber(metabase_card.screener_more_help_avg[key].id)
-                target       = ["variable", ["template-tag", "end_date"]]
-              }
-            ]
-            series                 = []
-            visualization_settings = {}
-          },
-          {
-            # Navigator Engagement and Document Downloads are omitted for CESN: 0 of
-            # its programs have navigators, and none of its documents are
-            # downloadable (they're informational "what you'll need" text with no
-            # link), so neither card can ever populate.
-            card_id          = tonumber(metabase_card.screener_more_help_resources[key].id)
-            dashboard_tab_id = 8
-            row              = 48
-            col              = 0
-            size_x           = 24
-            size_y           = 8
-            parameter_mappings = [
-              {
-                parameter_id = local._ga_start_date_param_id
-                card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
-                target       = ["variable", ["template-tag", "start_date"]]
-              },
-              {
-                parameter_id = local._ga_end_date_param_id
-                card_id      = tonumber(metabase_card.screener_more_help_resources[key].id)
                 target       = ["variable", ["template-tag", "end_date"]]
               }
             ]
