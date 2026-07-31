@@ -2339,6 +2339,52 @@ locals {
             series                 = []
             visualization_settings = {}
           },
+          {
+            # CESN has no Share & Save tab (no share activity), so its two save
+            # cards live here on the Results tab.
+            card_id          = tonumber(metabase_card.screener_save_funnel[key].id)
+            dashboard_tab_id = 8
+            row              = 56
+            col              = 0
+            size_x           = 12
+            size_y           = 6
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_save_funnel[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_save_funnel[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
+          {
+            card_id          = tonumber(metabase_card.screener_saves_by_channel[key].id)
+            dashboard_tab_id = 8
+            row              = 56
+            col              = 12
+            size_x           = 12
+            size_y           = 6
+            parameter_mappings = [
+              {
+                parameter_id = local._ga_start_date_param_id
+                card_id      = tonumber(metabase_card.screener_saves_by_channel[key].id)
+                target       = ["variable", ["template-tag", "start_date"]]
+              },
+              {
+                parameter_id = local._ga_end_date_param_id
+                card_id      = tonumber(metabase_card.screener_saves_by_channel[key].id)
+                target       = ["variable", ["template-tag", "end_date"]]
+              }
+            ]
+            series                 = []
+            visualization_settings = {}
+          },
           ] : [
           {
             # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──
