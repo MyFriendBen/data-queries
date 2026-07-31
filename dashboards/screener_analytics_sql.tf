@@ -132,26 +132,20 @@ locals {
     ORDER BY step_rank
   SQL
 
-  # ── Tab 7 (Form Journey), CESN only: per-path step funnel ───────────────────
-  # CESN's energy flow branches into a homeowner and a renter path that order the
-  # steps differently (renter starts with energy-expenses; homeowner has the
-  # appliance step), so CESN gets one funnel per path instead of the shared one.
-  # Same "reached >= step" construction as screener_sql_step_funnel — monotonic by
-  # construction off the session-grain furthest-rank mart — but ranked by the
-  # per-path CESN ladder. No __STATE_FILTER__: the mart is already CESN-only, and
-  # __CESN_PATH__ selects the path. Sessions whose path can't be resolved are
-  # excluded upstream (see mart_screener_cesn_funnel).
-  screener_sql_cesn_path_funnel = <<-SQL
+  # ── Tab 7 (Form Journey), CESN only: combined step funnel ───────────────────
+  # One funnel over the steps common to both CESN paths (the appliance and
+  # energy-expenses steps, each exclusive to one path, are excluded). Same
+  # "reached >= step" construction as screener_sql_step_funnel — monotonic off the
+  # session-grain furthest-rank mart. No __STATE_FILTER__: the mart is CESN-only.
+  screener_sql_cesn_funnel = <<-SQL
     WITH step_ranks AS (
       SELECT funnel_rank AS step_rank, screener_step_label
       FROM `${local.bq_dataset}.mart_screener_cesn_step_ladder`
-      WHERE cesn_path = '__CESN_PATH__'
     ),
     sessions AS (
       SELECT session_key, furthest_step_rank
       FROM `${local.bq_dataset}.mart_screener_cesn_funnel`
-      WHERE cesn_path = '__CESN_PATH__'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     ),

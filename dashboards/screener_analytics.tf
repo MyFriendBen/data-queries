@@ -278,15 +278,16 @@ resource "metabase_card" "screener_step_funnel" {
   })
 }
 
-# CESN homeowner-path step funnel — CESN's energy flow orders steps differently
-# per path, so it gets one funnel per path in place of the shared Form Step
-# Reached card. Placed only on the CESN dashboard (see the form-journey layout).
-resource "metabase_card" "screener_cesn_funnel_homeowner" {
+# CESN step funnel — one funnel over the steps common to both CESN paths. The
+# two path-exclusive steps (homeowner appliances, renter energy-expenses) are
+# excluded so the funnel needs no path classification and covers every CESN
+# session. Placed only on the CESN dashboard (see the form-journey layout).
+resource "metabase_card" "screener_cesn_funnel" {
   for_each = local.ga_tenants_enabled
 
   json = jsonencode({
-    name                = "Form Step Reached — Homeowners"
-    description         = "Share of homeowner-path visits that reached at least each step, so bars shrink down the list. Counted per visit (session). Homeowners answer the appliance question; the path is known from the landing-page choice, with a fallback to the steps a visit reached."
+    name                = "Form Step Reached"
+    description         = "Share of visits that reached at least each step, so bars shrink down the list. Counted per visit (session). The two steps unique to the homeowner and renter paths are excluded."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -295,7 +296,7 @@ resource "metabase_card" "screener_cesn_funnel_homeowner" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = replace(local.screener_sql_cesn_path_funnel, "__CESN_PATH__", "homeowner")
+        query         = local.screener_sql_cesn_funnel
         template-tags = local.ga_date_tags
       }
     }
@@ -307,40 +308,6 @@ resource "metabase_card" "screener_cesn_funnel_homeowner" {
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Screener Step"
       "series_settings"         = { "% of Started" = { color = "#4e79a7" } }
-    }
-    parameter_mappings = []
-    parameters         = []
-  })
-}
-
-# CESN renter-path step funnel — the renter flow starts with the energy-expenses
-# step and has no appliance step.
-resource "metabase_card" "screener_cesn_funnel_renter" {
-  for_each = local.ga_tenants_enabled
-
-  json = jsonencode({
-    name                = "Form Step Reached — Renters"
-    description         = "Share of renter-path visits that reached at least each step, so bars shrink down the list. Counted per visit (session). Renters start with the energy-expenses question; the path is known from the landing-page choice, with a fallback to the steps a visit reached."
-    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
-    collection_position = null
-    cache_ttl           = null
-    query_type          = "native"
-    dataset_query = {
-      database = tonumber(metabase_database.bigquery[0].id)
-      type     = "native"
-      native = {
-        query         = replace(local.screener_sql_cesn_path_funnel, "__CESN_PATH__", "renter")
-        template-tags = local.ga_date_tags
-      }
-    }
-    display = "row"
-    visualization_settings = {
-      "graph.dimensions"        = ["screener_step_label"]
-      "graph.metrics"           = ["% of Started"]
-      "column_settings"         = { "[\"name\",\"% of Started\"]" = { suffix = "%" } }
-      "graph.show_values"       = true
-      "graph.x_axis.title_text" = "Screener Step"
-      "series_settings"         = { "% of Started" = { color = "#59a14f" } }
     }
     parameter_mappings = []
     parameters         = []
@@ -1013,7 +980,7 @@ resource "metabase_card" "screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action. Note: each action has its own visibility rules (e.g. delete needs 3+ members), so the bars share one denominator and understate the gated actions."
+    description         = "Of screenings that reached the household step, the % that took each add/edit/delete action. Actions have their own visibility rules (e.g. delete needs 3+ members), so gated actions read low against the shared denominator."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -1754,52 +1721,29 @@ locals {
   }
 
   # Tab 7: Form Journey
-  # CESN replaces the shared Form Step Reached funnel with two path-specific
-  # funnels side by side (its energy flow branches by homeowner/renter); every
-  # other tenant keeps the single shared funnel. Both occupy the same row 0 / 12
-  # rows of grid, so the rest of the tab layout below is unchanged either way.
+  # CESN uses its own Form Step Reached funnel (over the steps common to both
+  # energy paths); every other tenant uses the shared funnel. Both are one
+  # full-width card at row 2, so the rest of the tab layout below is unchanged.
   tenant_dashboard_screener_form_journey_top = {
     for key, tenant in var.tenants : key => (
       !contains(keys(local.ga_tenants_enabled), key) ? [] :
       local.tenant_has_tab[key]["cesn_homeowners_vs_renters"] ? [
         {
-          card_id          = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
+          card_id          = tonumber(metabase_card.screener_cesn_funnel[key].id)
           dashboard_tab_id = 7
           row              = 2
           col              = 0
-          size_x           = 12
+          size_x           = 24
           size_y           = 12
           parameter_mappings = [
             {
               parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
+              card_id      = tonumber(metabase_card.screener_cesn_funnel[key].id)
               target       = ["variable", ["template-tag", "start_date"]]
             },
             {
               parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_cesn_funnel_homeowner[key].id)
-              target       = ["variable", ["template-tag", "end_date"]]
-            }
-          ]
-          series                 = []
-          visualization_settings = {}
-        },
-        {
-          card_id          = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
-          dashboard_tab_id = 7
-          row              = 2
-          col              = 12
-          size_x           = 12
-          size_y           = 12
-          parameter_mappings = [
-            {
-              parameter_id = local._ga_start_date_param_id
-              card_id      = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
-              target       = ["variable", ["template-tag", "start_date"]]
-            },
-            {
-              parameter_id = local._ga_end_date_param_id
-              card_id      = tonumber(metabase_card.screener_cesn_funnel_renter[key].id)
+              card_id      = tonumber(metabase_card.screener_cesn_funnel[key].id)
               target       = ["variable", ["template-tag", "end_date"]]
             }
           ]

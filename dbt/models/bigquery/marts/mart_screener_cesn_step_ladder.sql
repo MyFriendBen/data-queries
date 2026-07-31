@@ -4,10 +4,11 @@
   )
 }}
 
--- CESN two-path step ladder (cesn_path, slug, label, funnel_rank) from the
--- screener_cesn_step_ladder macro. The Metabase homeowner/renter funnel cards
--- LEFT JOIN this per path to order and label the rungs (Metabase SQL can't call
--- dbt macros). One row per (step, path) the step appears on.
+-- Combined CESN step ladder (slug, label, funnel_rank) from the
+-- screener_cesn_combined_ladder macro — the steps common to both the homeowner
+-- and renter paths (the two path-exclusive energy steps are omitted). The CESN
+-- Form Step Reached card LEFT JOINs this to order and label the rungs (Metabase
+-- SQL can't call dbt macros).
 
-select cesn_path, screener_step_name, screener_step_label, funnel_rank
-from ({{ screener_cesn_step_ladder() }})
+select screener_step_name, screener_step_label, funnel_rank
+from ({{ screener_cesn_combined_ladder() }})
