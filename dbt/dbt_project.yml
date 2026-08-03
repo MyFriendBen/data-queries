@@ -16,12 +16,12 @@ vars:
   # Used to parse state from page_location for chrome events that fire before the
   # screener_state param is set (see the url_screener_state macro). Keep in sync
   # with tenant_ga_state_codes in the dashboards Terraform when a WL launches.
-  screener_state_slugs: ['co', 'nc', 'tx', 'wa', 'il', 'ma', 'cesn']
+  screener_state_slugs: ["co", "nc", "tx", "wa", "il", "ma", "cesn"]
 
   # First day all screener analytics events emit correctly (YYYYMMDD). Used to
   # prune the events_* wildcard scan in models that read the raw export directly.
   # Mirrors screener_analytics_epoch in the dashboards Terraform.
-  screener_analytics_epoch_suffix: '20260729'
+  screener_analytics_epoch_suffix: "20260729"
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
