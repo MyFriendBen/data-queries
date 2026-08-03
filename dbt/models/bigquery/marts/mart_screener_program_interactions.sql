@@ -49,8 +49,13 @@ with interactions as (
         'screener_program_shown'
     )
     -- program_id is expected on every one of these events; guard against
-    -- unmapped/legacy rows polluting the grain
+    -- unmapped/legacy rows polluting the grain. '(not set)' is the placeholder
+    -- GA4 fabricates when a view_item_list is sent with an empty items array (no
+    -- eligible programs to show); it's not a real program, so exclude it here.
+    -- The same marker is what mart_screener_results_outcomes reads as a
+    -- none-eligible screening.
     and program_id is not null
+    and program_id != '(not set)'
 ),
 
 aggregated as (

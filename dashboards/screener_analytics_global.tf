@@ -83,7 +83,7 @@ resource "metabase_card" "global_screener_language_distribution" {
 
   json = jsonencode({
     name                = "Header Language Switches"
-    description         = "Which languages people switch to using the header language selector — not the language the household speaks. Counted per language, so a session that switches more than once is counted under each."
+    description         = "Which languages people switch to using the header language selector. Counted per language, so a session that switches more than once is counted under each."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -92,7 +92,7 @@ resource "metabase_card" "global_screener_language_distribution" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_language_distribution
+        query         = replace(local.screener_sql_language_distribution, "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -608,7 +608,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "How people adjust their household — adding or deleting members on the member pages, or editing/deleting from the household summary. Of screenings that reached the household step, the % that took each action. Note: each action has its own visibility rules (e.g. delete needs 3+ members), so the bars share one denominator and understate the gated actions."
+    description         = "Of screenings that reached the household step, the % that took each add/edit/delete action. Actions have their own visibility rules (e.g. delete needs 3+ members), so gated actions read low against the shared denominator."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -1130,7 +1130,9 @@ resource "metabase_card" "global_screener_chrome_nav" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_chrome_nav
+        query = replace(
+          replace(local.screener_sql_chrome_nav, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -1162,7 +1164,9 @@ resource "metabase_card" "global_screener_social_clicks" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_social_clicks
+        query = replace(
+          replace(local.screener_sql_social_clicks, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }
@@ -1194,7 +1198,9 @@ resource "metabase_card" "global_screener_footer_feedback_share" {
       database = tonumber(metabase_database.bigquery[0].id)
       type     = "native"
       native = {
-        query         = local.screener_sql_footer_feedback_share
+        query = replace(
+          replace(local.screener_sql_footer_feedback_share, "__STATE_FILTER_CESN__", local.all_screener_global_predicate),
+        "__STATE_FILTER__", local.all_screener_state_or_null_filter)
         template-tags = local.ga_date_tags
       }
     }

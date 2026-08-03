@@ -69,10 +69,21 @@ locals {
   #  - excludes every CESN session's rows via NOT is_cesn — including a CESN
   #    session's own null-state landing rows (energysavings.colorado.gov redirect),
   #    which a bare `OR screener_state IS NULL` would otherwise leak back in.
-  # Other global marts (interactions, saves, shares, resources, language) fire
-  # after a white-label is set — no null-state rows and no cesn rows — so they use
-  # the plain all_screener_state_filter IN-list and need no is_cesn column.
+  # Other post-white-label global marts (interactions, saves, shares, resources)
+  # have no null-state rows and no cesn rows, so they use the plain
+  # all_screener_state_filter IN-list and need no is_cesn column.
   all_screener_global_predicate = "NOT is_cesn AND (screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
+
+  # Global predicate for the chrome / language marts. These fire on site chrome
+  # that can precede a white label (state resolved from the param or the page URL,
+  # else null), so they carry null-state rows but have no is_cesn column. Keep the
+  # known non-CESN states plus null-state rows. CESN is deliberately excluded from
+  # the global total (it's not a state and has its own dashboard), consistent with
+  # all_screener_state_filter: a CESN chrome row whose state resolved to 'cesn'
+  # (via param or URL) is dropped here and counted only on the CESN tab. CESN rows
+  # that stay null (no resolvable state) do fall into the null bucket and can't be
+  # separated out without an is_cesn column — a small, unattributable residue.
+  all_screener_state_or_null_filter = "(screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.

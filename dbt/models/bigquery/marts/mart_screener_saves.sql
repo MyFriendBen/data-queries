@@ -4,8 +4,7 @@
   )
 }}
 
--- Screener results-save funnel and share-popup impressions - daily grain by
--- state
+-- Screener results-save funnel and save-popup opens - daily grain by state
 -- Powers the Sharing & Outbound dashboard tab's save funnel, tracked
 -- separately from mart_screener_shares since screener_results_save is a
 -- distinct user flow (save-for-later) from screener_share (active sharing).
@@ -13,10 +12,10 @@
 -- Output shape: three DISJOINT row types (see the union block below) — raw
 -- per-(channel,action) save counts, a synthetic '__saved__' row for distinct
 -- COMPLETED savers (save_action = 'send' only), and a synthetic '__popup_shown__'
--- row for popup impressions — so each
--- metric sums exactly once with no fan-out. Distinct metrics (screenings_with_save,
--- screenings_shown_popup) dedupe on screener_uid, which is valid here because both
--- save and popup events fire post-step-3 (uid exists).
+-- row for save-popup opens (save_action = 'open', the funnel's middle stage) — so
+-- each metric sums exactly once with no fan-out. Distinct metrics
+-- (screenings_with_save, screenings_shown_popup) dedupe on screener_uid, which is
+-- valid here because both save events fire post-step-3 (uid exists).
 -- There is no save_action:'error' event, so send-failure is not distinguished
 -- from send-attempt in save_action values.
 
@@ -32,14 +31,17 @@ with saves as (
     where event_name = 'screener_results_save'
 ),
 
+-- Save-popup opens — the middle "Opened Save Popup" funnel stage: the save modal
+-- being opened (screener_results_save, save_action = 'open'). This is the save
+-- flow, distinct from the share popup.
 popup_shown as (
     select
         event_date,
         event_date_parsed,
         screener_state,
         screener_uid
-    from {{ ref('stg_ga_screener_shares') }}
-    where event_name = 'screener_share_popup_shown'
+    from saves
+    where save_action = 'open'
 ),
 
 -- Per (channel, action): raw save COUNT only. total_saves is a plain count(*),
@@ -93,7 +95,7 @@ popup_summary as (
 --   1. channel/action rows  → total_saves (raw count, summable per channel)
 --   2. '__saved__' rows      → screenings_with_save (distinct completed savers,
 --        save_action='send', per date/state)
---   3. '__popup_shown__' rows → popup impressions/distinct (per date/state)
+--   3. '__popup_shown__' rows → distinct save-popup opens (per date/state)
 -- The card reads Saved from row type 2, Shown Popup from row type 3, and
 -- saves-by-channel from row type 1 (which excludes the synthetic rows via its
 -- save_channel IS NOT NULL filter).

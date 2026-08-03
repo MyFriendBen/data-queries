@@ -44,6 +44,11 @@ select
     max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
     max(case when ep.key = 'screener_step_name' then ep.value.string_value end) as screener_step_name,
 
+    -- White label parsed from the page URL, recovering state for site-chrome
+    -- events (logo/social/feedback/language) that often fire before the
+    -- screener_state param is set. See the url_screener_state macro.
+    {{ url_screener_state("max(case when ep.key = 'page_location' then ep.value.string_value end)") }} as url_screener_state,
+
     -- event-specific params
     max(case when ep.key = 'section' then ep.value.string_value end) as section,
     max(case when ep.key = 'filter_type' then ep.value.string_value end) as filter_type,

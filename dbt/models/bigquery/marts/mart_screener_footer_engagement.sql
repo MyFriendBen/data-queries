@@ -9,10 +9,10 @@
 -- compute an exact "% of sessions that clicked X" (COUNT(DISTINCT session_key) over
 -- the window) without the multi-day double-count a daily-grain SUM would suffer.
 --
--- Site chrome fires largely WITHOUT screener_state (logo/language/social/feedback
--- happen on global chrome, often pre-white-label), so these are GLOBAL-only cards
--- with no state filter. Attaching state on the FE is tracked on the FE gaps ticket;
--- once it lands, per-tenant versions + a state column can be added here.
+-- Site chrome (logo/language/social/feedback) often fires without the
+-- screener_state param, so screener_state here is the param when present, else
+-- the white label parsed from the page URL (see the coalesce below) — enough to
+-- power per-tenant chrome cards, not just the all-states global ones.
 --
 -- element_group buckets by user intent, one card each:
 --   'nav'            — logo, About/Privacy/Terms, language switch (wayfinding)
@@ -29,7 +29,10 @@ with ui_events as (
         link_name,
         location,
         feedback_channel,
-        social_network
+        social_network,
+        -- Prefer the emitted state param; fall back to the URL-parsed white label
+        -- for chrome events fired before the param is set (see staging).
+        coalesce(screener_state, url_screener_state) as row_state
     from {{ ref('stg_ga_screener_ui_events') }}
     where event_name in (
         'screener_logo_click',
@@ -43,7 +46,8 @@ with ui_events as (
 shares as (
     select
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
-        event_date_parsed
+        event_date_parsed,
+        coalesce(screener_state, url_screener_state) as row_state
     from {{ ref('stg_ga_screener_shares') }}
     where share_location = 'footer'
         and share_action = 'open'
@@ -70,13 +74,28 @@ classified as (
             when event_name = 'screener_feedback_click' and feedback_channel = 'email' then 'Contact Us'
             when link_name in ('About Us', 'Privacy Policy', 'Terms and Conditions') then link_name
             else null  -- in-step content / edit-nav link_clicks: not footer chrome
-        end as element
+        end as element,
+        row_state
     from ui_events
 
     union all
 
-    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element
+    select session_key, event_date_parsed, 'feedback_share' as element_group, 'Share' as element, row_state
     from shares
+),
+
+-- Resolve state at the SESSION level: a chrome click can happen before the white
+-- label is known (null row_state), so take the session's best resolved state
+-- across all its rows. Done here, before the per-element grouping, so an
+-- element whose own row had no state still inherits the session's state.
+with_session_state as (
+    select
+        session_key,
+        event_date_parsed,
+        element_group,
+        element,
+        max(row_state) over (partition by session_key) as screener_state
+    from classified
 )
 
 select
@@ -84,9 +103,10 @@ select
     element,
     session_key,
     max(event_date_parsed) as event_date_parsed,
+    max(screener_state) as screener_state,
 
     current_timestamp() as updated_at
 
-from classified
+from with_session_state
 where element is not null
 group by element_group, element, session_key

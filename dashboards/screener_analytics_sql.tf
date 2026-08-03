@@ -132,6 +132,44 @@ locals {
     ORDER BY step_rank
   SQL
 
+  # ── Tab 7 (Form Journey), CESN only: combined step funnel ───────────────────
+  # One funnel over the steps common to both CESN paths (the appliance and
+  # energy-expenses steps, each exclusive to one path, are excluded). Same
+  # "reached >= step" construction as screener_sql_step_funnel — monotonic off the
+  # session-grain furthest-rank mart. No __STATE_FILTER__: the mart is CESN-only.
+  screener_sql_cesn_funnel = <<-SQL
+    WITH step_ranks AS (
+      SELECT funnel_rank AS step_rank, screener_step_label
+      FROM `${local.bq_dataset}.mart_screener_cesn_combined_ladder`
+    ),
+    sessions AS (
+      SELECT session_key, furthest_step_rank
+      FROM `${local.bq_dataset}.mart_screener_cesn_funnel`
+      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    funnel AS (
+      SELECT
+        r.step_rank,
+        r.screener_step_label,
+        COUNT(DISTINCT s.session_key) AS sessions
+      FROM step_ranks r
+      LEFT JOIN sessions s ON s.furthest_step_rank >= r.step_rank
+      GROUP BY r.step_rank, r.screener_step_label
+    ),
+    entry AS (
+      SELECT sessions AS entry_sessions FROM funnel WHERE step_rank = 0
+    )
+    SELECT
+      screener_step_label,
+      ROUND(sessions * 100.0 / NULLIF((SELECT entry_sessions FROM entry), 0), 1) AS `% of Started`,
+      sessions AS `Sessions`
+    FROM funnel
+    WHERE sessions > 0
+    ORDER BY step_rank
+  SQL
+
   # ── Tab 7 (Form Journey): errors by step ────────────────────────────────────
   # The PLOTTED bar is "% of Viewers with 1+ Errors" — of the DISTINCT sessions
   # that viewed the step, the share that hit at least one error on it. Reads the
@@ -274,17 +312,14 @@ locals {
   # Denominator is the same results-viewer base as (1)/(2) (per user: "of people who
   # got to results, how many errored"). error count is daily-distinct summed; negligible
   # multi-day inflation at current volume, and the viewer base is the intended unit.
+  # Error rate = errored results ÷ ALL results attempts (loaded + errored), both
+  # from the outcomes mart at the same grain. Dividing by successful loads only
+  # (which excludes the errored screenings) overstates the rate.
   screener_sql_results_error_rate = <<-SQL
-    WITH viewed AS (
-      SELECT COUNT(*) AS n
-      FROM `${local.bq_dataset}.mart_screener_results_revisits`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    err AS (
-      SELECT SUM(screenings_results_error) AS n
+    WITH outcomes AS (
+      SELECT
+        SUM(screenings_results_error) AS errored,
+        SUM(screenings_results_loaded) AS loaded
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -292,9 +327,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT ROUND(
-      COALESCE((SELECT n FROM err), 0) * 100.0
-      / NULLIF((SELECT n FROM viewed), 0), 1
+      COALESCE(errored, 0) * 100.0
+      / NULLIF(COALESCE(errored, 0) + COALESCE(loaded, 0), 0), 1
     ) AS `Results Error Rate %`
+    FROM outcomes
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — popup ──────────────────────────
@@ -497,8 +533,10 @@ locals {
   SQL
 
   # Program engagement — top 15 by Viewed-Details Rate % (more-info ÷ shown), for a row
-  # bar chart. Same shown >= 20 floor as the Conversion Rates table so a program with a
-  # handful of impressions and a fluky rate can't top the ranking. Bounded to 15 for
+  # bar chart. Same shown floor as the Conversion Rates table so a program with a
+  # handful of impressions and a fluky rate can't top the ranking. This per-tenant
+  # version uses shown >= 5 (vs. 20 on the all-states global card) so a single
+  # lower-volume white label still surfaces something. Bounded to 15 for
   # readability and to avoid the "Other" bucket. Rate % also appears in the table below
   # (intentional: this is the at-a-glance visual, the table is the sortable detail).
   screener_sql_program_engagement = <<-SQL
@@ -519,18 +557,16 @@ locals {
       program_name AS `Program`,
       ROUND(more_info * 100.0 / NULLIF(shown, 0), 1) AS `Viewed-Details Rate %`
     FROM per_program
-    WHERE shown >= 20
+    WHERE shown >= 5
     ORDER BY `Viewed-Details Rate %` DESC
     LIMIT 15
   SQL
 
-  # Program conversion RATES. Only programs shown to >= 20 screenings, because
-  # program_shown events are dropped by GA4 when a screening's ~40 impressions fire
-  # in one tick (verified: hundreds of more_info clicks have no matching shown
-  # event) — so per-program rates on a tiny Shown denominator are unreliable and can
-  # exceed 100%. The >= 20 floor also just excludes statistically-noisy low-n rates.
-  # Once the FE batches the shown events (FE gaps ticket), this can relax toward a
-  # smaller noise-only floor, but should never be 0. No "Other" bucket.
+  # Program conversion RATES. Only programs shown to >= 5 screenings on this
+  # per-tenant card (vs. 20 on the all-states global card, where volume is pooled),
+  # so a rate on a handful of impressions can't read as a fluky 100% and top the
+  # ranking. A single lower-volume white label needs a smaller floor than the
+  # pooled global view to surface anything. No "Other" bucket.
   screener_sql_program_conversion = <<-SQL
     WITH per_program AS (
       SELECT
@@ -555,7 +591,7 @@ locals {
       ROUND(applied * 100.0 / NULLIF(more_info, 0), 1)   AS `Details -> Applied %`,
       ROUND(applied * 100.0 / NULLIF(shown, 0), 1)       AS `Shown -> Applied %`
     FROM per_program
-    WHERE shown >= 20
+    WHERE shown >= 5
     ORDER BY `Shown -> Details %` DESC
   SQL
 
@@ -1095,21 +1131,31 @@ locals {
     ORDER BY scale.score
   SQL
 
-  # ── Footer / site-chrome cards (GLOBAL-only) ─────────────────────────────────
-  # Site chrome fires largely without screener_state, so these three cards live only
-  # on the global dashboard and do NOT use the __STATE_FILTER__ sentinel. Each reads
-  # the session-grain mart_screener_footer_engagement and reports "% of sessions that
-  # clicked X" — denominator = distinct sessions in the window (from the session-grain
-  # step-facts), so the rate is exact (no multi-day double-count). Raw session count
-  # on hover. element_group selects which card. Attaching state on the FE (tracked on
-  # the FE gaps ticket) will later enable per-tenant versions.
+  # ── Footer / site-chrome cards ───────────────────────────────────────────────
+  # Each reads the session-grain mart_screener_footer_engagement and reports "% of
+  # sessions that clicked X" — denominator = distinct sessions in the window (from
+  # the session-grain step-facts), so the rate is exact (no multi-day double-count).
+  # Raw session count on hover. element_group selects which card.
   #
-  # A shared session denominator CTE is spliced into each card via __SESSIONS_CTE__.
+  # State comes from the emitted param or, for chrome events fired before the param
+  # is set, the white label parsed from the page URL (see mart_screener_footer_
+  # engagement / stg_ga_screener_ui_events), so these run per-tenant as well as
+  # global. Two sentinels because the two marts differ: the denominator's
+  # step_facts carries is_cesn (__STATE_FILTER_CESN__), the footer mart does not
+  # (plain __STATE_FILTER__).
+  #
+  # The denominator (step_facts) resolves state from the emitted param only, while
+  # the numerator (footer mart) also recovers state from the URL — so the numerator
+  # can include a URL-only session the denominator misses. The rate is clamped to
+  # 100 for that edge; it's a small overcount, not a true rate inversion.
+  #
+  # A shared session denominator CTE is spliced into each card.
   _footer_sessions_cte = <<-SQL
     sessions AS (
       SELECT COUNT(DISTINCT session_key) AS n
       FROM `${local.bq_dataset}.mart_screener_step_facts`
-      WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      WHERE __STATE_FILTER_CESN__
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
@@ -1120,10 +1166,11 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Element`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'nav'
+    WHERE __STATE_FILTER__
+    AND element_group = 'nav'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1136,10 +1183,11 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Network`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'social'
+    WHERE __STATE_FILTER__
+    AND element_group = 'social'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1152,10 +1200,11 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Action`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
-    WHERE element_group = 'feedback_share'
+    WHERE __STATE_FILTER__
+    AND element_group = 'feedback_share'
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -1500,15 +1549,17 @@ locals {
   # language selector. This is header-selector engagement, NOT "language the
   # household speaks" (that intake answer lives on the Households tab). Deduped
   # per session.
-  # GLOBAL-only + no state filter: language-switch events fire without screener_state
-  # (stateless chrome, often pre-white-label), so a state IN(...) filter drops 100% of
-  # rows. Per-tenant version is blocked on the FE attaching state (FE gaps ticket).
+  # Language-switch events often fire without the screener_state param, so state
+  # here is the param when present, else the white label parsed from the page URL
+  # (see mart_screener_language). Switches on the bare landing page have no white
+  # label either way and only appear on the all-states global card.
   screener_sql_language_distribution = <<-SQL
     SELECT
       language_name AS `Switched To`,
       SUM(distinct_screenings) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_language`
-    WHERE event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+    WHERE __STATE_FILTER__
+    AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     GROUP BY language_name
