@@ -30,7 +30,7 @@ with clicks as (
         event_date,
         event_date_parsed,
         screener_state,
-        screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         link_name,
         link_location,
         screener_step_name
@@ -73,7 +73,11 @@ select
     {{ screener_step_label('screener_step_name') }} as screener_step_label,
 
     count(*) as total_clicks,
-    count(distinct screener_uid) as screenings,
+    -- Dedupe on the session key, NOT screener_uid: in-step links (the disclaimer
+    -- links especially) fire before the screening uuid exists (created at step 3),
+    -- so screener_uid is null on them and counting distinct uid collapses every
+    -- pre-uid click into one. The session key is present from the first event.
+    count(distinct session_key) as screenings,
 
     current_timestamp() as updated_at
 

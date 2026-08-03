@@ -312,17 +312,14 @@ locals {
   # Denominator is the same results-viewer base as (1)/(2) (per user: "of people who
   # got to results, how many errored"). error count is daily-distinct summed; negligible
   # multi-day inflation at current volume, and the viewer base is the intended unit.
+  # Error rate = errored results ÷ ALL results attempts (loaded + errored), both
+  # from the outcomes mart at the same grain. Dividing by successful loads only
+  # (which excludes the errored screenings) overstates the rate.
   screener_sql_results_error_rate = <<-SQL
-    WITH viewed AS (
-      SELECT COUNT(*) AS n
-      FROM `${local.bq_dataset}.mart_screener_results_revisits`
-      WHERE __STATE_FILTER__
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    ),
-    err AS (
-      SELECT SUM(screenings_results_error) AS n
+    WITH outcomes AS (
+      SELECT
+        SUM(screenings_results_error) AS errored,
+        SUM(screenings_results_loaded) AS loaded
       FROM `${local.bq_dataset}.mart_screener_results_outcomes`
       WHERE __STATE_FILTER__
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -330,9 +327,10 @@ locals {
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
     )
     SELECT ROUND(
-      COALESCE((SELECT n FROM err), 0) * 100.0
-      / NULLIF((SELECT n FROM viewed), 0), 1
+      COALESCE(errored, 0) * 100.0
+      / NULLIF(COALESCE(errored, 0) + COALESCE(loaded, 0), 0), 1
     ) AS `Results Error Rate %`
+    FROM outcomes
   SQL
 
   # ── Tab 9 (Sharing & Saving): share funnel — popup ──────────────────────────
