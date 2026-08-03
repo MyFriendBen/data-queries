@@ -76,10 +76,13 @@ locals {
 
   # Global predicate for the chrome / language marts. These fire on site chrome
   # that can precede a white label (state resolved from the param or the page URL,
-  # else null), so they DO carry null-state rows but have no is_cesn column. Keep
-  # known non-CESN states plus null-state rows; a handful of unattributable CESN
-  # null-state chrome rows can't be excluded without an is_cesn column and are
-  # negligible against dropping every pre-white-label chrome row.
+  # else null), so they carry null-state rows but have no is_cesn column. Keep the
+  # known non-CESN states plus null-state rows. CESN is deliberately excluded from
+  # the global total (it's not a state and has its own dashboard), consistent with
+  # all_screener_state_filter: a CESN chrome row whose state resolved to 'cesn'
+  # (via param or URL) is dropped here and counted only on the CESN tab. CESN rows
+  # that stay null (no resolvable state) do fall into the null bucket and can't be
+  # separated out without an is_cesn column — a small, unattributable residue.
   all_screener_state_or_null_filter = "(screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
 
   # Shared note shown at the top of each screener engagement tab, explaining the

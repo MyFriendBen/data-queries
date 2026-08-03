@@ -2329,11 +2329,8 @@ locals {
             # ── (3) RESULTS-PAGE ENGAGEMENT (4 scalars, % of results viewers) ──
             # Citizenship Filter, More Help, Viewed Additional Resources, Additional
             # Resources Edited. 6-wide. (Back to Screener lives in the top outcome row.)
-            # NOTE: global reorders "Clicked More Help?" last; this tenant layout keeps
-            # the original order. Kept as-is — these tenant screener tabs are dormant
-            # (ga_tenants_enabled is empty), so the order is invisible; reordering would
-            # require moving blocks to preserve the provider's row/col-ascending rule for
-            # zero rendered benefit. Align if/when a tenant activates screener tabs.
+            # The Avg-per-user row below sits column-for-column under its matching
+            # rate card here.
             card_id          = tonumber(metabase_card.screener_filter_usage[key].id)
             dashboard_tab_id = 8
             row              = 44
@@ -2448,7 +2445,7 @@ locals {
             card_id          = tonumber(metabase_card.screener_resources_tab_avg[key].id)
             dashboard_tab_id = 8
             row              = 48
-            col              = 6
+            col              = 12
             size_x           = 6
             size_y           = 4
             parameter_mappings = [
@@ -2470,7 +2467,7 @@ locals {
             card_id          = tonumber(metabase_card.screener_additional_resources_edits_avg[key].id)
             dashboard_tab_id = 8
             row              = 48
-            col              = 12
+            col              = 18
             size_x           = 6
             size_y           = 4
             parameter_mappings = [
@@ -2492,7 +2489,7 @@ locals {
             card_id          = tonumber(metabase_card.screener_more_help_avg[key].id)
             dashboard_tab_id = 8
             row              = 48
-            col              = 18
+            col              = 6
             size_x           = 6
             size_y           = 4
             parameter_mappings = [

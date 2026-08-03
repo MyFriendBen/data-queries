@@ -140,7 +140,7 @@ locals {
   screener_sql_cesn_funnel = <<-SQL
     WITH step_ranks AS (
       SELECT funnel_rank AS step_rank, screener_step_label
-      FROM `${local.bq_dataset}.mart_screener_cesn_step_ladder`
+      FROM `${local.bq_dataset}.mart_screener_cesn_combined_ladder`
     ),
     sessions AS (
       SELECT session_key, furthest_step_rank
@@ -1146,6 +1146,11 @@ locals {
   # step_facts carries is_cesn (__STATE_FILTER_CESN__), the footer mart does not
   # (plain __STATE_FILTER__).
   #
+  # The denominator (step_facts) resolves state from the emitted param only, while
+  # the numerator (footer mart) also recovers state from the URL — so the numerator
+  # can include a URL-only session the denominator misses. The rate is clamped to
+  # 100 for that edge; it's a small overcount, not a true rate inversion.
+  #
   # A shared session denominator CTE is spliced into each card.
   _footer_sessions_cte = <<-SQL
     sessions AS (
@@ -1163,7 +1168,7 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Element`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
     WHERE __STATE_FILTER__
@@ -1180,7 +1185,7 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Network`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
     WHERE __STATE_FILTER__
@@ -1197,7 +1202,7 @@ locals {
     WITH ${local._footer_sessions_cte}
     SELECT
       element AS `Action`,
-      ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1) AS `% of Sessions`,
+      LEAST(ROUND(COUNT(DISTINCT session_key) * 100.0 / NULLIF((SELECT n FROM sessions), 0), 1), 100) AS `% of Sessions`,
       COUNT(DISTINCT session_key) AS `Sessions`
     FROM `${local.bq_dataset}.mart_screener_footer_engagement`
     WHERE __STATE_FILTER__

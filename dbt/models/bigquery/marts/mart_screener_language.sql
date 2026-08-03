@@ -34,4 +34,3 @@ from {{ ref('stg_ga_screener_step_interactions') }}
 where event_name = 'screener_language_changed'
     and language_name is not null
 group by event_date, event_date_parsed, coalesce(screener_state, url_screener_state), language_name
-order by event_date desc, screener_state, total_changes desc
