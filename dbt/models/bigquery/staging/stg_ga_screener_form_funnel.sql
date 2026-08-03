@@ -108,7 +108,10 @@ select
     -- classifies sessions without the param. Null when neither is available (the
     -- session dropped before the paths diverge and carries no param).
     coalesce(
-        max(screener_path) over (partition by user_pseudo_id, ga_session_id),
+        -- Only accept a normalized, known value; anything else falls through to
+        -- step-inference rather than becoming an unjoinable path.
+        max(case when lower(trim(screener_path)) in ('homeowner', 'renter') then lower(trim(screener_path)) end)
+            over (partition by user_pseudo_id, ga_session_id),
         case
             when logical_or(lower(screener_step_name) = 'cesn-appliances')
                 over (partition by user_pseudo_id, ga_session_id) then 'homeowner'

@@ -1705,7 +1705,9 @@ resource "metabase_dashboard" "tenant_analytics" {
   ])
 
   cards_json = jsonencode(concat(
-    # Tab 10 (Overview): screener macro funnel + language distribution
+    # Tab 10 (Overview): epoch note (row 0) then its data cards. The note precedes
+    # the layout so the tab's cards stay row-ascending (provider requirement).
+    local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
     local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
     # Tab 2: Overall Performance
     # Two for-loop flattens avoid Terraform's static ternary type-check
@@ -2222,7 +2224,6 @@ resource "metabase_dashboard" "tenant_analytics" {
     # the text-card object type doesn't clash with the data-card tuple in the
     # ternaries, matching the global dashboard. The data cards on these tabs start
     # at row 2 to sit below the note.
-    local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
     local.tenant_has_tab[each.key]["screener_form_journey"] ? [local.tenant_screener_epoch_note_card[7]] : [],
     local.tenant_has_tab[each.key]["screener_results"] ? [local.tenant_screener_epoch_note_card[8]] : [],
     local.tenant_has_tab[each.key]["screener_sharing_saving"] ? [local.tenant_screener_epoch_note_card[9]] : [],

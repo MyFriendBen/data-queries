@@ -1,38 +1,26 @@
 {#
-  Canonical screener step definitions — the SINGLE source of truth for step slug,
-  human label, and funnel rank. The ladder is a Jinja list here; everything else is
-  generated from it so slug/label/rank can never diverge:
-    - screener_step_label(col): inline CASE slug -> label (marts surfacing a label)
-    - screener_step_ladder():    SQL rows (slug, label, funnel_rank) for the
-                                 int model and the published mart_screener_step_ladder,
-                                 which the Metabase-side funnel card LEFT JOINs
-                                 (Metabase SQL can't call dbt macros).
+  Single source of truth for each screener step's slug, label, and funnel rank.
+  Slugs are the FE contract; labels are a presentation choice; everything else is
+  generated from this list so the three can't diverge. Consumed via
+  screener_step_label() and the ladder macros below.
 
-  Slugs are the FE contract (getStepAnalyticsId); labels are a data-layer
-  presentation choice. `rank` is the position in the monotonic drop-off funnel;
-  `none` = deliberately OFF the ranked ladder (still labeled, so it renders if
-  surfaced, but not a funnel rung):
-    - select-state / referral-source: conditionally shown -> a skip would look
-      like drop-off; reported separately.
-    - member-basics: shown only for household size > 1, so it can't be a monotonic
-      rung (fewer viewers than the universal member-details).
-    - household-members / household-basics: legacy slugs kept labeled for old
-      rows; the household funnel role is now member-details (MFB-1348 sub-steps).
-    - cesn-*: energy flow, off the shared ladder; ranked instead by the two
-      CESN per-path ranks below.
+  Rank columns give a step its position in a funnel, or none to keep it off that
+  funnel (still labeled, just not a rung):
+    - rank: the shared non-CESN funnel.
+    - cesn: the combined CESN funnel (steps common to both energy paths).
+    - cesn_home / cesn_rent: the per-path CESN funnels — currently unused, kept
+      for a future per-path split.
+  Off-ladder cases: select-state / referral-source are conditionally shown (a skip
+  would read as drop-off); member-basics shows only for household size > 1;
+  household-members / household-basics are legacy slugs kept only for old rows.
 
-  CESN branches into a homeowner and a renter path that order the same steps
-  differently and each have one exclusive step (homeowner: appliances; renter:
-  energy-expenses, shown first). A single `rank` can't express both, so
-  cesn_home / cesn_rent give each step its position within that path (none = not
-  on it), mirroring the FE stepDirectory in cesn.py.
+  CESN's energy flow branches into a homeowner and a renter path (mirroring the FE
+  stepDirectory in cesn.py) that order the same steps differently, each with one
+  exclusive step: appliances (homeowner) and energy-expenses (renter, shown first).
+  The combined `cesn` rank omits both exclusives; the per-path ranks include them.
 #}
 
 {% macro _screener_steps() %}
-  {# rank = shared non-CESN funnel position. cesn = combined CESN funnel over the
-     steps common to both paths (the two path-exclusive steps carry none). cesn_home
-     / cesn_rent = per-path position, kept for the eventual per-path split. none =
-     off that ladder. #}
   {{ return([
     {'slug': 'language',              'label': 'Language',                   'rank': 1,    'cesn': 1,    'cesn_home': 1,    'cesn_rent': 1},
     {'slug': 'disclaimer',            'label': 'Disclaimer',                 'rank': 2,    'cesn': 2,    'cesn_home': 2,    'cesn_rent': 2},
@@ -84,8 +72,8 @@
 {% endmacro %}
 
 
-{# SQL rows (path, step, label, rank) for the CESN two-path funnel: one row per
-   (step, path) the step is on. The card LEFT JOINs this per path and orders by rank. #}
+{# SQL rows (path, step, label, rank) for the per-path CESN funnels: one row per
+   (step, path) the step is on. Currently unused — kept for a future per-path split. #}
 {% macro screener_cesn_step_ladder() %}
     {%- set paths = [('homeowner', 'cesn_home'), ('renter', 'cesn_rent')] %}
     {%- set rows = [] %}

@@ -281,9 +281,11 @@ resource "metabase_card" "screener_step_funnel" {
 # CESN step funnel — one funnel over the steps common to both CESN paths. The
 # two path-exclusive steps (homeowner appliances, renter energy-expenses) are
 # excluded so the funnel needs no path classification and covers every CESN
-# session. Placed only on the CESN dashboard (see the form-journey layout).
+# session. Only built for tenants that actually have the CESN tab — otherwise a
+# copy carrying CESN data lands in every tenant's collection (unplaced, but
+# browsable). Placed via the form-journey layout.
 resource "metabase_card" "screener_cesn_funnel" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["cesn_homeowners_vs_renters"] }
 
   json = jsonencode({
     name                = "Form Step Reached"
@@ -1415,9 +1417,9 @@ resource "metabase_card" "screener_additional_resources_edits" {
   })
 }
 
-# Document downloads — table. Which "Key Information" documents get downloaded, by
-# program. Count card (no impression event exists, so there's no true download
-# rate). Sits next to the Navigator table.
+# Document downloads — table. Per program document: how many screenings were shown
+# it (from the results_documents impression), how many downloaded it, and the
+# download rate. Sits next to the Navigator table.
 resource "metabase_card" "screener_document_downloads" {
   for_each = local.ga_tenants_enabled
 

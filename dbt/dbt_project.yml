@@ -18,6 +18,11 @@ vars:
   # with tenant_ga_state_codes in the dashboards Terraform when a WL launches.
   screener_state_slugs: ['co', 'nc', 'tx', 'wa', 'il', 'ma', 'cesn']
 
+  # First day all screener analytics events emit correctly (YYYYMMDD). Used to
+  # prune the events_* wildcard scan in models that read the raw export directly.
+  # Mirrors screener_analytics_epoch in the dashboards Terraform.
+  screener_analytics_epoch_suffix: '20260729'
+
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]

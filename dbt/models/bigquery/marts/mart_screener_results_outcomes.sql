@@ -59,7 +59,8 @@ none_eligible_proxy as (
         ) as is_cesn,
         (select value.string_value from unnest(vil.event_params) where key = 'screener_uid' limit 1) as screener_uid
     from {{ source('google_analytics', 'events_*') }} vil
-    where vil.event_name = 'view_item_list'
+    where vil._table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
+        and vil.event_name = 'view_item_list'
         -- exactly one results_programs item and it's the '(not set)' placeholder
         and (
             select count(*) from unnest(vil.items) item where item.item_list_name = 'results_programs'
