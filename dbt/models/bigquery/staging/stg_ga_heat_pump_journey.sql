@@ -7,7 +7,7 @@
 -- CESN heat-pump / HVAC-journey events. One row per raw event, params flattened.
 -- Downstream marts filter by event_name:
 --   heat_pump_journey_learn_more_click — "Learn more" from "Why get a heat pump?"
---   rebate_link_click                  — "Learn how to apply" (rebate_type, rebate_category)
+--   heat_pump_rebate_link_click        — "Learn how to apply" (rebate_type, rebate_category)
 --   heat_pump_section_view             — a section rendered (section: why_heat_pump |
 --                                        bills_impact | find_contractor | rebates |
 --                                        calculator | contractor_pdf). The click-through
@@ -29,8 +29,10 @@
 --                                        reduction) at median / p20 / p80, plus project_type
 --   heat_pump_connect_now_find_installer — Power Ahead Colorado contractor search
 --   heat_pump_connect_now_expand_search  — Love Electric contractor search
---   heat_pump_pdf_page                 — contractor-tips PDF page reached (page_number)
+--   heat_pump_pdf_page                 — contractor-tips PDF page reached (page_number;
+--                                        page 1 fires on open, so it's the PDF denominator)
 --   heat_pump_pdf_print                — contractor-tips PDF print
+--   heat_pump_pdf_fullscreen           — contractor-tips PDF entered fullscreen
 -- screener_state / screener_uid arrive as params. These events are CESN-only, so a
 -- non-null screener_uid is the per-user join key for path / correlation marts.
 
@@ -95,7 +97,7 @@ cross join unnest(event_params) as ep
 where _table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
     and event_name in (
         'heat_pump_journey_learn_more_click',
-        'rebate_link_click',
+        'heat_pump_rebate_link_click',
         'heat_pump_section_view',
         'heat_pump_cta_click',
         'heat_pump_calculator_field',
@@ -107,6 +109,7 @@ where _table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
         'heat_pump_connect_now_expand_search',
         'heat_pump_pdf_page',
         'heat_pump_pdf_print',
+        'heat_pump_pdf_fullscreen',
         'heat_pump_back_click'
     )
 

@@ -22,6 +22,7 @@
 with field_events as (
     select
         event_date, event_date_parsed, screener_state, screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         field as stage
     from {{ ref('stg_ga_heat_pump_journey') }}
     where event_name = 'heat_pump_calculator_field'
@@ -31,6 +32,7 @@ with field_events as (
 other_stages as (
     select
         event_date, event_date_parsed, screener_state, screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         case event_name
             when 'heat_pump_calculator_submit' then 'calculate_impact'
             when 'heat_pump_calculator_result' then 'results_shown'
@@ -72,6 +74,7 @@ select
 
     count(*) as total_clicks,
     count(distinct screener_uid) as users,
+    count(distinct session_key) as sessions,
 
     current_timestamp() as updated_at
 

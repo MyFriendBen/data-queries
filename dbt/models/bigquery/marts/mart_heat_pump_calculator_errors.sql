@@ -17,6 +17,7 @@ with errors as (
         event_date_parsed,
         screener_state,
         screener_uid,
+        to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
         coalesce(error_type, '(unspecified)') as error_type,
         case error_type
             when 'address_not_supported' then 'Address not supported'
@@ -36,6 +37,7 @@ select
 
     count(*) as total_errors,
     count(distinct screener_uid) as users,
+    count(distinct session_key) as sessions,
 
     current_timestamp() as updated_at
 

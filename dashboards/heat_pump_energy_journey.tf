@@ -37,6 +37,25 @@ locals {
     ORDER BY `Clicks` DESC
   SQL
 
+  # ── Story 1 & 3: click-through rate ─────────────────────────────────────────
+  # % of users who SAW a section that then clicked its element. Recomputed from
+  # summed users / view_users over the range (not an average of daily rates), so
+  # the denominator is the section_view impression, not raw clicks.
+  hp_sql_click_through_rate = <<-SQL
+    SELECT
+      interaction AS `Interaction`,
+      ROUND(SUM(users) * 100.0 / NULLIF(SUM(view_users), 0), 1) AS `% of viewers who clicked`
+    FROM `${local.bq_dataset}.mart_heat_pump_engagement`
+    WHERE ${local.hp_state_filter}
+      AND interaction IS NOT NULL
+      AND view_users IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY interaction
+    ORDER BY `% of viewers who clicked` DESC
+  SQL
+
   # ── Story 2: impact-calculator funnel ───────────────────────────────────────
   # Distinct users reaching each calculator stage, in funnel order. The errors
   # stage (funnel_rank 9) is excluded here — it's off-funnel and gets its own
@@ -164,6 +183,34 @@ resource "metabase_card" "hp_engagement" {
     visualization_settings = {
       "graph.dimensions"  = ["Interaction"]
       "graph.metrics"     = ["Clicks", "Users"]
+      "graph.show_values" = true
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
+resource "metabase_card" "hp_click_through_rate" {
+  for_each = local.ga_tenants_enabled
+  json = jsonencode({
+    name                = "HVAC Page Click-Through Rate"
+    description         = "Of the users who saw each section, the percent who clicked its link or CTA. Denominator is the section-view impression, so this is a true click-through rate, not a share of clicks."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.hp_sql_click_through_rate
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"  = ["Interaction"]
+      "graph.metrics"     = ["% of viewers who clicked"]
       "graph.show_values" = true
     }
     parameter_mappings = []
@@ -336,11 +383,23 @@ locals {
       series                 = []
       visualization_settings = {}
     },
-    # Row 7: impact calculator funnel (left) | contractor correlation (right)
+    # Row 7: click-through rate (full width)
+    {
+      card_id                = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
+      dashboard_tab_id       = 11
+      row                    = 7
+      col                    = 0
+      size_x                 = 24
+      size_y                 = 7
+      parameter_mappings     = []
+      series                 = []
+      visualization_settings = {}
+    },
+    # Row 14: impact calculator funnel (left) | contractor correlation (right)
     {
       card_id                = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
       dashboard_tab_id       = 11
-      row                    = 7
+      row                    = 14
       col                    = 0
       size_x                 = 12
       size_y                 = 8
@@ -351,7 +410,7 @@ locals {
     {
       card_id                = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
       dashboard_tab_id       = 11
-      row                    = 7
+      row                    = 14
       col                    = 12
       size_x                 = 12
       size_y                 = 8
@@ -359,11 +418,11 @@ locals {
       series                 = []
       visualization_settings = {}
     },
-    # Row 15: savings trend (left) | emissions trend (right)
+    # Row 22: savings trend (left) | emissions trend (right)
     {
       card_id                = tonumber(metabase_card.hp_savings_trend["cesn"].id)
       dashboard_tab_id       = 11
-      row                    = 15
+      row                    = 22
       col                    = 0
       size_x                 = 12
       size_y                 = 7
@@ -374,7 +433,7 @@ locals {
     {
       card_id                = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
       dashboard_tab_id       = 11
-      row                    = 15
+      row                    = 22
       col                    = 12
       size_x                 = 12
       size_y                 = 7
