@@ -594,7 +594,24 @@ resource "metabase_dashboard" "analytics" {
     { id = 7, name = "•      Share & Save" },
   ])
 
-  cards_json = jsonencode(concat(
+  # Same ordering requirement as tenant_analytics: the provider fails an apply
+  # with "inconsistent result" unless cards_json is in the order Metabase returns
+  # it (dashboard_tab_id, then row, then col). Assemble the cards unsorted in the
+  # local below and sort them here, rather than hand-ordering every layout block.
+  # See tenant_analytics for the full rationale; the key encoding is identical.
+  cards_json = jsonencode([
+    for entry in sort([
+      for i, c in local.analytics_cards :
+      format("%05d|%05d|%05d|%05d", c.dashboard_tab_id, c.row, c.col, i)
+    ]) :
+    local.analytics_cards[tonumber(element(split("|", entry), length(split("|", entry)) - 1))]
+  ])
+}
+
+locals {
+  # Global analytics dashboard cards, assembled unsorted; the resource above
+  # sorts them into the (tab, row, col) order Metabase returns.
+  analytics_cards = concat(
     # -------------------------------------------------------------------------
     # Tab 1: Overall Performance
     # -------------------------------------------------------------------------
@@ -1165,10 +1182,8 @@ resource "metabase_dashboard" "analytics" {
         series                 = []
         visualization_settings = {}
       },
-      # Disclaimer link clicks — row 44, placed BEFORE household (row 52) so the
-      # cards_json array stays row-ascending (flovouin provider requires it, else
-      # "inconsistent result after apply"). Mirrors the screener flow (Disclaimer
-      # is step 2, before Household).
+      # Disclaimer link clicks — row 44, above household (row 52), mirroring the
+      # screener flow where the disclaimer (step 2) precedes Household.
       {
         card_id                = tonumber(metabase_card.global_screener_public_charge_click_rate[0].id)
         dashboard_tab_id       = 5
@@ -1581,7 +1596,7 @@ resource "metabase_dashboard" "analytics" {
         visualization_settings = {}
       },
     ] : [],
-  ))
+  )
 }
 
 # Tenant-specific dashboards
@@ -1945,7 +1960,6 @@ locals {
           },
         ] : [],
         # Row 4: Summary metrics — TI (col 0) | Non-Tax (col 4) | Tax (col 8) | Total Benefits (col 12, 8×4) | Note (col 20).
-        # Keep cards ordered by (row, col) — terraform apply errors with "Provider produced inconsistent result" otherwise.
         local.tenant_features[each.key].has_summary_metrics ? [
           {
             card_id          = tonumber(metabase_card.tenant_total_individuals[each.key].id)
