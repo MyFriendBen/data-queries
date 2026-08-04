@@ -1,6 +1,17 @@
 name: Terraform Apply
 
+# Terraform apply publishes Metabase cards that read the dbt-built mart_*
+# tables, so it must run AFTER dbt finishes. Rather than trigger independently
+# on push (which raced dbt-on-merge whenever a merge touched both dirs), this
+# runs on the completion of "dbt Build on Merge" and only when dbt succeeded.
+# The push trigger is retained for dashboards-only merges — pushes that touch
+# dbt/ are handled by the workflow_run path and skipped here to avoid a
+# double-run and the original race.
 on:
+  workflow_run:
+    workflows: ["dbt Build on Merge"]
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -13,9 +24,51 @@ on:
       - ".github/workflows/terraform-apply.yml"
   workflow_dispatch:
 
+# Serialize prod deploys: dbt-on-merge shares this group, so a dbt build and a
+# terraform apply never run against the same Metabase/warehouse at once, and two
+# rapid merges queue rather than overlap. Don't cancel in progress — a
+# half-applied terraform state is worse than waiting.
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
 jobs:
+  # Decide whether an apply should run for this trigger:
+  #  - workflow_run: only after "dbt Build on Merge" succeeded on main
+  #  - workflow_dispatch: always
+  #  - push: only when the commit changed dashboards/ but NOT dbt/ (a
+  #    dbt-touching push is covered by the workflow_run path above, so running
+  #    here too would re-introduce the original race).
+  gate:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+        with:
+          fetch-depth: 2
+
+      - name: Decide whether to apply
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+                 | grep -q '^dbt/'; then
+              echo "Push changed dbt/ — deferring to the workflow_run trigger."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
   apply:
-    if: github.ref == 'refs/heads/main'
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment: production
     defaults:
@@ -33,7 +86,12 @@ jobs:
       TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
       TF_VAR_gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
     steps:
+      # On workflow_run, check out the exact commit dbt built (not just the
+      # branch tip) so terraform applies against the tables dbt produced.
+      # Falls back to the default ref for push / workflow_dispatch.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - uses: hashicorp/setup-terraform@v3
         with:
