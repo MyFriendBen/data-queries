@@ -12,9 +12,11 @@
 -- plus an errors stage (off-funnel, count of error events).
 --
 -- Each field stage counts heat_pump_calculator_field rows for that field; submit,
--- result, edit, and error come from their own events. total_clicks is the raw event
--- count; users is distinct screener_uid (present here — the calculator is on the
--- post-screening results page). PRIVACY: heat_pump_calculator_field with
+-- result, edit, and error come from their own events. Every stage carries both
+-- total_clicks (raw event count) and users (distinct screener_uid, the screening
+-- grain); the funnel card draws users, and total_clicks is kept for the clicks
+-- view. uid is present here — the calculator is on the post-screening results
+-- page. PRIVACY: heat_pump_calculator_field with
 -- field='address' records only THAT an address was entered, never its value.
 
 with field_events as (
