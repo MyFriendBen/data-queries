@@ -1704,22 +1704,22 @@ resource "metabase_dashboard" "tenant_analytics" {
     for tab_key in local.tenant_tabs[each.key] : local.all_tabs[each.key][tab_key]
   ])
 
-  # cards_json must be ordered by dashboard_tab_id ascending (then row): Metabase
-  # returns the dashcards sorted that way, and the provider fails an apply with an
-  # "inconsistent result" if the sent order differs. So tabs appear here as
-  # 2,3,5,6,7,8,9,10 — NOT in display order (Overview/tab 10 shows first in the UI
-  # but must come last in this array).
   # The flovouin provider fails an apply with "inconsistent result" unless the
   # cards_json array is already ordered the way Metabase returns it: by
   # dashboard_tab_id, then row, then col. Rather than hand-order every layout
   # block (which drifts as cards move), assemble the cards unsorted and sort here.
-  # The trailing index keeps the sort stable for cards sharing (tab, row, col).
+  #
+  # sort() is lexicographic on strings, so each card becomes one zero-padded key
+  # "tab|row|col|i". All fields share the same width so no field can bleed into
+  # the next as values grow. The trailing original index makes the order total
+  # (no ties) and carries each card's position: it is the LAST field, so the
+  # split index below must stay in sync with the field count in the format string.
   cards_json = jsonencode([
     for entry in sort([
       for i, c in local.tenant_analytics_cards[each.key] :
-      format("%03d|%05d|%03d|%05d", c.dashboard_tab_id, c.row, c.col, i)
+      format("%05d|%05d|%05d|%05d", c.dashboard_tab_id, c.row, c.col, i)
     ]) :
-    local.tenant_analytics_cards[each.key][tonumber(element(split("|", entry), 3))]
+    local.tenant_analytics_cards[each.key][tonumber(element(split("|", entry), length(split("|", entry)) - 1))]
   ])
 }
 
