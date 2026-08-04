@@ -26,7 +26,9 @@ with results as (
         annual_bill_delta_median,
         annual_bill_delta_p20,
         annual_bill_delta_p80,
-        annual_emissions_delta_median
+        annual_emissions_delta_median,
+        annual_emissions_delta_p20,
+        annual_emissions_delta_p80
     from {{ ref('stg_ga_heat_pump_journey') }}
     where event_name = 'heat_pump_calculator_result'
 )
@@ -46,6 +48,8 @@ select
 
     round(avg(annual_emissions_delta_median), 2) as avg_annual_emissions_delta,
     round(approx_quantiles(annual_emissions_delta_median, 100 ignore nulls)[offset(50)], 2) as median_annual_emissions_delta,
+    round(avg(annual_emissions_delta_p20), 2) as avg_annual_emissions_delta_p20,
+    round(avg(annual_emissions_delta_p80), 2) as avg_annual_emissions_delta_p80,
 
     current_timestamp() as updated_at
 

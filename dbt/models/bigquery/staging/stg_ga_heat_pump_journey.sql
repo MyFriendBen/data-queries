@@ -68,6 +68,12 @@ select
     max(case when ep.key = 'annual_emissions_delta_median'
         then coalesce(ep.value.double_value, safe_cast(ep.value.string_value as float64))
     end) as annual_emissions_delta_median,
+    max(case when ep.key = 'annual_emissions_delta_p20'
+        then coalesce(ep.value.double_value, safe_cast(ep.value.string_value as float64))
+    end) as annual_emissions_delta_p20,
+    max(case when ep.key = 'annual_emissions_delta_p80'
+        then coalesce(ep.value.double_value, safe_cast(ep.value.string_value as float64))
+    end) as annual_emissions_delta_p80,
 
     max(case when ep.key = 'page_number'
         then coalesce(ep.value.int_value, safe_cast(ep.value.string_value as int64))
