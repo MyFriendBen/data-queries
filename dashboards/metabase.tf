@@ -2272,6 +2272,8 @@ locals {
       # its layout so the tab itself stays row-ascending.
       local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
       local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
+      # Tab 11 (Heat Pump Journey): CESN-only, placed for the cesn tenant only.
+      flatten([for k in [each.key] : local.tenant_dashboard_heat_pump_layout if local.tenant_has_tab[k]["heat_pump_energy_journey"]]),
     )
   }
 }
