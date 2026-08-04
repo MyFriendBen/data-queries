@@ -8,7 +8,13 @@
 -- Downstream marts filter by event_name:
 --   heat_pump_journey_learn_more_click — "Learn more" from "Why get a heat pump?"
 --   rebate_link_click                  — "Learn how to apply" (rebate_type, rebate_category)
+--   heat_pump_section_view             — a section rendered (section: why_heat_pump |
+--                                        bills_impact | find_contractor | rebates |
+--                                        calculator | contractor_pdf). The click-through
+--                                        denominator: rate = clicks / views of a section.
 --   heat_pump_cta_click                — internal CTA (cta: calculate_impact | connect_now)
+--   heat_pump_back_click               — explicit back-navigation (back_from: calculator |
+--                                        connect_now), vs. silent drop-off
 --   heat_pump_calculator_field         — a calculator field was engaged (field:
 --                                        household_type | address | heating_fuel |
 --                                        water_heating | project_type). PRIVACY: the
@@ -46,6 +52,8 @@ select
     -- event-specific params
     max(case when ep.key = 'cta' then ep.value.string_value end) as cta,
     max(case when ep.key = 'field' then ep.value.string_value end) as field,
+    max(case when ep.key = 'section' then ep.value.string_value end) as section,
+    max(case when ep.key = 'from' then ep.value.string_value end) as back_from,
     max(case when ep.key = 'error_type' then ep.value.string_value end) as error_type,
     max(case when ep.key = 'household_type' then ep.value.string_value end) as household_type,
     max(case when ep.key = 'heating_fuel' then ep.value.string_value end) as heating_fuel,
@@ -88,6 +96,7 @@ where _table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
     and event_name in (
         'heat_pump_journey_learn_more_click',
         'rebate_link_click',
+        'heat_pump_section_view',
         'heat_pump_cta_click',
         'heat_pump_calculator_field',
         'heat_pump_calculator_submit',
@@ -97,7 +106,8 @@ where _table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
         'heat_pump_connect_now_find_installer',
         'heat_pump_connect_now_expand_search',
         'heat_pump_pdf_page',
-        'heat_pump_pdf_print'
+        'heat_pump_pdf_print',
+        'heat_pump_back_click'
     )
 
 group by
