@@ -68,15 +68,19 @@ locals {
     ORDER BY funnel_rank
   SQL
 
-  # ── Story 2: calculator errors ──────────────────────────────────────────────
+  # ── Story 2: calculator errors, by type ─────────────────────────────────────
   hp_sql_calculator_errors = <<-SQL
-    SELECT COALESCE(SUM(total_clicks), 0) AS count
-    FROM `${local.bq_dataset}.mart_heat_pump_calculator_funnel`
+    SELECT
+      error_label AS `Error`,
+      SUM(total_errors) AS `Errors`,
+      SUM(users) AS `Users`
+    FROM `${local.bq_dataset}.mart_heat_pump_calculator_errors`
     WHERE ${local.hp_state_filter}
-      AND stage = 'errors'
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    GROUP BY error_label
+    ORDER BY `Errors` DESC
   SQL
 
   # ── Story 7: annual bill savings trend ──────────────────────────────────────
@@ -197,8 +201,8 @@ resource "metabase_card" "hp_calculator_funnel" {
 resource "metabase_card" "hp_calculator_errors" {
   for_each = local.ga_tenants_enabled
   json = jsonencode({
-    name                = "Impact Calculator Errors"
-    description         = "Total calculator errors thrown (unsupported address, calculation error, or invalid response)."
+    name                = "Impact Calculator Errors by Type"
+    description         = "Calculator errors thrown, broken out by type: unsupported address, invalid response from the calculator, or other error."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -211,10 +215,14 @@ resource "metabase_card" "hp_calculator_errors" {
         template-tags = local.ga_date_tags
       }
     }
-    display                = "scalar"
-    visualization_settings = { "scalar.field" = "count" }
-    parameter_mappings     = []
-    parameters             = []
+    display = "bar"
+    visualization_settings = {
+      "graph.dimensions"  = ["Error"]
+      "graph.metrics"     = ["Errors", "Users"]
+      "graph.show_values" = true
+    }
+    parameter_mappings = []
+    parameters         = []
   })
 }
 
