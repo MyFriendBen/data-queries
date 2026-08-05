@@ -24,7 +24,10 @@ with results_loaded as (
     where event_name = 'screener_results_loaded'
 ),
 
-none_eligible as (
+-- "None eligible" from the emitted event. Unioned with the impression proxy
+-- below because the event is not present on every screening that qualified for
+-- no programs.
+none_eligible_event as (
     select
         event_date,
         event_date_parsed,
@@ -33,6 +36,47 @@ none_eligible as (
         screener_uid
     from {{ ref('stg_ga_screener_results_outcomes') }}
     where event_name = 'screener_results_none_eligible'
+),
+
+-- Proxy for the same "qualified for no programs" signal, recovered from the
+-- results-page impression. When the results_programs list is empty, GA4 can't
+-- send an empty items array, so it fabricates a single placeholder item with
+-- item_id = '(not set)'. That exact shape — a results_programs list of exactly
+-- one item, and that item is '(not set)' — means the screening saw zero eligible
+-- programs. A real program (or a mix of real + placeholder) never matches, so
+-- this can't mislabel a screening that had eligible programs. Keyed on
+-- screener_uid so the union with the event de-dupes.
+none_eligible_proxy as (
+    select
+        vil.event_date,
+        parse_date('%Y%m%d', vil.event_date) as event_date_parsed,
+        (select value.string_value from unnest(vil.event_params) where key = 'screener_state' limit 1) as screener_state,
+        logical_or(
+            lower((select value.string_value from unnest(vil.event_params) where key = 'screener_state' limit 1)) = 'cesn'
+        ) over (
+            partition by vil.user_pseudo_id,
+            (select value.int_value from unnest(vil.event_params) where key = 'ga_session_id' limit 1)
+        ) as is_cesn,
+        (select value.string_value from unnest(vil.event_params) where key = 'screener_uid' limit 1) as screener_uid
+    from {{ source('google_analytics', 'events_*') }} vil
+    where vil._table_suffix >= '{{ var("screener_analytics_epoch_suffix") }}'
+        and vil.event_name = 'view_item_list'
+        -- exactly one results_programs item and it's the '(not set)' placeholder
+        and (
+            select count(*) from unnest(vil.items) item where item.item_list_name = 'results_programs'
+        ) = 1
+        and (
+            select logical_and(item.item_id = '(not set)')
+            from unnest(vil.items) item
+            where item.item_list_name = 'results_programs'
+        )
+        and (select value.string_value from unnest(vil.event_params) where key = 'screener_uid' limit 1) is not null
+),
+
+none_eligible as (
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_event
+    union distinct
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_proxy
 ),
 
 results_errors as (

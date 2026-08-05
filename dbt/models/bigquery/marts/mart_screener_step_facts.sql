@@ -26,8 +26,7 @@ with events as (
         is_cesn,
         event_date_parsed,
         event_name,
-        step_action,
-        form_error_count
+        step_action
     from {{ ref('stg_ga_screener_form_funnel') }}
     where screener_step_name is not null
         and screener_step_name not in ('__form_start__', '__form_complete__')
@@ -44,7 +43,13 @@ per_session_step as (
         max(event_name = 'screener_form_step' and step_action = 'view') as viewed,
         max(event_name = 'screener_form_error') as errored,
         max(event_name = 'screener_form_back') as navigated_back,
-        sum(case when event_name = 'screener_form_error' then form_error_count else 0 end) as error_events
+        -- Count of field-level error events on this step (FE #2163 fires one
+        -- screener_form_error per failed field), summed per session. Replaces the
+        -- old SUM(form_error_count): that param counted top-level RHF keys (under-
+        -- counted array steps) AND is now emitted once per field, so SUM over the
+        -- per-field events would double-count. COUNTIF is the accurate field-error
+        -- total and is immune to the param's changed meaning.
+        countif(event_name = 'screener_form_error') as error_events
     from events
     group by session_key, screener_step_name
 )

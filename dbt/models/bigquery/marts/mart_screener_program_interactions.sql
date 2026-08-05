@@ -24,7 +24,6 @@ with interactions as (
         screener_state,
         screener_uid,
         program_id,
-        program_name,
         document_name,
         case event_name
             when 'screener_apply_click' then 'apply'
@@ -32,8 +31,8 @@ with interactions as (
             when 'screener_program_visit_website' then 'visit_website'
             when 'screener_program_phone_click' then 'phone_click'
             when 'screener_program_document_download' then 'document_download'
+            when 'screener_program_document_shown' then 'document_shown'
             when 'screener_required_program_click' then 'required_program_click'
-            when 'screener_eligibility_tags_shown' then 'eligibility_tags_shown'
             -- Per-program impression: the "shown" denominator for conversion
             -- rates (more_info / apply ÷ shown).
             when 'screener_program_shown' then 'shown'
@@ -45,34 +44,49 @@ with interactions as (
         'screener_program_visit_website',
         'screener_program_phone_click',
         'screener_program_document_download',
+        'screener_program_document_shown',
         'screener_required_program_click',
-        'screener_eligibility_tags_shown',
         'screener_program_shown'
     )
     -- program_id is expected on every one of these events; guard against
-    -- unmapped/legacy rows polluting the grain
+    -- unmapped/legacy rows polluting the grain. '(not set)' is the placeholder
+    -- GA4 fabricates when a view_item_list is sent with an empty items array (no
+    -- eligible programs to show); it's not a real program, so exclude it here.
+    -- The same marker is what mart_screener_results_outcomes reads as a
+    -- none-eligible screening.
     and program_id is not null
+    and program_id != '(not set)'
+),
+
+aggregated as (
+    select
+        event_date,
+        event_date_parsed,
+        screener_state,
+        program_id,
+        interaction_type,
+        -- null except for document_download and document_shown rows
+        document_name,
+        count(*) as total_interactions,
+        count(distinct screener_uid) as screenings_with_interaction
+    from interactions
+    group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
 )
 
 select
-    event_date,
-    event_date_parsed,
-    screener_state,
-    program_id,
-
-    -- Arbitrary display label per program_id (see note above on spelling drift)
-    max(program_name) as program_name,
-
-    interaction_type,
-
-    -- null except for document_download rows (in the grain below)
-    document_name,
-
-    count(*) as total_interactions,
-    count(distinct screener_uid) as screenings_with_interaction,
-
+    a.event_date,
+    a.event_date_parsed,
+    a.screener_state,
+    a.program_id,
+    -- fall back to the id if a name was never captured for this program
+    coalesce(pn.program_name, a.program_id) as program_name,
+    a.interaction_type,
+    a.document_name,
+    a.total_interactions,
+    a.screenings_with_interaction,
     current_timestamp() as updated_at
 
-from interactions
-group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
-order by event_date desc, screener_state, total_interactions desc
+from aggregated a
+left join {{ ref('int_screener_program_names') }} pn
+    on a.program_id = pn.program_id
+order by a.event_date desc, a.screener_state, a.total_interactions desc

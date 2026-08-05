@@ -25,6 +25,7 @@ with loads as (
     select
         screener_uid,
         event_date_parsed,
+        event_timestamp,
         screener_state,
         is_cesn
     from {{ ref('stg_ga_screener_results_outcomes') }}
@@ -36,9 +37,15 @@ select
     screener_uid,
     count(*) as results_load_count,
     min(event_date_parsed) as event_date_parsed,
-    -- state/cesn are session-level constants for a screening; take any (min is
-    -- deterministic). A screening's results loads all share the same scope.
-    min(screener_state) as screener_state,
+    -- Attribute the screening to the earliest event whose state is a known
+    -- lowercase code — a screening's events can carry the legacy display-name
+    -- format (e.g. "Colorado") that the dashboard state IN-list doesn't
+    -- recognize. Derived the same way as mart_screener_screening_funnel so the
+    -- two agree on which screenings pass the state filter.
+    array_agg(
+        if(screener_state in ('co','nc','tx','wa','il','ma','cesn'), screener_state, null)
+        ignore nulls order by event_timestamp limit 1
+    )[safe_offset(0)] as screener_state,
     max(is_cesn) as is_cesn,
 
     current_timestamp() as updated_at

@@ -69,24 +69,32 @@ locals {
   #  - excludes every CESN session's rows via NOT is_cesn — including a CESN
   #    session's own null-state landing rows (energysavings.colorado.gov redirect),
   #    which a bare `OR screener_state IS NULL` would otherwise leak back in.
-  # Other global marts (interactions, saves, shares, resources, language) fire
-  # after a white-label is set — no null-state rows and no cesn rows — so they use
-  # the plain all_screener_state_filter IN-list and need no is_cesn column.
+  # Other post-white-label global marts (interactions, saves, shares, resources)
+  # have no null-state rows and no cesn rows, so they use the plain
+  # all_screener_state_filter IN-list and need no is_cesn column.
   all_screener_global_predicate = "NOT is_cesn AND (screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
+
+  # Global predicate for the chrome / language marts. These fire on site chrome
+  # that can precede a white label (state resolved from the param or the page URL,
+  # else null), so they carry null-state rows but have no is_cesn column. Keep the
+  # known non-CESN states plus null-state rows. CESN is deliberately excluded from
+  # the global total (it's not a state and has its own dashboard), consistent with
+  # all_screener_state_filter: a CESN chrome row whose state resolved to 'cesn'
+  # (via param or URL) is dropped here and counted only on the CESN tab. CESN rows
+  # that stay null (no resolvable state) do fall into the null bucket and can't be
+  # separated out without an is_cesn column — a small, unattributable residue.
+  all_screener_state_or_null_filter = "(screener_state IN (${local.all_screener_state_filter}) OR screener_state IS NULL)"
 
   # Shared note shown at the top of each screener engagement tab, explaining the
   # data start date + ramp-up so a sparse recent window isn't misread as a drop.
-  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 22, 2026** forward, the first full day the current analytics event tracking was live in production."
+  screener_epoch_note = "📊 **About this data** — Screener engagement tracking reflects activity from **July 29, 2026** forward, the first full day all screener analytics events — including the results-page impressions — were emitting correctly in production."
 
-  # Analytics epoch: the first FULL day the current app-emitted screener_* event
-  # CONTRACT was live in production. Every screener card floors on this so metrics
-  # reflect one contract. The contract (stable per-rule error codes, member-basics/
-  # member-details sub-step slugs, results-as-step, help step context) shipped to prod
-  # on 2026-07-21, a partial/mixed day; 07-22 is the first full day with no pre-cutover
-  # rows. Flooring at 07-22 means the cards use the new contract only — no legacy
-  # English error messages or parent household-members slug — which is why the error
-  # mart safely drops its legacy English-message fallback. A fixed historical fact.
-  screener_analytics_epoch = "2026-07-22"
+  # Analytics epoch: the first full day every screener_* event was emitting
+  # correctly in production. Every card floors on this. The app-emitted contract
+  # went live 07-26, but the results-page view_item_list impressions were wrong
+  # (full program catalog; dropped resource impressions) until the frontend fix
+  # on 07-28, so 07-29 is the first full clean day across all cards.
+  screener_analytics_epoch = "2026-07-29"
 
   # Convenience prefix for BigQuery table references in native SQL.
   # Usage: `${local.bq_dataset}.table_name`

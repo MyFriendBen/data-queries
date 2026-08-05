@@ -45,13 +45,25 @@ with per_event as (
         -- Screener identifiers (sent directly as params)
         max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
         max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
+        -- CESN homeowner/renter branch. Present on CESN events that carry the
+        -- param; null on non-CESN events and events without it.
+        max(case when ep.key = 'screener_path' then ep.value.string_value end) as screener_path,
 
         -- Step details
         max(case when ep.key = 'screener_step_name' then ep.value.string_value end) as screener_step_name,
         max(case when ep.key = 'screener_step_number' then ep.value.int_value end) as screener_step_number,
         max(case when ep.key = 'step_action' then ep.value.string_value end) as step_action,
+        -- member_index (FE #2163): 0-based member-page ordinal, present only on the
+        -- member-details step's view event — the per-member-page denominator key.
+        max(case when ep.key = 'member_index' then ep.value.int_value end) as member_index,
 
-        -- Error details (screener_form_error only)
+        -- Error details (screener_form_error only).
+        -- New per-field contract (FE #2163): screener_form_error now fires ONCE PER
+        -- FAILED FIELD with form_field_name (canonical path, numeric indices already
+        -- stripped on the FE) + form_error_reason (friendly label). form_error_message
+        -- is legacy/optional and no longer parsed downstream.
+        max(case when ep.key = 'form_field_name' then ep.value.string_value end) as form_field_name,
+        max(case when ep.key = 'form_error_reason' then ep.value.string_value end) as form_error_reason,
         max(case when ep.key = 'form_error_message' then ep.value.string_value end) as form_error_message,
         max(case when ep.key = 'form_error_count' then ep.value.int_value end) as form_error_count,
 
@@ -87,6 +99,25 @@ select
     logical_or(
         lower(screener_state) = 'cesn'
         or lower(screener_step_name) like 'cesn-%'
-    ) over (partition by user_pseudo_id, ga_session_id) as is_cesn
+    ) over (partition by user_pseudo_id, ga_session_id) as is_cesn,
+
+    -- Session-level CESN path (homeowner / renter / null). Prefer the emitted
+    -- screener_path param; fall back to inferring from which exclusive step the
+    -- session reached (appliances is homeowner-only, energy-expenses renter-only).
+    -- The param classifies early drop-offs the step-inference can't; the inference
+    -- classifies sessions without the param. Null when neither is available (the
+    -- session dropped before the paths diverge and carries no param).
+    coalesce(
+        -- Only accept a normalized, known value; anything else falls through to
+        -- step-inference rather than becoming an unjoinable path.
+        max(case when lower(trim(screener_path)) in ('homeowner', 'renter') then lower(trim(screener_path)) end)
+            over (partition by user_pseudo_id, ga_session_id),
+        case
+            when logical_or(lower(screener_step_name) = 'cesn-appliances')
+                over (partition by user_pseudo_id, ga_session_id) then 'homeowner'
+            when logical_or(lower(screener_step_name) = 'cesn-energy-expenses')
+                over (partition by user_pseudo_id, ga_session_id) then 'renter'
+        end
+    ) as cesn_path
 
 from per_event

@@ -34,6 +34,11 @@ select
     -- Screener identifiers (sent directly as params)
     max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
     max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
+
+    -- White label parsed from the page URL, for events (e.g. language switches
+    -- from the persistent header) that can fire without the screener_state param
+    -- set. See the url_screener_state macro.
+    {{ url_screener_state("max(case when ep.key = 'page_location' then ep.value.string_value end)") }} as url_screener_state,
     max(case when ep.key = 'screener_step_name' then ep.value.string_value end) as screener_step_name,
     max(case when ep.key = 'screener_step_number' then ep.value.int_value end) as screener_step_number,
 

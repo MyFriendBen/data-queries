@@ -32,6 +32,10 @@ select
     max(case when ep.key = 'screener_state' then ep.value.string_value end) as screener_state,
     max(case when ep.key = 'screener_uid' then ep.value.string_value end) as screener_uid,
 
+    -- White label parsed from the page URL, for footer shares that can fire
+    -- before the screener_state param is set. See the url_screener_state macro.
+    {{ url_screener_state("max(case when ep.key = 'page_location' then ep.value.string_value end)") }} as url_screener_state,
+
     -- screener_share
     max(case when ep.key = 'share_location' then ep.value.string_value end) as share_location,
     max(case when ep.key = 'share_channel' then ep.value.string_value end) as share_channel,

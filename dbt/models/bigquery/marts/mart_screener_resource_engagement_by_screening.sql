@@ -4,30 +4,16 @@
   )
 }}
 
--- Screener results-page resource & tab engagement — daily grain by state.
--- Powers the Results dashboard tab's "Resources" sub-section:
---   1. Tab split: how many open the "long-term benefits" tab vs the
---      "additional resources" tab (from screener_results_tab_click.tab_name).
---   2. Top resources clicked: click counts per resource_name under Additional
---      Resources (from screener_additional_resource_click).
--- Event types share one mart via a `metric` discriminator so a single table
--- backs several cards; `dimension` holds the tab_name or resource_name depending
--- on the metric. `contact_method` ('website' | 'phone') is set only on the
--- resource_click metric — null elsewhere — so the resource funnel reads:
---   resource_shown (impression) → resource_more_info (expand) → resource_click
---   split by contact_method.
--- resource_shown is the denominator for a per-resource shown->clicked rate.
--- Dedupe by screener_uid for "distinct screenings" (these events fire
--- post-step-3, so uid exists).
--- FOOTGUN: contact_method is in the grain, so for metric = 'resource_click' a
--- screening that clicked both website and phone for one resource produces two
--- rows — do NOT SUM(distinct_screenings) across contact_method (it double-counts;
--- re-dedupe instead). total_clicks IS safe to sum. tab_open / resource_more_info
--- rows have a null contact_method, so they're unaffected.
+-- Screener resource & tab engagement at screening (screener_uid) grain — one row
+-- per screening × metric × resource, rather than the daily distinct counts in
+-- mart_screener_resource_engagement. This lets a card COUNT(DISTINCT screener_uid)
+-- across an arbitrary date range without double-counting a screening that was
+-- active on more than one day (summing the daily mart's distinct_screenings
+-- over-counts such screenings). Same event/metric shape as the daily mart.
+-- contact_method ('website' | 'phone') is set only on resource_click, null else.
 
 with tab_clicks as (
     select
-        event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
@@ -40,10 +26,8 @@ with tab_clicks as (
         and tab_name is not null
 ),
 
--- Resource impression — the shown denominator for the resource shown->clicked rate.
 resource_shown as (
     select
-        event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
@@ -58,7 +42,6 @@ resource_shown as (
 
 resource_more_info as (
     select
-        event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
@@ -73,7 +56,6 @@ resource_more_info as (
 
 resource_clicks as (
     select
-        event_date,
         event_date_parsed,
         screener_state,
         screener_uid,
@@ -96,20 +78,15 @@ combined as (
     select * from resource_clicks
 )
 
-select
-    event_date,
+-- One row per screening × metric × resource (× contact_method) across the whole
+-- history. A card counts distinct screener_uid over its date range for a true
+-- cross-day distinct.
+select distinct
     event_date_parsed,
     screener_state,
     is_cesn,
     metric,
     dimension,
     contact_method,
-
-    count(*) as total_clicks,
-    count(distinct screener_uid) as distinct_screenings,
-
-    current_timestamp() as updated_at
-
+    screener_uid
 from combined
-group by event_date, event_date_parsed, screener_state, is_cesn, metric, dimension, contact_method
-order by event_date desc, screener_state, metric, total_clicks desc
