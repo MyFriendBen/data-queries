@@ -207,11 +207,11 @@ locals {
   alltime_scorecard_count = { for k, v in var.tenants : k => local.tenant_features[k].has_tax_credits ? 6 : 4 }
   alltime_scorecard_width = { for k, v in var.tenants : k => 24 / local.alltime_scorecard_count[k] }
 
-  # True when the Summary tab (tab 2) has a card row at row 4 — i.e. when
-  # has_summary_metrics or has_total_individuals is set. When true, the charts
-  # below it render 4 rows lower to make room for that row.
+  # True only for NC (has_summary_metrics) — NC has a card row at row 4, so its
+  # charts below render 4 rows lower to make room. has_total_individuals states
+  # have no row-4 card (Total Individuals is in the top row instead), so no shift.
   alltime_has_metrics_row = {
-    for k, v in var.tenants : k => local.tenant_features[k].has_summary_metrics || local.tenant_features[k].has_total_individuals
+    for k, v in var.tenants : k => local.tenant_features[k].has_summary_metrics
   }
 }
 
@@ -1623,8 +1623,43 @@ resource "metabase_dashboard" "tenant_analytics" {
     # Tab 2: Overall Performance
     # Two for-loop flattens avoid Terraform's static ternary type-check
     flatten([for k in [each.key] : flatten(concat(
+      # One-row layout for has_total_individuals states: the 6 original scorecards
+      # shrink to equal width (3 each = 18 cols), and Total Individuals fills the
+      # remaining space (6 cols) at the end of the row — wider than the rest.
+      local.tenant_features[each.key].has_total_individuals ? [
+        for c in [
+          { id = metabase_card.tenant_completed_screeners[each.key].id, col = 0, w = 3 },
+          { id = metabase_card.tenant_qualified_for_benefits_pct[each.key].id, col = 3, w = 3 },
+          { id = metabase_card.tenant_median_annual_benefits[each.key].id, col = 6, w = 3 },
+          { id = metabase_card.tenant_median_monthly_benefits[each.key].id, col = 9, w = 3 },
+          { id = metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id, col = 12, w = 3 },
+          { id = metabase_card.tenant_median_annual_tax_credits[each.key].id, col = 15, w = 3 },
+          { id = metabase_card.tenant_total_individuals[each.key].id, col = 18, w = 6 },
+          ] : {
+          card_id          = tonumber(c.id)
+          dashboard_tab_id = 2
+          row              = 0
+          col              = c.col
+          size_x           = c.w
+          size_y           = 4
+          parameter_mappings = concat(
+            [
+              { parameter_id = "date_range_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "submission_date"]] },
+              { parameter_id = "partner_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "partner"]] },
+              { parameter_id = "county_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "county"]] }
+            ],
+            local.tenant_features[each.key].has_utm_filters ? [
+              { parameter_id = "utm_campaign_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+              { parameter_id = "utm_medium_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_medium"]] },
+              { parameter_id = "utm_source_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_source"]] }
+            ] : []
+          )
+          series                 = []
+          visualization_settings = {}
+        }
+      ] : [],
       # Row 0: Performance scorecards
-      [
+      local.tenant_features[each.key].has_total_individuals ? [] : [
         {
           card_id          = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
           dashboard_tab_id = 2
@@ -1763,7 +1798,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         },
       ],
       # Tax credit cards — hidden for tenants that don't collect tax credit data
-      local.tenant_features[each.key].has_tax_credits ? [
+      local.tenant_features[each.key].has_tax_credits && !local.tenant_features[each.key].has_total_individuals ? [
         {
           card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
           dashboard_tab_id = 2
@@ -1799,7 +1834,7 @@ resource "metabase_dashboard" "tenant_analytics" {
           visualization_settings = {}
         },
       ] : [],
-      local.tenant_features[each.key].has_tax_credits ? [
+      local.tenant_features[each.key].has_tax_credits && !local.tenant_features[each.key].has_total_individuals ? [
         {
           card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
           dashboard_tab_id = 2
@@ -1837,8 +1872,8 @@ resource "metabase_dashboard" "tenant_analytics" {
       ] : [],
       # Row 4: Summary metrics — TI (col 0) | Non-Tax (col 4) | Tax (col 8) | Total Benefits (col 12, 8×4) | Note (col 20).
       # Keep cards ordered by (row, col) — terraform apply errors with "Provider produced inconsistent result" otherwise.
-      # Total Individuals is gated on alltime_has_metrics_row so it also shows for
-      # has_total_individuals-only states; the rest of this row stays NC-only (has_summary_metrics).
+      # Total Individuals at row 4 is NC-only now (has_summary_metrics only).
+      # has_total_individuals states show it in the row-0 block above instead.
       local.alltime_has_metrics_row[each.key] ? [
         {
           card_id          = tonumber(metabase_card.tenant_total_individuals[each.key].id)
