@@ -44,9 +44,11 @@ with clicks as (
             when event_name = 'heat_pump_journey_learn_more_click' then 'why_heat_pump'
             when event_name = 'heat_pump_rebate_link_click' then 'rebates'
             when event_name = 'heat_pump_cta_click' and cta = 'calculate_impact' then 'bills_impact'
-            when event_name = 'heat_pump_cta_click' and cta = 'connect_now' then 'find_contractor'
-            when event_name = 'heat_pump_connect_now_find_installer' then 'find_contractor'
-            when event_name = 'heat_pump_connect_now_expand_search' then 'find_contractor'
+            -- the Connect now CTA lives on the journey card, so its denominator is
+            -- the card view; the contractor searches live on the ConnectNow page.
+            when event_name = 'heat_pump_cta_click' and cta = 'connect_now' then 'find_contractor_card'
+            when event_name = 'heat_pump_connect_now_find_installer' then 'connect_now_page'
+            when event_name = 'heat_pump_connect_now_expand_search' then 'connect_now_page'
             when event_name = 'heat_pump_pdf_page' then 'contractor_pdf'
             when event_name = 'heat_pump_pdf_print' then 'contractor_pdf'
         end as section

@@ -58,14 +58,15 @@ locals {
 
   # ── Story 2: impact-calculator funnel ───────────────────────────────────────
   # Distinct users reaching each calculator stage, in funnel order. The errors
-  # stage (funnel_rank 9) is excluded here — it's off-funnel and gets its own
-  # scorecard below.
+  # stage (funnel_rank 10) is excluded here — it's off-funnel and gets its own
+  # scorecard below. clicked_calculate (button pressed) precedes calculate_impact
+  # (passed validation); the drop between them is validation failures.
   hp_sql_calculator_funnel = <<-SQL
     WITH agg AS (
       SELECT stage, funnel_rank, SUM(users) AS users
       FROM `${local.bq_dataset}.mart_heat_pump_calculator_funnel`
       WHERE ${local.hp_state_filter}
-        AND funnel_rank < 9
+        AND funnel_rank < 10
         AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
         [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
         [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
@@ -78,7 +79,8 @@ locals {
         WHEN 'heating_fuel'       THEN 'Heating fuel'
         WHEN 'water_heating'      THEN 'Water heating'
         WHEN 'project_type'       THEN 'Project type'
-        WHEN 'calculate_impact'   THEN 'Calculate impact'
+        WHEN 'clicked_calculate'  THEN 'Clicked Calculate impact'
+        WHEN 'calculate_impact'   THEN 'Passed validation'
         WHEN 'results_shown'      THEN 'Results shown'
         WHEN 'edit_after_results' THEN 'Edit after results'
       END AS `Stage`,
