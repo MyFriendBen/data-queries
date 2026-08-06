@@ -70,7 +70,7 @@ resource "metabase_card" "screener_sessions_per_screener" {
 
   json = jsonencode({
     name                = "Sessions per Screener"
-    description         = "How many browsing sessions a screener spans — the share worked on in a single session vs. picked back up across return visits (whether or not they finished). Bars are % of all screeners and sum to 100%."
+    description         = "How many browsing sessions a screener spans — the share worked on in a single session vs. picked back up across return visits (whether or not they finished). Screeners spanning 4 or more sessions are grouped into a single 4+ bucket. Bars are % of all screeners and sum to 100%."
     collection_id       = tonumber(local.tenant_collection_map[each.key].id)
     collection_position = null
     cache_ttl           = null
@@ -89,6 +89,7 @@ resource "metabase_card" "screener_sessions_per_screener" {
       "graph.metrics"           = ["% of Screeners"]
       "graph.show_values"       = true
       "graph.x_axis.title_text" = "Sessions per Screener"
+      "graph.x_axis.scale"      = "ordinal"
       "column_settings"         = { "[\"name\",\"% of Screeners\"]" = { suffix = "%" } }
       "series_settings"         = { "% of Screeners" = { color = "#b07aa1" } }
     }
