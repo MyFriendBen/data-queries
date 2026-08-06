@@ -35,7 +35,7 @@ resource "metabase_card" "cesn_homeowners_completed" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = replace(local.sql_cesn_scorecards_completed, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -52,7 +52,7 @@ resource "metabase_card" "cesn_homeowners_qualified_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_home_owner = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = replace(local.sql_cesn_scorecards_qualified_pct, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -69,7 +69,7 @@ resource "metabase_card" "cesn_renters_completed" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS count FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = replace(local.sql_cesn_scorecards_completed, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -86,7 +86,7 @@ resource "metabase_card" "cesn_renters_qualified_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) AS pct FROM analytics.mart_screener_data WHERE is_renter = true [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = replace(local.sql_cesn_scorecards_qualified_pct, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -106,15 +106,7 @@ resource "metabase_card" "cesn_homeowners_daily_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = <<-SQL
-            SELECT submission_date, count(*) AS "Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY submission_date ORDER BY submission_date
-          SQL
+        query = replace(local.sql_cesn_daily_screeners, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = merge(local.filter_template_tags[each.key], {
           submission_date = merge(local.filter_template_tags[each.key].submission_date, {
             default = "past7days"
@@ -142,15 +134,7 @@ resource "metabase_card" "cesn_renters_daily_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query = <<-SQL
-            SELECT submission_date, count(*) AS "Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY submission_date ORDER BY submission_date
-          SQL
+        query = replace(local.sql_cesn_daily_screeners, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = merge(local.filter_template_tags[each.key], {
           submission_date = merge(local.filter_template_tags[each.key].submission_date, {
             default = "past7days"
@@ -180,20 +164,7 @@ resource "metabase_card" "cesn_homeowners_electric_provider" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND electric_provider IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 2 DESC
-            LIMIT 20
-          SQL
+        query           = replace(local.sql_cesn_electric_provider, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -211,20 +182,7 @@ resource "metabase_card" "cesn_renters_electric_provider" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              COALESCE(electric_provider_name, electric_provider, '(Unknown)') AS "Provider",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              AND electric_provider IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 2 DESC
-            LIMIT 20
-          SQL
+        query           = replace(local.sql_cesn_electric_provider, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -244,20 +202,7 @@ resource "metabase_card" "cesn_homeowners_gas_provider" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND gas_heat_provider IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 2 DESC
-            LIMIT 20
-          SQL
+        query           = replace(local.sql_cesn_gas_provider, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -275,20 +220,7 @@ resource "metabase_card" "cesn_renters_gas_provider" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              COALESCE(gas_heat_provider_name, gas_heat_provider, '(Unknown)') AS "Provider",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              AND gas_heat_provider IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 2 DESC
-            LIMIT 20
-          SQL
+        query           = replace(local.sql_cesn_gas_provider, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -308,19 +240,7 @@ resource "metabase_card" "cesn_homeowners_disconnected" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN electricity_is_disconnected THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND electricity_is_disconnected IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_disconnected, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -338,19 +258,7 @@ resource "metabase_card" "cesn_renters_disconnected" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN electricity_is_disconnected THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              AND electricity_is_disconnected IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_disconnected, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -370,19 +278,7 @@ resource "metabase_card" "cesn_homeowners_past_due" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN has_past_due_energy_bills THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND has_past_due_energy_bills IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_past_due, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -400,19 +296,7 @@ resource "metabase_card" "cesn_renters_past_due" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN has_past_due_energy_bills THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              AND has_past_due_energy_bills IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_past_due, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -432,19 +316,7 @@ resource "metabase_card" "cesn_homeowners_old_car" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN has_old_car THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND has_old_car IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_old_car, "__SEGMENT_FILTER__", "is_home_owner = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -462,19 +334,7 @@ resource "metabase_card" "cesn_renters_old_car" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN has_old_car THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_renter = true
-              AND has_old_car IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(local.sql_cesn_old_car, "__SEGMENT_FILTER__", "is_renter = true")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -494,19 +354,7 @@ resource "metabase_card" "cesn_needs_stove" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN needs_stove THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND needs_stove IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(replace(local.sql_cesn_needs_appliance, "__SEGMENT_FILTER__", "is_home_owner = true"), "__NEEDS_COLUMN__", "needs_stove")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -524,19 +372,7 @@ resource "metabase_card" "cesn_needs_water_heater" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN needs_water_heater THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND needs_water_heater IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(replace(local.sql_cesn_needs_appliance, "__SEGMENT_FILTER__", "is_home_owner = true"), "__NEEDS_COLUMN__", "needs_water_heater")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -554,19 +390,7 @@ resource "metabase_card" "cesn_needs_hvac" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = <<-SQL
-            SELECT
-              CASE WHEN needs_hvac THEN 'Yes' ELSE 'No' END AS "Answer",
-              count(*) AS "# of Screeners"
-            FROM analytics.mart_screener_data
-            WHERE is_home_owner = true
-              AND needs_hvac IS NOT NULL
-              [[AND {{submission_date}}]]
-              [[AND {{partner}}]]
-              [[AND {{county}}]]
-            GROUP BY 1
-            ORDER BY 1
-          SQL
+        query           = replace(replace(local.sql_cesn_needs_appliance, "__SEGMENT_FILTER__", "is_home_owner = true"), "__NEEDS_COLUMN__", "needs_hvac")
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
