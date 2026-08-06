@@ -8,6 +8,8 @@ on:
       - "!dashboards/README.md"
       - "!dashboards/docker-compose.yml"
       - "!dashboards/setup-metabase.sh"
+      - "!dashboards/Dockerfile.web"
+      - "!dashboards/heroku-entrypoint.sh"
       - ".github/workflows/terraform-plan.yml"
 
 permissions:
