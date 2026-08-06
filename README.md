@@ -112,7 +112,8 @@ Applies are restricted to the `main` branch.
 
 ```bash
 brew install docker-buildx
-ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx
+mkdir -p ~/.docker/cli-plugins
+ln -sfn "$(brew --prefix docker-buildx)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
 docker buildx version   # confirm the plugin is found
 ```
 
@@ -145,13 +146,20 @@ docker buildx version   # confirm the plugin is found
    heroku releases --app mfb-metabase-production | head -4
    ```
 
-5. Verify production is healthy. Metabase takes 60–90s to boot and reports
-   `{"status":"initializing"}` until it is ready:
+5. Verify production is healthy. Metabase takes 60–90s to boot and returns
+   `{"status":"initializing","progress":...}` until it is ready, so poll rather
+   than reading a single response:
    ```bash
-   curl https://mfb-metabase-production-baf31df893fc.herokuapp.com/api/health
+   URL=https://mfb-metabase-production-baf31df893fc.herokuapp.com/api/health
+   for i in $(seq 60); do
+     if curl -fsS "$URL" | grep -q '"status":"ok"'; then echo "ready"; break; fi
+     echo "   waiting... ($((i * 5))s)"
+     sleep 5
+   done
+   curl -fsS "$URL"
    ```
 
-   Roll back with `heroku rollback vN --app mfb-metabase-production` if it fails to come up.
+   Roll back with `heroku rollback vN --app mfb-metabase-production` if it never reaches `ok`.
 
 **Important:** After a container deploy, you may need to re-run `terraform-apply` if the new Metabase version changes API behavior or database sync timing.
 
