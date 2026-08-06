@@ -102,7 +102,7 @@ These are **Metabase configuration** changes, not container changes. Terraform t
 
 Applies are restricted to the `main` branch.
 
-**Note:** The Terraform workflow ignores changes to `dashboards/Dockerfile.web`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, and `dashboards/README.md` — those don't affect Metabase configuration.
+**Note:** The Terraform plan and apply workflows both ignore changes to `dashboards/Dockerfile.web`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, `dashboards/setup-metabase.sh`, and `dashboards/README.md` — those don't affect Metabase configuration. Renaming any of them means updating the `paths` filter in `.github/workflows/terraform-{plan,apply}.yml`, or the broader `dashboards/**` include starts matching again.
 
 ### 3. Metabase Container Updates (version upgrades)
 

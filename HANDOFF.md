@@ -134,7 +134,7 @@ gh workflow run terraform-apply.yml --repo MyFriendBen/data-queries
 
 ### Upgrade Metabase version
 See "Metabase Container Updates" section in [README.md](README.md). Key points:
-- Update `FROM` tag in `dashboards/Dockerfile.heroku`
+- Update `FROM` tag in `dashboards/Dockerfile.web`
 - Build with `--platform linux/amd64 --provenance=false`
 - Push to `mfb-metabase-production`
 
