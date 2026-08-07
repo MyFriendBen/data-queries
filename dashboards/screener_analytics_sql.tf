@@ -52,21 +52,25 @@ locals {
 
   # ── Tab 10 (Overview): sessions per screener (distribution) ──────────────────
   # How many GA sessions a screener spans — the share of screeners completed in 1
-  # session vs. spread across 2, 3, ... visits. One bar per distinct-session count;
-  # bars are % of all screeners (buckets partition every screener, so they sum to
-  # 100%). Reads the per-screener screening mart. __STATE_FILTER_CESN__.
+  # session vs. spread across 2, 3, ... visits. Buckets are 1, 2, 3 and "4+";
+  # everything at 4 or more sessions collapses into the top bucket, where the
+  # per-count bars are each a fraction of a percent. Bars are % of all screeners
+  # (buckets partition every screener, so they sum to 100%). `Sessions` is a string
+  # label, so `sort_order` carries the numeric ordering and is dropped from the
+  # plotted columns. Reads the per-screener screening mart. __STATE_FILTER_CESN__.
   screener_sql_sessions_per_screener = <<-SQL
     SELECT
-      distinct_sessions AS `Sessions`,
-      ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS `% of Screeners`
+      CASE WHEN distinct_sessions >= 4 THEN '4+' ELSE CAST(distinct_sessions AS STRING) END AS `Sessions`,
+      ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) AS `% of Screeners`,
+      LEAST(distinct_sessions, 4) AS sort_order
     FROM `${local.bq_dataset}.mart_screener_screening_funnel`
     WHERE __STATE_FILTER_CESN__
       AND distinct_sessions > 0
     AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
     [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
     [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-    GROUP BY distinct_sessions
-    ORDER BY distinct_sessions
+    GROUP BY `Sessions`, sort_order
+    ORDER BY sort_order
   SQL
 
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
