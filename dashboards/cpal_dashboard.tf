@@ -9,16 +9,18 @@
 # collection-read only + no ad-hoc DB query access (see permissions.tf), so
 # viewers cannot broaden the scope.
 #
-# Layout maps 1:1 to CPAL's four requests (see MFB-1198):
-#   1. Quick raw totals        → Overview tab, row 0 scorecards
-#   2. High/low benefits access → Overview tab, row 4 scorecards
-#   3. Contact data export      → "Contact Export" tab (PII — see note below)
+# Layout maps to CPAL's requests (see MFB-1198):
+#   1. Quick raw totals         → row 0 scorecards
+#   2. High/low benefits access → row 4 scorecards + distribution chart
 #   4. Partner toggling         → the CPAL collection + "CPAL Viewers" group
 #      (partner sees exactly their own scoped dashboard after login)
 #
-# PII NOTE: unlike other referrer dashboards, the Contact Export tab surfaces
-# names/emails/phones from analytics.mart_contact_info (consenting users
-# only). Keep "CPAL Viewers" membership limited to approved CPAL staff.
+# Request 3 (contact data export) is deliberately NOT served from Metabase:
+# MFB anonymizes user PII in Postgres immediately after syncing consenting
+# signups to HubSpot (see benefits-api integrations/services/cms_integration.py
+# and authentication/views.py — "This separates PII from household
+# demographic"). Contact follow-up data lives in HubSpot, keyed by screen
+# uuid; the export belongs there, not in a dashboard card.
 
 locals {
   cpal_db_id  = tonumber(metabase_database.tenant_postgres["tx"].id)
@@ -249,53 +251,20 @@ resource "metabase_card" "cpal_qualified_benefits_table" {
 }
 
 # -----------------------------------------------------------------------------
-# Request 3 — contact data export (PII — consenting users only)
-# -----------------------------------------------------------------------------
-
-resource "metabase_card" "cpal_contact_export" {
-  json = jsonencode(merge(local.global_table_card_config, {
-    name          = "Contact Info Export — Consenting Respondents"
-    description   = "Respondents who opted in to follow-up contact, newest first. Use the download button to export. Contains PII — handle per data-sharing agreement."
-    collection_id = local.cpal_col_id
-    dataset_query = {
-      type     = "native"
-      database = local.cpal_db_id
-      native = {
-        query = "SELECT first_name AS \"First Name\", last_name AS \"Last Name\", email AS \"Email\", phone AS \"Phone\", preferred_language AS \"Preferred Language\", county AS \"County\", referrer_code AS \"Referrer Code\", submission_timestamp AS \"Completed At\" FROM analytics.mart_contact_info WHERE ${local.cpal_referrer_predicate} ORDER BY submission_timestamp DESC"
-      }
-    }
-    visualization_settings = merge(local.global_table_card_config.visualization_settings, {
-      "table.column_widths" = [
-        { "name" = "First Name", "width" = 120 },
-        { "name" = "Last Name", "width" = 120 },
-        { "name" = "Email", "width" = 220 },
-        { "name" = "Phone", "width" = 140 },
-        { "name" = "Preferred Language", "width" = 140 },
-        { "name" = "County", "width" = 140 },
-        { "name" = "Referrer Code", "width" = 120 },
-        { "name" = "Completed At", "width" = 160 },
-      ]
-    })
-  }))
-}
-
-# -----------------------------------------------------------------------------
 # Dashboard
 # -----------------------------------------------------------------------------
 
 resource "metabase_dashboard" "cpal" {
   name                = "CPAL Screener Impact"
-  description         = "Impact of the MyFriendBen screener for CPAL (Child Poverty Action Lab) partner traffic in Texas. Overview tab is aggregate; Contact Export tab lists consenting respondents only."
+  description         = "Aggregate impact of the MyFriendBen screener for CPAL (Child Poverty Action Lab) partner traffic in Texas. Completed screeners only; no personal data."
   collection_id       = local.cpal_col_id
   collection_position = 1
 
   tabs_json = jsonencode([
     { id = 1, name = "Overview" },
-    { id = 2, name = "Contact Export" },
   ])
 
   cards_json = jsonencode([
-    # --- Tab 1: Overview -----------------------------------------------------
     # Row 0 — raw totals scorecards (Request 1)
     { card_id = tonumber(metabase_card.cpal_completed_screeners.id), dashboard_tab_id = 1, row = 0, col = 0, size_x = 6, size_y = 4, parameter_mappings = [], series = [], visualization_settings = {} },
     { card_id = tonumber(metabase_card.cpal_total_benefits_dollars.id), dashboard_tab_id = 1, row = 0, col = 6, size_x = 6, size_y = 4, parameter_mappings = [], series = [], visualization_settings = {} },
@@ -314,8 +283,5 @@ resource "metabase_dashboard" "cpal" {
 
     # Row 14 — program mix table
     { card_id = tonumber(metabase_card.cpal_qualified_benefits_table.id), dashboard_tab_id = 1, row = 14, col = 0, size_x = 24, size_y = 8, parameter_mappings = [], series = [], visualization_settings = {} },
-
-    # --- Tab 2: Contact Export (Request 3) -----------------------------------
-    { card_id = tonumber(metabase_card.cpal_contact_export.id), dashboard_tab_id = 2, row = 0, col = 0, size_x = 24, size_y = 12, parameter_mappings = [], series = [], visualization_settings = {} },
   ])
 }
