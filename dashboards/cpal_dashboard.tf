@@ -29,12 +29,19 @@ locals {
   # Confirmed against production programs_referrer (2026-08-11): the TX white
   # label (id 40) has referrer_code 'cpal' → "Child Poverty Action Lab (CPAL)",
   # is_partner = true. As CPAL outreach efforts get their own unique URLs
-  # (per MFB-1198), add each new referrer_code to this list.
-  cpal_referrer_codes = ["cpal"]
+  # (per MFB-1198), add each new referrer's display name to this list.
+  #
+  # We filter on the mart's `partner` column (display name) rather than raw
+  # referrer_code: `partner` is derived in int_complete_screener_data from
+  # referrer_code OR the user-selected referral_source, so it captures screens
+  # attributed to CPAL via either path and keeps this dashboard's numbers
+  # consistent with the Texas partner table. (RLS on the TX connection already
+  # scopes rows to white_label_id = 40, so no cross-state name collisions.)
+  cpal_partner_names = ["Child Poverty Action Lab (CPAL)"]
 
   cpal_referrer_predicate = format(
-    "referrer_code IN (%s)",
-    join(", ", [for c in local.cpal_referrer_codes : format("'%s'", c)])
+    "partner IN (%s)",
+    join(", ", [for n in local.cpal_partner_names : format("'%s'", n)])
   )
 
   # Referrer-locked variant of the shared qualified-benefits table SQL: strip
@@ -162,7 +169,7 @@ resource "metabase_card" "cpal_lowest_household_value" {
 
 resource "metabase_card" "cpal_median_household_value" {
   json = jsonencode(merge(local.global_scorecard_config, {
-    name          = "Median Annual Value / Household"
+    name          = "Median Annual Value / Household (of those matched)"
     collection_id = local.cpal_col_id
     dataset_query = {
       type     = "native"
