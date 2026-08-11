@@ -219,6 +219,25 @@ sources:
             description: "Whether this referrer appears in the frontend dropdown"
           - name: is_partner
             description: "Whether this referrer is a named partner org (True) or a generic option like Friend/Google (False). Used to group options in the screener dropdown and filter the Metabase partner dashboard."
+      - name: authentication_user
+        description: "User accounts from the Django User model. Contains PII (email, cell, names) — only exposed downstream via mart_contact_info, which filters to consenting users."
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: email
+            description: "User email address (PII)"
+          - name: cell
+            description: "User cell phone number (PII)"
+          - name: first_name
+            description: "First name (PII)"
+          - name: last_name
+            description: "Last name (PII)"
+          - name: tcpa_consent
+            description: "User agreed to be contacted about their results"
+          - name: send_offers
+            description: "User opted in to offers"
+          - name: send_updates
+            description: "User opted in to updates"
       - name: screener_energycalculatorscreen
         description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
         columns:

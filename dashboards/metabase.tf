@@ -196,6 +196,14 @@ resource "metabase_collection" "cu_denver" {
   depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
 }
 
+# Referrer overlay collection (not a tenant / white label). CPAL (Child
+# Poverty Action Lab) is a partner inside the TX white label — same pattern
+# as CU Denver inside CO. See cpal_dashboard.tf and MFB-1198.
+resource "metabase_collection" "cpal" {
+  name       = "CPAL"
+  depends_on = [metabase_collection.cu_denver]
+}
+
 # Map for other resources to reference tenant collections by key
 locals {
   tenant_collection_map = {

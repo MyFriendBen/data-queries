@@ -56,6 +56,17 @@ resource "metabase_permissions_group" "cu_denver" {
   name = "CU Denver Viewers"
 }
 
+# --- CPAL referrer viewer group -----------------------------------
+# CPAL (Child Poverty Action Lab) is a referrer inside the TX white label, not
+# a tenant — same pattern as CU Denver. View-only: read on the CPAL collection
+# and NO ad-hoc DB query access (cards are pre-scoped to CPAL referrer codes).
+# NOTE: the CPAL collection includes a contact-info export card containing PII
+# (mart_contact_info) — keep this group's membership limited to approved CPAL
+# staff. Members are added manually in the Metabase UI.
+resource "metabase_permissions_group" "cpal" {
+  name = "CPAL Viewers"
+}
+
 # =============================================================================
 # Collection Permissions Graph
 # =============================================================================
@@ -111,6 +122,15 @@ resource "metabase_collection_graph" "graph" {
       }
     ],
 
+    # --- Global group: read on the CPAL referrer collection ------------------
+    [
+      {
+        group      = metabase_permissions_group.global.id
+        collection = metabase_collection.cpal.id
+        permission = "read"
+      }
+    ],
+
     # --- Per-tenant group: read-only access to their own collection ----------
     [
       for key, tenant in var.tenants : {
@@ -134,6 +154,15 @@ resource "metabase_collection_graph" "graph" {
       {
         group      = metabase_permissions_group.cu_denver.id
         collection = metabase_collection.cu_denver.id
+        permission = "read"
+      }
+    ],
+
+    # --- CPAL referrer group: read on the CPAL collection only ----------------
+    [
+      {
+        group      = metabase_permissions_group.cpal.id
+        collection = metabase_collection.cpal.id
         permission = "read"
       }
     ]
@@ -211,6 +240,7 @@ locals {
     [1], # All Users group
     [metabase_permissions_group.global.id],
     [metabase_permissions_group.cu_denver.id],
+    [metabase_permissions_group.cpal.id],
     [for k, g in metabase_permissions_group.tenant : g.id],
     [for k, g in metabase_permissions_group.tenant_editor : g.id]
   )
@@ -368,6 +398,22 @@ resource "metabase_permissions_graph" "graph" {
     [
       for db_id in local.all_known_db_ids : {
         group          = metabase_permissions_group.cu_denver.id
+        database       = tonumber(db_id)
+        view_data      = "unrestricted"
+        create_queries = "no"
+        download       = { schemas = "full" }
+        data_model     = null
+      }
+    ],
+
+    # --- CPAL referrer group: NO query access to any database -----------------
+    # Same rationale as CU Denver: view-only via collection read; cards are
+    # pre-scoped to CPAL referrer codes. download=full keeps the export button
+    # working on the contact-info card (Metabase downloads run the card's own
+    # query — viewers still cannot broaden its scope).
+    [
+      for db_id in local.all_known_db_ids : {
+        group          = metabase_permissions_group.cpal.id
         database       = tonumber(db_id)
         view_data      = "unrestricted"
         create_queries = "no"
