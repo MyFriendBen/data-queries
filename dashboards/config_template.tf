@@ -100,6 +100,7 @@ locals {
       screener_results           = { id = 8, name = "•      Results Page" }
       screener_sharing_saving    = { id = 9, name = "•      Share & Save" }
       screener_overview          = { id = 10, name = "•      Engagement Overview" }
+      heat_pump_energy_journey   = { id = 11, name = "•      Heat Pump Journey" }
     }
   }
 
@@ -123,7 +124,7 @@ locals {
     ma = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
     # CESN has no share activity (no share feature on its results page), so it
     # gets no Share & Save tab; its two save cards live on the Results tab instead.
-    cesn = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "screener_overview", "screener_form_journey", "screener_results"]
+    cesn = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "screener_overview", "screener_form_journey", "screener_results", "heat_pump_energy_journey"]
     # co_tax_calculator is a separate calculator without its own GA screener_state
     # mapping, so it gets no screener analytics tabs.
     co_tax_calculator = ["all_time", "households", "benefits_needs"]
