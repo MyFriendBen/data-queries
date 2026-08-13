@@ -65,7 +65,7 @@ resource "metabase_card" "global_completed_screeners" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_completed_screeners, local._optional_clause_regex, "")
       }
     }
     visualization_settings = { "scalar.field" = "count" }
@@ -80,7 +80,7 @@ resource "metabase_card" "global_qualified_for_benefits_pct" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_qualified_for_benefits_pct, local._optional_clause_regex, "")
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
@@ -131,7 +131,7 @@ resource "metabase_card" "global_qualified_for_tax_creds_pct" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_qualified_for_tax_creds_pct, local._optional_clause_regex, "")
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
@@ -244,7 +244,7 @@ resource "metabase_card" "global_median_household_size" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_size) AS median FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_median_household_size, local._optional_clause_regex, "")
       }
     }
     visualization_settings = { "scalar.field" = "median" }
@@ -259,7 +259,7 @@ resource "metabase_card" "global_median_household_assets" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_assets) AS median FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_median_household_assets, local._optional_clause_regex, "")
       }
     }
     visualization_settings = {
@@ -277,7 +277,7 @@ resource "metabase_card" "global_median_annual_income" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income * 12) AS median FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_median_annual_income, local._optional_clause_regex, "")
       }
     }
     visualization_settings = {
@@ -295,7 +295,7 @@ resource "metabase_card" "global_median_monthly_income" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income) AS median FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_median_monthly_income, local._optional_clause_regex, "")
       }
     }
     visualization_settings = {
@@ -313,7 +313,7 @@ resource "metabase_card" "global_median_monthly_expenses" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS median FROM analytics.mart_screener_data WHERE 1=1"
+        query = replace(local.sql_median_monthly_expenses, local._optional_clause_regex, "")
       }
     }
     visualization_settings = {
@@ -497,7 +497,12 @@ resource "metabase_card" "global_already_had_benefits_pct" {
       type     = "native"
       database = local.global_db_id
       native = {
-        query = "SELECT count(*) FILTER (WHERE has_benefits = 'true')::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data"
+        # The pre-refactor query for this one card had no WHERE clause at all
+        # (unlike every other global card here, which already had "WHERE 1=1").
+        # sql_already_had_benefits_pct carries "WHERE 1=1" for the tenant form,
+        # so after stripping the optional clauses we trim that trailing
+        # "WHERE 1=1" too, to reproduce the exact prior query byte-for-byte.
+        query = trimsuffix(replace(local.sql_already_had_benefits_pct, local._optional_clause_regex, ""), " WHERE 1=1")
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings

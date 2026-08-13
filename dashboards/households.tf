@@ -11,7 +11,7 @@ resource "metabase_card" "tenant_median_household_size" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_size) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = local.sql_median_household_size
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -28,7 +28,7 @@ resource "metabase_card" "tenant_median_household_assets" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY household_assets) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = local.sql_median_household_assets
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -48,7 +48,7 @@ resource "metabase_card" "tenant_median_annual_income" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income * 12) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = local.sql_median_annual_income
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -68,7 +68,7 @@ resource "metabase_card" "tenant_median_monthly_income" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_income) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = local.sql_median_monthly_income
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -88,7 +88,7 @@ resource "metabase_card" "tenant_median_monthly_expenses" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY monthly_expenses) AS median FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]]"
+        query           = local.sql_median_monthly_expenses
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
