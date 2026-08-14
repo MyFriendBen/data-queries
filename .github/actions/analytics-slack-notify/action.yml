@@ -65,7 +65,10 @@ runs:
           --arg sha "$COMMIT_SHA" \
           --arg author "$COMMIT_AUTHOR" \
           --arg message "$COMMIT_MESSAGE" \
-          '{
+          '
+          def mrkdwn_escape:
+            gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;");
+          {
             text: "\($emoji) \($title)",
             blocks: [
               {type: "header", text: {type: "plain_text", text: "\($emoji) \($title)"}},
@@ -73,9 +76,9 @@ runs:
                 {type: "mrkdwn", text: "*Environment:*\n\($env)"},
                 {type: "mrkdwn", text: "*Workflow:*\n<\($run_url)|View Logs>"},
                 {type: "mrkdwn", text: "*Commit:*\n\($sha)"},
-                {type: "mrkdwn", text: "*Author:*\n\($author)"}
+                {type: "mrkdwn", text: "*Author:*\n\($author | mrkdwn_escape)"}
               ]},
-              {type: "section", text: {type: "mrkdwn", text: "*Commit Message:*\n\($message)"}}
+              {type: "section", text: {type: "mrkdwn", text: "*Commit Message:*\n\($message | mrkdwn_escape)"}}
             ]
           }')
 
