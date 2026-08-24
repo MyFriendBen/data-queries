@@ -68,7 +68,7 @@ This repo has three types of changes, each with its own deployment path.
 |------|-------------------|----------------|
 | **Analytics tables** (mart_screener_data, etc.) | `dbt/models/` | dbt nightly cron + manual dispatch |
 | **Dashboards, cards, data sources** | `dashboards/*.tf` | Terraform via GitHub Actions |
-| **Metabase application** (the container itself) | `dashboards/Dockerfile.heroku` | Manual docker build + push |
+| **Metabase application** (the container itself) | `dashboards/Dockerfile.web` | Manual `heroku container:push` |
 
 The first two change regularly. The third changes only when upgrading Metabase versions or modifying the entrypoint — typically a few times a year.
 
@@ -102,38 +102,64 @@ These are **Metabase configuration** changes, not container changes. Terraform t
 
 Applies are restricted to the `main` branch.
 
-**Note:** The Terraform workflow ignores changes to `dashboards/Dockerfile.heroku`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, and `dashboards/README.md` — those don't affect Metabase configuration.
+**Note:** The Terraform plan and apply workflows both ignore changes to `dashboards/Dockerfile.web`, `dashboards/heroku-entrypoint.sh`, `dashboards/docker-compose.yml`, `dashboards/setup-metabase.sh`, and `dashboards/README.md` — those don't affect Metabase configuration. Renaming any of them means updating the `paths` filter in `.github/workflows/terraform-{plan,apply}.yml`, or the broader `dashboards/**` include starts matching again.
 
 ### 3. Metabase Container Updates (version upgrades)
 
-**When:** You're upgrading the Metabase version (changing the `FROM` tag in `Dockerfile.heroku`) or modifying the entrypoint script. This is rare.
+**When:** You're upgrading the Metabase version (changing the `FROM` tag in `Dockerfile.web`) or modifying the entrypoint script. This is rare.
+
+**Prerequisites:** `heroku container:push` shells out to BuildKit, so Docker needs the buildx plugin. Without it the build fails with `unknown flag: --provenance`:
+
+```bash
+brew install docker-buildx
+mkdir -p ~/.docker/cli-plugins
+ln -sfn "$(brew --prefix docker-buildx)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
+docker buildx version   # confirm the plugin is found
+```
 
 **Steps:**
 
-1. Update the version in `dashboards/Dockerfile.heroku`:
+1. Update the version in `dashboards/Dockerfile.web`:
    ```dockerfile
    FROM metabase/metabase:v0.XX.YY
    ```
 
-2. Build for the correct platform (Heroku requires amd64, and the provenance flag is needed for Heroku's registry):
+2. Build and push. `--recursive` is what makes Heroku pick up `Dockerfile.web`, and
+   `--context-path .` keeps `COPY heroku-entrypoint.sh` resolvable:
    ```bash
    cd dashboards
    heroku container:login
-   docker build --platform linux/amd64 --provenance=false \
-     -f Dockerfile.heroku \
-     -t registry.heroku.com/mfb-metabase-production/web .
+   heroku container:push web --recursive --context-path . \
+     --app mfb-metabase-production
    ```
 
-3. Deploy to **production**:
+3. Release to **production**:
    ```bash
-   docker push registry.heroku.com/mfb-metabase-production/web
-   heroku container:release web -a mfb-metabase-production
+   heroku container:release web --app mfb-metabase-production
    ```
 
-4. Verify production is healthy:
+4. Confirm a new release was actually created. `container:release` exits 0 and prints
+   `done` even when it ships nothing — the warning `The process type web was not updated,
+   because it is already running the specified docker image` means the release did **not**
+   take:
    ```bash
-   curl https://mfb-metabase-production-baf31df893fc.herokuapp.com/api/health
+   heroku releases --app mfb-metabase-production | head -4
    ```
+
+5. Verify production is healthy. Metabase takes 60–90s to boot and returns
+   `{"status":"initializing","progress":...}` until it is ready, so poll rather
+   than reading a single response:
+   ```bash
+   URL=https://mfb-metabase-production-baf31df893fc.herokuapp.com/api/health
+   for i in $(seq 60); do
+     if curl -fsS "$URL" | grep -q '"status":"ok"'; then echo "ready"; break; fi
+     echo "   waiting... ($((i * 5))s)"
+     sleep 5
+   done
+   curl -fsS "$URL"
+   ```
+
+   Roll back with `heroku rollback vN --app mfb-metabase-production` if it never reaches `ok`.
 
 **Important:** After a container deploy, you may need to re-run `terraform-apply` if the new Metabase version changes API behavior or database sync timing.
 

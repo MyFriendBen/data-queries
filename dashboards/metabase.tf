@@ -196,6 +196,14 @@ resource "metabase_collection" "cu_denver" {
   depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
 }
 
+# Referrer overlay collection (not a tenant / white label). CPAL (Child
+# Poverty Action Lab) is a partner inside the TX white label — same pattern
+# as CU Denver inside CO. See cpal_dashboard.tf and MFB-1198.
+resource "metabase_collection" "cpal" {
+  name       = "CPAL"
+  depends_on = [metabase_collection.cu_denver]
+}
+
 # Map for other resources to reference tenant collections by key
 locals {
   tenant_collection_map = {
@@ -1747,8 +1755,43 @@ locals {
       # Tab 2: Overall Performance
       # Two for-loop flattens avoid Terraform's static ternary type-check
       flatten([for k in [each.key] : flatten(concat(
+        # One-row layout for has_total_individuals states: the 6 original scorecards
+        # shrink to equal width (3 each = 18 cols), and Total Individuals fills the
+        # rest (6 cols) at the end of the row. Assumes has_tax_credits is also true.
+        local.tenant_features[each.key].has_total_individuals ? [
+          for c in [
+            { id = metabase_card.tenant_completed_screeners[each.key].id, col = 0, w = 3 },
+            { id = metabase_card.tenant_qualified_for_benefits_pct[each.key].id, col = 3, w = 3 },
+            { id = metabase_card.tenant_median_annual_benefits[each.key].id, col = 6, w = 3 },
+            { id = metabase_card.tenant_median_monthly_benefits[each.key].id, col = 9, w = 3 },
+            { id = metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id, col = 12, w = 3 },
+            { id = metabase_card.tenant_median_annual_tax_credits[each.key].id, col = 15, w = 3 },
+            { id = metabase_card.tenant_total_individuals[each.key].id, col = 18, w = 6 },
+            ] : {
+            card_id          = tonumber(c.id)
+            dashboard_tab_id = 2
+            row              = 0
+            col              = c.col
+            size_x           = c.w
+            size_y           = 4
+            parameter_mappings = concat(
+              [
+                { parameter_id = "date_range_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "submission_date"]] },
+                { parameter_id = "partner_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "partner"]] },
+                { parameter_id = "county_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "county"]] }
+              ],
+              local.tenant_features[each.key].has_utm_filters ? [
+                { parameter_id = "utm_campaign_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+                { parameter_id = "utm_medium_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_medium"]] },
+                { parameter_id = "utm_source_filter", card_id = tonumber(c.id), target = ["dimension", ["template-tag", "utm_source"]] }
+              ] : []
+            )
+            series                 = []
+            visualization_settings = {}
+          }
+        ] : [],
         # Row 0: Performance scorecards
-        [
+        local.tenant_features[each.key].has_total_individuals ? [] : [
           {
             card_id          = tonumber(metabase_card.tenant_completed_screeners[each.key].id)
             dashboard_tab_id = 2
@@ -1887,7 +1930,7 @@ locals {
           },
         ],
         # Tax credit cards — hidden for tenants that don't collect tax credit data
-        local.tenant_features[each.key].has_tax_credits ? [
+        local.tenant_features[each.key].has_tax_credits && !local.tenant_features[each.key].has_total_individuals ? [
           {
             card_id          = tonumber(metabase_card.tenant_qualified_for_tax_creds_pct[each.key].id)
             dashboard_tab_id = 2
@@ -1923,7 +1966,7 @@ locals {
             visualization_settings = {}
           },
         ] : [],
-        local.tenant_features[each.key].has_tax_credits ? [
+        local.tenant_features[each.key].has_tax_credits && !local.tenant_features[each.key].has_total_individuals ? [
           {
             card_id          = tonumber(metabase_card.tenant_median_annual_tax_credits[each.key].id)
             dashboard_tab_id = 2

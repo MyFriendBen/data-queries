@@ -97,7 +97,7 @@ docker push registry.heroku.com/mfb-metabase/web
 heroku container:release web -a mfb-metabase
 ```
 
-To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.heroku`, rebuild, and push.
+To upgrade Metabase versions: update the `FROM` tag in `Dockerfile.web`, rebuild, and push.
 
 **Pros:** No git remote needed. Explicit control over when deploys happen.
 
