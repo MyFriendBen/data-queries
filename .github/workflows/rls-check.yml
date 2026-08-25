@@ -10,7 +10,7 @@ jobs:
     name: Check mart models for RLS post-hook
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check mart models for RLS post-hook
         run: |

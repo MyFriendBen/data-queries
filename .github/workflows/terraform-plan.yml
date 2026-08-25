@@ -34,7 +34,7 @@ jobs:
       TF_VAR_bigquery_service_account_key_content: ${{ secrets.BIGQUERY_SA_KEY }}
       TF_VAR_gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -114,7 +114,7 @@ jobs:
         continue-on-error: true
 
       - name: Comment PR with Plan
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         if: github.event_name == 'pull_request'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
