@@ -497,12 +497,7 @@ resource "metabase_card" "global_already_had_benefits_pct" {
       type     = "native"
       database = local.global_db_id
       native = {
-        # The pre-refactor query for this one card had no WHERE clause at all
-        # (unlike every other global card here, which already had "WHERE 1=1").
-        # sql_already_had_benefits_pct carries "WHERE 1=1" for the tenant form,
-        # so after stripping the optional clauses we trim that trailing
-        # "WHERE 1=1" too, to reproduce the exact prior query byte-for-byte.
-        query = trimsuffix(replace(local.sql_already_had_benefits_pct, local._optional_clause_regex, ""), " WHERE 1=1")
+        query = replace(local.sql_already_had_benefits_pct, local._optional_clause_regex, "")
       }
     }
     visualization_settings = local.benefits_pct_visualization_settings
