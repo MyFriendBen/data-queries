@@ -8,7 +8,7 @@ resource "metabase_card" "tenant_completed_screeners" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) AS \"Completed Screeners\" FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
+        query           = local.sql_completed_screeners
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -25,7 +25,7 @@ resource "metabase_card" "tenant_already_had_benefits_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE has_benefits = 'true')::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
+        query           = local.sql_already_had_benefits_pct
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -42,7 +42,7 @@ resource "metabase_card" "tenant_qualified_for_benefits_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE non_tax_credit_benefits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
+        query           = local.sql_qualified_for_benefits_pct
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
@@ -59,7 +59,7 @@ resource "metabase_card" "tenant_qualified_for_tax_creds_pct" {
       type     = "native"
       database = tonumber(metabase_database.tenant_postgres[each.key].id)
       native = {
-        query           = "SELECT count(*) FILTER (WHERE tax_credits_annual > 0)::float / NULLIF(count(*), 0) as pct FROM analytics.mart_screener_data WHERE 1=1 [[AND {{submission_date}}]] [[AND {{partner}}]] [[AND {{county}}]] [[AND {{utm_campaign}}]] [[AND {{utm_medium}}]] [[AND {{utm_source}}]]"
+        query           = local.sql_qualified_for_tax_creds_pct
         "template-tags" = local.filter_template_tags[each.key]
       }
     }
