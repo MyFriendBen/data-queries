@@ -4,55 +4,104 @@
   )
 }}
 
--- Impact-calculator computed outputs (Story 7: how the calculator data affects
--- likelihood of pursuing a project). Daily grain, from heat_pump_calculator_result.
--- The FE sends annual deltas already summarized across the estimate range: a median
--- and a p20/p80 band for the bill delta, and a median emissions delta. SIGN: a
--- negative bill_delta is a saving, a negative emissions_delta is a reduction — the
--- cards flip the sign for display so "savings" reads positive.
+-- Impact-calculator results, ONE ROW PER SCREENING that saw results (Story 7).
 --
--- We aggregate the per-screening medians to a daily distribution (avg + median of
--- the medians) so a trend line reads sensibly day over day. project_type is carried
--- so a card can break savings out by project. One result event per screening, so
--- distinct screener_uid = screenings that saw results.
+-- Grain note: this model used to pre-aggregate to a daily median per project_type,
+-- which made three things impossible — a true median across project types (you
+-- cannot average medians back together), a split by whether the user went on to a
+-- contractor search, and bucketing users by the size of their estimate. Cards are
+-- native SQL over BigQuery and can aggregate perfectly well themselves, and one row
+-- per screening is cheap at CESN volume, so the aggregation moved up into the cards.
+--
+-- SIGN: the FE sends a delta where negative = improvement. This model flips it once,
+-- here, into positive "savings" / "reduction" columns so no downstream card has to
+-- remember to multiply by -1. A negative saving (the project costs more) stays
+-- negative and is meaningful.
+--
+-- UNITS: the FE sends emissions in lb CO2e (see remCalculateImpactTypes.ts). Debra
+-- asked for metric tons plus the forest-acre equivalency the product already shows.
+-- Both conversions use the same EPA constants the product uses, mirrored from
+-- benefits-calculator src/utils/epaEquivalencies.ts — keep them in sync if EPA
+-- republishes:
+--   2204.62 lb per metric ton
+--   1 metric ton CO2 sequestered per acre of average U.S. forest per year
+--
+-- COHORT: reached_contractor_search comes from mart_heat_pump_user_journey and is
+-- what Story 7 actually asks for ("of users who click on the Power Ahead Colorado or
+-- Love Electric contractor search, what are trends for..."). Carried as a flag so a
+-- card can show the cohort, everyone, or both side by side.
+
+{% set lbs_per_metric_ton = 2204.62 %}
 
 with results as (
     select
         event_date,
         event_date_parsed,
+        -- Monday-anchored week; Debra reports weekly with WoW/MoM comparison.
+        date_trunc(event_date_parsed, week(monday)) as event_week,
         screener_state,
         screener_uid,
-        project_type,
-        annual_bill_delta_median,
-        annual_bill_delta_p20,
-        annual_bill_delta_p80,
-        annual_emissions_delta_median,
-        annual_emissions_delta_p20,
-        annual_emissions_delta_p80
+        coalesce(project_type, '(unspecified)') as project_type,
+        coalesce(household_type, '(unspecified)') as household_type,
+        coalesce(heating_fuel, '(unspecified)') as heating_fuel,
+        coalesce(water_heating, '(unspecified)') as water_heating,
+
+        -- flip delta -> savings/reduction (positive = better off)
+        -1 * annual_bill_delta_median as annual_bill_savings,
+        -- p20/p80 swap on the sign flip: the p20 delta is the p80 saving
+        -1 * annual_bill_delta_p80 as annual_bill_savings_low,
+        -1 * annual_bill_delta_p20 as annual_bill_savings_high,
+
+        -1 * annual_emissions_delta_median as annual_emissions_reduction_lbs,
+        -1 * annual_emissions_delta_p80 as annual_emissions_reduction_lbs_low,
+        -1 * annual_emissions_delta_p20 as annual_emissions_reduction_lbs_high,
+
+        -- a screening can re-run the calculator; keep the latest result per uid
+        row_number() over (
+            partition by screener_uid
+            order by event_timestamp desc
+        ) as recency_rank
     from {{ ref('stg_ga_heat_pump_journey') }}
     where event_name = 'heat_pump_calculator_result'
+),
+
+latest as (
+    select * from results where recency_rank = 1
 )
 
 select
-    event_date,
-    event_date_parsed,
-    screener_state,
-    coalesce(project_type, '(unspecified)') as project_type,
+    l.event_date,
+    l.event_date_parsed,
+    l.event_week,
+    l.screener_state,
+    l.screener_uid,
 
-    count(distinct screener_uid) as screenings_with_results,
+    l.project_type,
+    l.household_type,
+    l.heating_fuel,
+    l.water_heating,
 
-    round(avg(annual_bill_delta_median), 2) as avg_annual_bill_delta,
-    round(approx_quantiles(annual_bill_delta_median, 100 ignore nulls)[offset(50)], 2) as median_annual_bill_delta,
-    round(avg(annual_bill_delta_p20), 2) as avg_annual_bill_delta_p20,
-    round(avg(annual_bill_delta_p80), 2) as avg_annual_bill_delta_p80,
+    l.annual_bill_savings,
+    l.annual_bill_savings_low,
+    l.annual_bill_savings_high,
 
-    round(avg(annual_emissions_delta_median), 2) as avg_annual_emissions_delta,
-    round(approx_quantiles(annual_emissions_delta_median, 100 ignore nulls)[offset(50)], 2) as median_annual_emissions_delta,
-    round(avg(annual_emissions_delta_p20), 2) as avg_annual_emissions_delta_p20,
-    round(avg(annual_emissions_delta_p80), 2) as avg_annual_emissions_delta_p80,
+    l.annual_emissions_reduction_lbs,
+    l.annual_emissions_reduction_lbs_low,
+    l.annual_emissions_reduction_lbs_high,
+
+    -- metric tons CO2e (Debra's requested unit)
+    round(l.annual_emissions_reduction_lbs / {{ lbs_per_metric_ton }}, 3)
+        as annual_emissions_reduction_tons,
+    -- EPA equivalency shown on the results page: acres of U.S. forest in one year.
+    -- 1 metric ton CO2 per acre-year, so this equals the tonnage.
+    round(l.annual_emissions_reduction_lbs / {{ lbs_per_metric_ton }}, 3)
+        as annual_emissions_forest_acres,
+
+    -- Story 7 cohort: did this screening go on to a contractor search?
+    coalesce(j.reached_contractor_search, false) as reached_contractor_search,
 
     current_timestamp() as updated_at
 
-from results
-group by event_date, event_date_parsed, screener_state, project_type
-order by event_date desc, project_type
+from latest l
+left join {{ ref('mart_heat_pump_user_journey') }} j
+    on l.screener_uid = j.screener_uid

@@ -61,6 +61,8 @@ all_stages as (
 select
     event_date,
     event_date_parsed,
+    -- derived from a grouped column, so it needs no group-by entry of its own
+    date_trunc(event_date_parsed, week(monday)) as event_week,
     screener_state,
     stage,
     -- funnel_rank drives card ordering; errors sits at the end (off-funnel).
