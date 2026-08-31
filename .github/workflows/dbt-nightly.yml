@@ -77,6 +77,51 @@ jobs:
           fi
           dbt build $FLAGS
 
+      # The GA4 event marts live in BigQuery; income, county and utility provider
+      # live in Postgres. Metabase cannot join across databases in a native query,
+      # so the bucketed household attributes are copied over here, between the two
+      # dbt builds: after Postgres has rebuilt the bridge mart, and before the
+      # BigQuery build whose models read it.
+      #
+      # Bands and flags only — no raw income, address or ZIP leaves Postgres. See
+      # mart_screener_household_attributes for what is deliberately excluded.
+      - name: Load the household-attribute bridge into BigQuery
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: |
+          set -euo pipefail
+
+          PGPASSWORD="$DB_PASS" psql \
+            -h "$DB_HOST" \
+            -U "$DB_USER" \
+            -d "$DB_NAME" \
+            --csv \
+            -c "SELECT * FROM analytics.mart_screener_household_attributes;" \
+            > household_attributes.csv
+
+          ROWS=$(($(wc -l < household_attributes.csv) - 1))
+          echo "Exported ${ROWS} row(s) from Postgres."
+
+          # A truncating load of an empty export would wipe the segmentation for
+          # every card, so fail loudly instead. An empty result means the upstream
+          # mart did not build, not that there are no screenings.
+          if [ "$ROWS" -le 0 ]; then
+            echo "::error::Household-attribute export is empty — refusing to truncate the BigQuery copy"
+            exit 1
+          fi
+
+          bq load \
+            --project_id="${GCP_PROJECT_ID}" \
+            --source_format=CSV \
+            --skip_leading_rows=1 \
+            --autodetect \
+            --replace \
+            "${GCP_PROJECT_ID}:analytics.screener_household_attributes" \
+            household_attributes.csv
+
+          echo "Loaded ${ROWS} row(s) into ${GCP_PROJECT_ID}:analytics.screener_household_attributes"
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+
       - name: Run dbt build (BigQuery)
         if: vars.BIGQUERY_ENABLED == 'true'
         run: |

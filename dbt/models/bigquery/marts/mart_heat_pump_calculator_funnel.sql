@@ -20,8 +20,24 @@
 -- view. uid is present here — the calculator is on the post-screening results
 -- page. PRIVACY: heat_pump_calculator_field with
 -- field='address' records only THAT an address was entered, never its value.
+--
+-- SEGMENTATION (Story 4): income band, region memberships and the Xcel flag come
+-- from the household bridge and sit in the grain, so a dashboard filter rescopes
+-- this model. Screenings with no bridge match land in 'Unknown' rather than
+-- vanishing from the totals.
 
-with field_events as (
+with attributes as (
+    select
+        screener_uid,
+        income_band,
+        income_band_sort,
+        is_below_200_fpl,
+        region_memberships,
+        is_xcel_customer
+    from {{ ref('stg_screener_household_attributes') }}
+),
+
+field_events as (
     select
         event_date, event_date_parsed, screener_state, screener_uid,
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
@@ -56,6 +72,19 @@ all_stages as (
     select * from field_events
     union all
     select * from other_stages
+),
+
+-- attributes attach once, after the union, so both halves pick them up
+segmented as (
+    select
+        s.*,
+        coalesce(a.income_band, 'Unknown') as income_band,
+        coalesce(a.income_band_sort, 4) as income_band_sort,
+        coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
+        coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+        coalesce(a.is_xcel_customer, false) as is_xcel_customer
+    from all_stages s
+    left join attributes a on s.screener_uid = a.screener_uid
 )
 
 select
@@ -65,6 +94,11 @@ select
     date_trunc(event_date_parsed, week(monday)) as event_week,
     screener_state,
     stage,
+    income_band,
+    income_band_sort,
+    is_below_200_fpl,
+    region_memberships,
+    is_xcel_customer,
     -- funnel_rank drives card ordering; errors sits at the end (off-funnel).
     -- clicked_calculate (button pressed) vs calculate_impact (passed validation):
     -- the gap between them is the validation-failure drop-off.
@@ -87,6 +121,7 @@ select
 
     current_timestamp() as updated_at
 
-from all_stages
-group by event_date, event_date_parsed, screener_state, stage, funnel_rank
+from segmented
+group by event_date, event_date_parsed, screener_state, stage, funnel_rank,
+    income_band, income_band_sort, is_below_200_fpl, region_memberships, is_xcel_customer
 order by event_date desc, funnel_rank

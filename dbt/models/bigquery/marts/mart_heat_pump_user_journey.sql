@@ -15,6 +15,10 @@
 -- drop-off view is served by the funnel marts. A full ranked-path view was
 -- deliberately deferred — it is noise until traffic builds.
 --
+-- SEGMENTATION (Story 4): income band, region memberships and the Xcel flag are
+-- joined from the household bridge so the Story 5/6 cards re-scope with the
+-- dashboard filters like every other card on the tab.
+--
 -- screener_uid is the grain because this journey is post-screening, so the uid is
 -- always present. Rows with a null uid are dropped: without the key there is no
 -- journey to attribute.
@@ -105,8 +109,17 @@ select
     f.first_event_date,
     date_trunc(f.first_event_date, week(monday)) as first_event_week,
 
+    -- Story 4 segmentation
+    coalesce(a.income_band, 'Unknown') as income_band,
+    coalesce(a.income_band_sort, 4) as income_band_sort,
+    coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
+    coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+    coalesce(a.is_xcel_customer, false) as is_xcel_customer,
+
     current_timestamp() as updated_at
 
 from flags f
 left join section_bounds s on f.screener_uid = s.screener_uid
 left join event_bounds e on f.screener_uid = e.screener_uid
+left join {{ ref('stg_screener_household_attributes') }} a
+    on f.screener_uid = a.screener_uid

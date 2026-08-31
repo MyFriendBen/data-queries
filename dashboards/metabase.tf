@@ -1658,6 +1658,51 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
+    # Heat Pump Journey (tab 11) segmentation filters — CESN only, since it is the
+    # only tenant with the tab. Static value lists: the bands and rollups are fixed
+    # by the partner, so a values-source card would be a query per dropdown for no
+    # benefit. Region rollups OVERLAP by design (a Pueblo household is both
+    # Southern and Front Range), so these scope cards but must never be rendered
+    # as a share of total.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_income_band_filter"
+        name               = "Income Band"
+        slug               = "income_band"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "Unknown"]
+        }
+      },
+      {
+        id                 = "hp_region_filter"
+        name               = "Region"
+        slug               = "region"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado"]
+        }
+      },
+      {
+        id                 = "hp_utility_filter"
+        name               = "Utility"
+        slug               = "utility"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Xcel"]
+        }
+      }
+    ] : [],
+
     # UTM filters — NC only
     local.tenant_features[each.key].has_utm_filters ? [
       {

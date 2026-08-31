@@ -1,0 +1,84 @@
+county_name,region,region_sort
+Adams,DRCOG,1
+Arapahoe,DRCOG,1
+Boulder,DRCOG,1
+Broomfield,DRCOG,1
+Clear Creek,DRCOG,1
+Denver,DRCOG,1
+Douglas,DRCOG,1
+Gilpin,DRCOG,1
+Jefferson,DRCOG,1
+Adams,Front Range,2
+Arapahoe,Front Range,2
+Boulder,Front Range,2
+Broomfield,Front Range,2
+Denver,Front Range,2
+Douglas,Front Range,2
+El Paso,Front Range,2
+Elbert,Front Range,2
+Fremont,Front Range,2
+Jefferson,Front Range,2
+Larimer,Front Range,2
+Morgan,Front Range,2
+Pueblo,Front Range,2
+Teller,Front Range,2
+Washington,Front Range,2
+Weld,Front Range,2
+Delta,Western Slope,3
+Dolores,Western Slope,3
+Eagle,Western Slope,3
+Garfield,Western Slope,3
+Grand,Western Slope,3
+Gunnison,Western Slope,3
+Hinsdale,Western Slope,3
+La Plata,Western Slope,3
+Mesa,Western Slope,3
+Moffat,Western Slope,3
+Montezuma,Western Slope,3
+Montrose,Western Slope,3
+Ouray,Western Slope,3
+Pitkin,Western Slope,3
+Rio Blanco,Western Slope,3
+Routt,Western Slope,3
+San Juan,Western Slope,3
+San Miguel,Western Slope,3
+Summit,Western Slope,3
+Alamosa,Southern,4
+Archuleta,Southern,4
+Baca,Southern,4
+Bent,Southern,4
+Chaffee,Southern,4
+Conejos,Southern,4
+Costilla,Southern,4
+Crowley,Southern,4
+Custer,Southern,4
+Fremont,Southern,4
+Huerfano,Southern,4
+Kiowa,Southern,4
+Las Animas,Southern,4
+Mineral,Southern,4
+Otero,Southern,4
+Prowers,Southern,4
+Pueblo,Southern,4
+Rio Grande,Southern,4
+Saguache,Southern,4
+Teller,Southern,4
+Baca,Eastern Plains,5
+Bent,Eastern Plains,5
+Cheyenne,Eastern Plains,5
+Crowley,Eastern Plains,5
+Elbert,Eastern Plains,5
+Kiowa,Eastern Plains,5
+Kit Carson,Eastern Plains,5
+Lincoln,Eastern Plains,5
+Logan,Eastern Plains,5
+Morgan,Eastern Plains,5
+Otero,Eastern Plains,5
+Phillips,Eastern Plains,5
+Prowers,Eastern Plains,5
+Sedgwick,Eastern Plains,5
+Washington,Eastern Plains,5
+Yuma,Eastern Plains,5
+Jackson,Other Colorado,6
+Lake,Other Colorado,6
+Park,Other Colorado,6

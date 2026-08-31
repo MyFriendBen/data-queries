@@ -35,6 +35,31 @@ locals {
   # would empty the tab.
   hp_min_group_size = 5
 
+  # Story 4 segmentation filters. Plain text variables rather than Metabase field
+  # filters, for the same reason the date filters are: the BigQuery driver mangles
+  # the column reference a field filter generates. Each clause is optional, so an
+  # unset filter drops out of the SQL entirely.
+  hp_segment_tags = {
+    income_band = {
+      id             = "hp_income_band_filter"
+      name           = "income_band"
+      "display-name" = "Income Band"
+      type           = "text"
+    }
+    region = {
+      id             = "hp_region_filter"
+      name           = "region"
+      "display-name" = "Region"
+      type           = "text"
+    }
+    utility = {
+      id             = "hp_utility_filter"
+      name           = "utility"
+      "display-name" = "Utility"
+      type           = "text"
+    }
+  }
+
   # ── Story 1 & 3: what users click on the HVAC page + contractor lookups ──────
   # Clicks and distinct users per interaction. PDF pages sort naturally via
   # interaction_sort so "page 2" precedes "page 10".
@@ -49,6 +74,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     GROUP BY interaction, interaction_sort
     ORDER BY interaction_sort, `Clicks` DESC
   SQL
@@ -68,6 +96,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     GROUP BY interaction
     ORDER BY `% of viewers who clicked` DESC
   SQL
@@ -86,6 +117,9 @@ locals {
         AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
         [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
         [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
       GROUP BY stage, funnel_rank
     )
     SELECT
@@ -116,6 +150,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     GROUP BY error_label
     ORDER BY `Errors` DESC
   SQL
@@ -133,6 +170,9 @@ locals {
         AND first_event_date >= DATE('${local.screener_analytics_epoch}')
         [[AND first_event_date >= CAST({{start_date}} AS DATE)]]
         [[AND first_event_date <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     )
     SELECT `Stage`, `Screenings` FROM (
       SELECT 'Reached the heat pump section' AS `Stage`, COUNT(*) AS `Screenings`, 1 AS o FROM j
@@ -163,6 +203,9 @@ locals {
         AND first_event_date >= DATE('${local.screener_analytics_epoch}')
         [[AND first_event_date >= CAST({{start_date}} AS DATE)]]
         [[AND first_event_date <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     ),
     labelled AS (
       SELECT
@@ -202,6 +245,9 @@ locals {
         AND first_event_date >= DATE('${local.screener_analytics_epoch}')
         [[AND first_event_date >= CAST({{start_date}} AS DATE)]]
         [[AND first_event_date <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     )
     SELECT `Cohort`, `% of contractor-search users` FROM (
       SELECT 'Also clicked "Learn more"' AS `Cohort`,
@@ -245,6 +291,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     GROUP BY `Week`, `Cohort`
     ORDER BY `Week`, `Cohort`
   SQL
@@ -266,6 +315,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     GROUP BY `Week`, `Cohort`
     ORDER BY `Week`, `Cohort`
   SQL
@@ -282,6 +334,9 @@ locals {
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
       [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
       [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
   SQL
 
   # ── Story 7: does a bigger estimate drive action? ───────────────────────────
@@ -312,6 +367,9 @@ locals {
         AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
         [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
         [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
     )
     SELECT
       band AS `Estimated annual saving`,
@@ -341,7 +399,7 @@ resource "metabase_card" "hp_engagement" {
       type     = "native"
       native = {
         query         = local.hp_sql_engagement
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -369,7 +427,7 @@ resource "metabase_card" "hp_click_through_rate" {
       type     = "native"
       native = {
         query         = local.hp_sql_click_through_rate
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -397,7 +455,7 @@ resource "metabase_card" "hp_page_funnel" {
       type     = "native"
       native = {
         query         = local.hp_sql_page_funnel
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "funnel"
@@ -424,7 +482,7 @@ resource "metabase_card" "hp_journey_start_end" {
       type     = "native"
       native = {
         query         = local.hp_sql_journey_start_end
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -452,7 +510,7 @@ resource "metabase_card" "hp_calculator_funnel" {
       type     = "native"
       native = {
         query         = local.hp_sql_calculator_funnel
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "funnel"
@@ -479,7 +537,7 @@ resource "metabase_card" "hp_calculator_errors" {
       type     = "native"
       native = {
         query         = local.hp_sql_calculator_errors
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -507,7 +565,7 @@ resource "metabase_card" "hp_contractor_correlation" {
       type     = "native"
       native = {
         query         = local.hp_sql_contractor_correlation
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -535,7 +593,7 @@ resource "metabase_card" "hp_savings_trend" {
       type     = "native"
       native = {
         query         = local.hp_sql_savings_trend
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "line"
@@ -562,7 +620,7 @@ resource "metabase_card" "hp_emissions_trend" {
       type     = "native"
       native = {
         query         = local.hp_sql_emissions_trend
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "line"
@@ -589,7 +647,7 @@ resource "metabase_card" "hp_emissions_equivalency" {
       type     = "native"
       native = {
         query         = local.hp_sql_emissions_equivalency
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display                = "scalar"
@@ -613,7 +671,7 @@ resource "metabase_card" "hp_savings_band_conversion" {
       type     = "native"
       native = {
         query         = local.hp_sql_savings_band_conversion
-        template-tags = local.ga_date_tags
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
       }
     }
     display = "bar"
@@ -662,6 +720,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -684,6 +757,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -707,6 +795,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -730,6 +833,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -752,6 +870,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -775,6 +908,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -797,6 +945,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -820,6 +983,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -842,6 +1020,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -865,6 +1058,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []
@@ -887,6 +1095,21 @@ locals {
             parameter_id = local._ga_end_date_param_id
             card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
             target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
           }
         ]
         series                 = []

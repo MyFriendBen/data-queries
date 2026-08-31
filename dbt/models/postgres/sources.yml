@@ -219,6 +219,27 @@ sources:
             description: "Whether this referrer appears in the frontend dropdown"
           - name: is_partner
             description: "Whether this referrer is a named partner org (True) or a generic option like Friend/Google (False). Used to group options in the screener dropdown and filter the Metabase partner dashboard."
+      - name: programs_federalpovertylimitvalue
+        description: >
+          Federal Poverty Limit thresholds materialized by benefits-api
+          (programs.FederalPovertyLimitValue), one row per period and household
+          size. The authoritative values are the _FPL_DEFAULTS constant in
+          benefits-api; this table is the database mirror that exists so
+          SQL-only consumers can compute a percent-of-FPL band. Kept current by
+          `manage.py sync_fpl_values` on the API side.
+        columns:
+          - name: period
+            description: "FPL year the thresholds apply to, e.g. '2026'"
+            tests:
+              - not_null
+          - name: household_size
+            description: "Household size the threshold is for; sizes past 8 already include the per-additional-person amount"
+            tests:
+              - not_null
+          - name: annual_limit
+            description: "Annual 100% FPL income threshold in dollars"
+            tests:
+              - not_null
       - name: screener_energycalculatorscreen
         description: "Energy calculator screen records from Django EnergyCalculatorScreen model"
         columns:

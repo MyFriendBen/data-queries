@@ -26,6 +26,10 @@
 --   2204.62 lb per metric ton
 --   1 metric ton CO2 sequestered per acre of average U.S. forest per year
 --
+-- SEGMENTATION (Story 4): income band, region memberships and the Xcel flag are
+-- joined from the household bridge. One row per screening already, so these are
+-- plain columns rather than extra grain.
+--
 -- COHORT: reached_contractor_search comes from mart_heat_pump_user_journey and is
 -- what Story 7 actually asks for ("of users who click on the Power Ahead Colorado or
 -- Love Electric contractor search, what are trends for..."). Carried as a flag so a
@@ -100,8 +104,17 @@ select
     -- Story 7 cohort: did this screening go on to a contractor search?
     coalesce(j.reached_contractor_search, false) as reached_contractor_search,
 
+    -- Story 4 segmentation
+    coalesce(a.income_band, 'Unknown') as income_band,
+    coalesce(a.income_band_sort, 4) as income_band_sort,
+    coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
+    coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+    coalesce(a.is_xcel_customer, false) as is_xcel_customer,
+
     current_timestamp() as updated_at
 
 from latest l
 left join {{ ref('mart_heat_pump_user_journey') }} j
     on l.screener_uid = j.screener_uid
+left join {{ ref('stg_screener_household_attributes') }} a
+    on l.screener_uid = a.screener_uid
