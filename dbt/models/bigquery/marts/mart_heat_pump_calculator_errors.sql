@@ -48,9 +48,13 @@ errors as (
             when 'validation' then 'Form validation'
             else 'Other error'
         end as error_label,
-        -- only populated for validation errors
-        e.field as error_field,
-        e.error_reason
+        -- Only validation errors legitimately carry field/reason. GTM's dataLayer
+        -- model keeps a key once pushed, so an API error (address_not_supported,
+        -- invalid_response) inherits whatever `field` the user last engaged with
+        -- and would otherwise be reported as failing on that field. Read them
+        -- only where they mean something. See MFB-1182 for the upstream fix.
+        case when e.error_type = 'validation' then e.field end as error_field,
+        case when e.error_type = 'validation' then e.error_reason end as error_reason
     from {{ ref('stg_ga_heat_pump_journey') }} e
     left join attributes a on e.screener_uid = a.screener_uid
     where e.event_name = 'heat_pump_calculator_error'

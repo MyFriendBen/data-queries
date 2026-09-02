@@ -131,3 +131,11 @@ group by
     user_id,
     event_bundle_sequence_id,
     batch_event_index
+
+-- Drop GTM Preview / DebugView traffic. GA4 tags a debug session with a
+-- debug_mode param, and those events are QA runs, not users. This journey is low
+-- volume -- the first day of data was 36 debug events against 12 real ones -- so
+-- leaving them in would have tripled every number on a partner-facing card.
+-- Note the screener_* models do not do this yet; if we adopt it repo-wide it
+-- belongs in a shared macro rather than here.
+having max(case when ep.key = 'debug_mode' then 1 end) is null
