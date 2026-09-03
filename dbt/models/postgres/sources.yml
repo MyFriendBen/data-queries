@@ -239,9 +239,17 @@ sources:
             description: "Monthly energy cost"
           - name: heating_fuel_type
             description: "Type of heating fuel used"
+      # ORDERING: the tests on these two tables run against the PRODUCTION Django
+      # database — dbt has no other target (DEPLOYMENT_PLAN.md; staging was removed in
+      # MFB-962) and both workflows run a plain `dbt build`, which executes source
+      # tests. So benefits-api's migrations 0162/0163 must have been applied to
+      # production before this file references the tables, or every test node errors
+      # with "relation does not exist", failing the job and skipping the Metabase sync
+      # that follows it. Merging to main auto-deploys benefits-api STAGING only;
+      # production needs a published GitHub Release.
       - name: screener_assistantconversation
         description: >
-          One Benbot (Benji) conversation per row, with a snapshot of the screen context
+          One Benji conversation per row, with a snapshot of the screen context
           the model was given. Django owns this schema (screener/models.py) but
           mfb-ai-service is the runtime writer, so rows appear here without any Django
           request having happened.
@@ -258,6 +266,19 @@ sources:
             description: "The screen this conversation is about. Join to screener_screen.uuid."
             tests:
               - not_null
+              # The only referential link here with no database-level protection: no
+              # foreign key was possible because Screen.uuid has no unique constraint
+              # (see this table's description). mfb-ai-service writes this column from
+              # the payload it is handed, so "the screen exists" is a convention upheld
+              # in application code across a repository boundary rather than an enforced
+              # constraint. An orphan would silently drop out of every join to
+              # screener_screen and understate Benji usage with no error anywhere.
+              # dbt's relationships test only checks existence, so the missing unique
+              # constraint on the target is not an obstacle.
+              - relationships:
+                  arguments:
+                    field: uuid
+                    to: source('django_apps', 'screener_screen')
           - name: white_label
             description: "White label CODE ('co', 'tx'), not an id. Join to screener_whitelabel.code."
           - name: locale
@@ -281,6 +302,30 @@ sources:
         description: >
           One turn per row. Assistant rows carry the reply metadata that makes Benji's
           cost and latency answerable per turn; user rows leave those NULL.
+        tests:
+          # `seq` is assigned as MAX(seq)+1 by mfb-ai-service under a row lock, with a
+          # UNIQUE(conversation_id, seq) constraint as the backstop. If that constraint
+          # were dropped, or a writer appeared that did not take the lock, two turns
+          # would silently share a position — and since a reply is located as
+          # `user.seq + 1` and transcripts are ordered by seq, the symptom is a
+          # scrambled conversation rather than an error. This is the check against real
+          # production data; nothing else here would notice.
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - conversation_id
+                  - seq
+          # Mirrors the PARTIAL unique index on client_message_id. The `where` is not
+          # optional: most turns carry no client id, and GROUP BY treats NULLs as equal,
+          # so without the filter every conversation with two ordinary messages would
+          # fail this test.
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - conversation_id
+                  - client_message_id
+              config:
+                where: "client_message_id is not null"
         columns:
           - name: message_id
             description: "Primary key (UUID)"
