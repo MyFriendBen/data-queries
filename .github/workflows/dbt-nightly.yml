@@ -77,6 +77,15 @@ jobs:
           fi
           dbt build $FLAGS
 
+      # Copies the Postgres household-attribute bridge into BigQuery, between the
+      # two dbt builds: after Postgres rebuilds the bridge mart, before the
+      # BigQuery build whose models read it.
+      - name: Load the household-attribute bridge into BigQuery
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: ./scripts/load_household_bridge.sh
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+
       - name: Run dbt build (BigQuery)
         if: vars.BIGQUERY_ENABLED == 'true'
         run: |

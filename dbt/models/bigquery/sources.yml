@@ -19,3 +19,27 @@ sources:
             description: "Pseudonymous user identifier"
           - name: event_params
             description: "Array of event parameters"
+
+  - name: screener_bridge
+    description: >
+      Postgres screener attributes copied into BigQuery by the nightly job, so
+      GA4 event marts can be segmented by household attributes. Metabase cannot
+      join across databases in a native query, which is why this copy exists
+      rather than a cross-database join.
+    database: "{{ env_var('GCP_PROJECT_ID', 'dummy-project') }}"
+    schema: analytics
+    tables:
+      - name: screener_household_attributes
+        description: >
+          One row per screening: income band, region memberships, utility flags.
+          Built by mart_screener_household_attributes on the Postgres side.
+          Bands and flags only — no raw income, address or ZIP crosses over.
+        columns:
+          - name: uuid
+            description: "Screening identifier; matches screener_uid on the GA4 events"
+          - name: income_band
+            description: "Below 100% FPL | 100-200% FPL | Above 200% FPL | Unknown"
+          - name: region_memberships
+            description: "Comma-wrapped list of region rollups the county belongs to (rollups overlap)"
+          - name: is_xcel_customer
+            description: "True when the electric or gas provider is Xcel"

@@ -30,6 +30,18 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
+seeds:
+  benefits_dbt:
+    # Only the Postgres household-attribute bridge reads this, so there is no
+    # reason to materialize a copy in BigQuery on every nightly run.
+    co_county_regions:
+      +enabled: "{{ target.type == 'postgres' }}"
+      +schema: internal
+      +column_types:
+        county_name: varchar(64)
+        region: varchar(32)
+        region_sort: integer
+
 models:
   benefits_dbt:
     +materialized: view

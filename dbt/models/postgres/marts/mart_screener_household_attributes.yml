@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: mart_screener_household_attributes
+    description: >
+      Privacy-safe per-screening attributes (income band, region rollups, utility
+      flags) copied into BigQuery by the nightly job so GA4 event marts can be
+      segmented. Bands and flags only — no raw income, address or ZIP.
+    columns:
+      - name: uuid
+        description: >
+          Screening identifier. Matches screener_uid on the GA4 events. Must stay
+          unique: the event marts left-join on it, so a duplicate row would
+          multiply every click count for that screening.
+        tests:
+          - not_null
+          - unique
+      - name: income_band
+        description: "Below 100% FPL | 100-200% FPL | Above 200% FPL | Unknown"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "Unknown"]
+      - name: fpl_period
+        description: >
+          FPL year the band was computed against — the screening's own year,
+          clamped to the range benefits-api publishes. Banding against the current
+          year would restate history every January.
+        tests:
+          - not_null
+      - name: region_memberships
+        description: >
+          Comma-wrapped list of the region rollups the county belongs to, e.g.
+          ',DRCOG,Front Range,'. Rollups overlap by design, so this is a filter
+          input and must never be rendered as a share of total.
+        tests:
+          - not_null
+      - name: is_below_200_fpl
+        description: "The partner's default quick filter; spans two bands."
+        tests:
+          - not_null
+      - name: is_xcel_customer
+        description: "True when the electric or gas provider is Xcel."
+        tests:
+          - not_null
+
+seeds:
+  - name: co_county_regions
+    description: >
+      County-to-region mapping for the Colorado rollups the CESN partner
+      defined. Deliberately many-to-many: a county can belong to more than one
+      rollup, so the rollups overlap and their totals do not sum to the statewide
+      figure. Covers all 64 Colorado counties.
+    columns:
+      - name: county_name
+        description: "Bare county name, no 'County' suffix; matching normalizes both sides"
+        tests:
+          - not_null
+      - name: region
+        description: "DRCOG | Front Range | Western Slope | Southern | Eastern Plains | Other Colorado"
+        tests:
+          - not_null
