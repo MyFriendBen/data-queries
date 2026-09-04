@@ -21,7 +21,7 @@
 # {{start_date}}/{{end_date}} template tags (local.ga_date_tags), mapped onto the
 # shared dashboard date filter in the layout block at the bottom.
 #
-# Partner decisions baked in here (see MFB-1182): trends are WEEKLY, emissions are
+# Partner decisions baked in here: trends are WEEKLY, emissions are
 # metric tons plus the forest-acre equivalency the product shows, savings/emissions
 # are split by whether the screening went on to a contractor search, and any group
 # smaller than hp_min_group_size is suppressed on segment-level cards.

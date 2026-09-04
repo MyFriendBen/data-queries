@@ -49,8 +49,8 @@ models:
 seeds:
   - name: co_county_regions
     description: >
-      County-to-region mapping for the Colorado rollups the CESN partner defined
-      (MFB-1182). Deliberately many-to-many: a county can belong to more than one
+      County-to-region mapping for the Colorado rollups the CESN partner
+      defined. Deliberately many-to-many: a county can belong to more than one
       rollup, so the rollups overlap and their totals do not sum to the statewide
       figure. Covers all 64 Colorado counties.
     columns:

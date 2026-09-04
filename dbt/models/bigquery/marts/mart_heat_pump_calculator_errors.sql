@@ -52,7 +52,8 @@ errors as (
         -- model keeps a key once pushed, so an API error (address_not_supported,
         -- invalid_response) inherits whatever `field` the user last engaged with
         -- and would otherwise be reported as failing on that field. Read them
-        -- only where they mean something. See MFB-1182 for the upstream fix.
+        -- only where they mean something. The upstream fix is for the frontend
+        -- to clear these keys between events rather than leaving them set.
         case when e.error_type = 'validation' then e.field end as error_field,
         case when e.error_type = 'validation' then e.error_reason end as error_reason
     from {{ ref('stg_ga_heat_pump_journey') }} e
