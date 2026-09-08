@@ -21,19 +21,42 @@
 # {{start_date}}/{{end_date}} template tags (local.ga_date_tags), mapped onto the
 # shared dashboard date filter in the layout block at the bottom.
 #
-# Partner decisions baked in here: trends are WEEKLY, emissions are
-# metric tons plus the forest-acre equivalency the product shows, savings/emissions
-# are split by whether the screening went on to a contractor search, and any group
-# smaller than hp_min_group_size is suppressed on segment-level cards.
+# Partner decisions baked in here: trends are WEEKLY, emissions are metric tons
+# plus the forest-acre equivalency the product shows, savings/emissions are split
+# by whether the screening went on to a contractor search, the savings median
+# carries a p20-p80 range table beneath it, and any group smaller than
+# hp_min_group_size is suppressed once a segment filter narrows the population.
+#
+# The tab opens filtered to "below 200% FPL" (hp_below_200_filter, defaulted on),
+# which is the partner's target population. Note the interaction: that default is
+# itself a segment, so suppression is active on open. At CESN volume the tab will
+# look sparse by default and emptier still once a region is added on top — that is
+# the suppression rule working, not a broken dashboard. Worth saying out loud at
+# the walkthrough.
 
 locals {
   hp_state_filter = "screener_state = 'cesn'"
 
-  # Suppress groups smaller than this on cards that slice people into segments
-  # (savings bands, and later the income / region filters). Raw interaction counts
-  # are not suppressed — they identify nobody, and at CESN volume suppressing them
-  # would empty the tab.
+  # Suppress groups smaller than this on cards that slice people into segments.
+  # Raw interaction counts are not suppressed — they identify nobody, and at CESN
+  # volume suppressing them would empty the tab.
   hp_min_group_size = 5
+
+  # The partner asked for any group under hp_min_group_size to be hidden. Applied
+  # ONLY while a segment filter is narrowing the population, which is the case
+  # that carries disclosure risk: unfiltered, a cell is "everyone who clicked X"
+  # and names nobody; filtered to one income band in one region it can be a
+  # single household. Suppressing unconditionally would blank the tab at CESN
+  # volume, which is why the floor rides the filters rather than the card.
+  #
+  # Each clause is a Metabase optional block, so it disappears when its filter is
+  # unset. __N__ is replaced per card with that card's group-size expression.
+  hp_suppress_when_segmented = <<-SQL
+    [[AND {{income_band}} IS NOT NULL AND __N__ >= ${local.hp_min_group_size}]]
+    [[AND {{region}} IS NOT NULL AND __N__ >= ${local.hp_min_group_size}]]
+    [[AND {{utility}} IS NOT NULL AND __N__ >= ${local.hp_min_group_size}]]
+    [[AND {{below_200}} IS NOT NULL AND __N__ >= ${local.hp_min_group_size}]]
+  SQL
 
   # Story 4 segmentation filters. Plain text variables rather than Metabase field
   # filters, for the same reason the date filters are: the BigQuery driver mangles
@@ -58,6 +81,12 @@ locals {
       "display-name" = "Utility"
       type           = "text"
     }
+    below_200 = {
+      id             = "hp_below_200_filter"
+      name           = "below_200"
+      "display-name" = "Income Quick Filter"
+      type           = "text"
+    }
   }
 
   # ── Story 1 & 3: what users click on the HVAC page + contractor lookups ──────
@@ -77,7 +106,9 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY interaction, interaction_sort
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
     ORDER BY interaction_sort, `Clicks` DESC
   SQL
 
@@ -99,7 +130,9 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY interaction
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(view_users)")}
     ORDER BY `% of viewers who clicked` DESC
   SQL
 
@@ -120,7 +153,9 @@ locals {
         [[AND income_band = {{income_band}}]]
         [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
       GROUP BY stage, funnel_rank
+      HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
     )
     SELECT
       CASE stage
@@ -153,7 +188,9 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY error_label
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
     ORDER BY `Errors` DESC
   SQL
 
@@ -173,6 +210,7 @@ locals {
         [[AND income_band = {{income_band}}]]
         [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     )
     SELECT `Stage`, `Screenings` FROM (
       SELECT 'Reached the heat pump section' AS `Stage`, COUNT(*) AS `Screenings`, 1 AS o FROM j
@@ -189,6 +227,7 @@ locals {
       UNION ALL
       SELECT 'Reached a contractor search', COUNTIF(reached_contractor_search), 7 FROM j
     )
+    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "(SELECT COUNT(*) FROM j)")}
     ORDER BY o
   SQL
 
@@ -206,6 +245,7 @@ locals {
         [[AND income_band = {{income_band}}]]
         [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     ),
     labelled AS (
       SELECT
@@ -229,6 +269,7 @@ locals {
     SELECT `Section`, journey_position AS `Position`, COUNT(*) AS `Screenings`
     FROM labelled
     GROUP BY `Section`, `Position`
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
     ORDER BY `Screenings` DESC
   SQL
 
@@ -248,6 +289,7 @@ locals {
         [[AND income_band = {{income_band}}]]
         [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     )
     SELECT `Cohort`, `% of contractor-search users` FROM (
       SELECT 'Also clicked "Learn more"' AS `Cohort`,
@@ -267,6 +309,7 @@ locals {
         ROUND(COUNTIF(opened_contractor_pdf) * 100.0 / NULLIF(COUNT(*), 0), 1), 4
       FROM reached
     )
+    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "(SELECT COUNT(*) FROM reached)")}
     ORDER BY o
   SQL
 
@@ -294,7 +337,46 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY `Week`, `Cohort`
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
+    ORDER BY `Week`, `Cohort`
+  SQL
+
+  # ── Story 7: the savings range under the median ─────────────────────────────
+  # Debra asked for the median on the chart with p20-p80 available underneath.
+  # Same population and cohort split as the trend above, rendered as a table so
+  # the range reads as a range rather than four more lines on the chart.
+  #
+  # The low/high columns are the ends of the range REM showed that household, so
+  # a weekly figure here is "the typical low end" and "the typical high end", not
+  # a spread across screenings. The mart already flipped the sign, and the ends
+  # swap when it does — low end of the SAVING comes from the p80 bill delta.
+  hp_sql_savings_range = <<-SQL
+    SELECT
+      event_week AS `Week`,
+      CASE WHEN reached_contractor_search
+        THEN 'Went to a contractor search'
+        ELSE 'Did not'
+      END AS `Cohort`,
+      ROUND(APPROX_QUANTILES(annual_bill_savings_low, 100 IGNORE NULLS)[OFFSET(50)], 2)
+        AS `Low end of range ($)`,
+      ROUND(APPROX_QUANTILES(annual_bill_savings, 100 IGNORE NULLS)[OFFSET(50)], 2)
+        AS `Median ($)`,
+      ROUND(APPROX_QUANTILES(annual_bill_savings_high, 100 IGNORE NULLS)[OFFSET(50)], 2)
+        AS `High end of range ($)`
+    FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
+    WHERE ${local.hp_state_filter}
+      AND annual_bill_savings IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+      [[AND income_band = {{income_band}}]]
+      [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+      [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
+    GROUP BY `Week`, `Cohort`
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
     ORDER BY `Week`, `Cohort`
   SQL
 
@@ -318,7 +400,9 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY `Week`, `Cohort`
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
     ORDER BY `Week`, `Cohort`
   SQL
 
@@ -337,6 +421,8 @@ locals {
       [[AND income_band = {{income_band}}]]
       [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+      [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
   SQL
 
   # ── Story 7: does a bigger estimate drive action? ───────────────────────────
@@ -370,6 +456,7 @@ locals {
         [[AND income_band = {{income_band}}]]
         [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     )
     SELECT
       band AS `Estimated annual saving`,
@@ -606,6 +693,30 @@ resource "metabase_card" "hp_savings_trend" {
   })
 }
 
+resource "metabase_card" "hp_savings_range" {
+  for_each = local.ga_tenants_enabled
+  json = jsonencode({
+    name                = "Estimated Annual Bill Savings — Range (p20–p80)"
+    description         = "The low and high ends of the savings range each household was shown, weekly, beside the median from the chart above. Same cohort split, so the range can be read against the trend."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.hp_sql_savings_range
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
+      }
+    }
+    display                = "table"
+    visualization_settings = {}
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
+
 resource "metabase_card" "hp_emissions_trend" {
   for_each = local.ga_tenants_enabled
   json = jsonencode({
@@ -735,6 +846,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_engagement["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -772,6 +888,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -810,6 +931,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -848,6 +974,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_page_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -885,6 +1016,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -923,6 +1059,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -960,6 +1101,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -998,6 +1144,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_savings_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -1035,16 +1186,64 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
         visualization_settings = {}
       },
       # Row 39: savings-band conversion (left) | forest-acre equivalency (right)
+      # Row 39: the p20-p80 range, directly under the savings median chart.
+      {
+        card_id          = tonumber(metabase_card.hp_savings_range["cesn"].id)
+        dashboard_tab_id = 11
+        row              = 39
+        col              = 0
+        size_x           = 12
+        size_y           = 6
+        parameter_mappings = [
+          {
+            parameter_id = local._ga_start_date_param_id
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "start_date"]]
+          },
+          {
+            parameter_id = local._ga_end_date_param_id
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_savings_range["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
+          }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
       {
         card_id          = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
         dashboard_tab_id = 11
-        row              = 39
+        row              = 45
         col              = 0
         size_x           = 18
         size_y           = 7
@@ -1073,6 +1272,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []
@@ -1081,7 +1285,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
         dashboard_tab_id = 11
-        row              = 39
+        row              = 45
         col              = 18
         size_x           = 6
         size_y           = 7
@@ -1110,6 +1314,11 @@ locals {
             parameter_id = "hp_utility_filter"
             card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
             target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
           }
         ]
         series                 = []

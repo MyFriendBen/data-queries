@@ -1658,6 +1658,31 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
+    # Heat Pump Journey (tab 11) income quick filter — CESN only. Kept in its own
+    # conditional element because it is the only parameter here carrying a
+    # `default`, and a tuple mixing object shapes cannot unify with the empty
+    # false branch.
+    #
+    # The partner's default view is "below 200% FPL". That spans the "Below 100%"
+    # and "100-200%" bands, so the single-select band filter below cannot express
+    # it. Backed by is_below_200_fpl on the bridge and defaulted ON, so the tab
+    # opens on the target population.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_below_200_filter"
+        name               = "Income Quick Filter"
+        slug               = "below_200"
+        type               = "string/="
+        sectionId          = "string"
+        default            = ["Below 200% FPL"]
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 200% FPL"]
+        }
+      }
+    ] : [],
+
     # Heat Pump Journey (tab 11) segmentation filters — CESN only, since it is the
     # only tenant with the tab. Static value lists: the bands and rollups are fixed
     # by the partner, so a values-source card would be a query per dropdown for no
