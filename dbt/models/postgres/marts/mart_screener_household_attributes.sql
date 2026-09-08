@@ -1,7 +1,8 @@
 {{
   config(
     materialized='table',
-    description='Privacy-safe per-screening attributes (income band, region, utility) exported to BigQuery so GA4 event marts can be segmented'
+    description='Privacy-safe per-screening attributes (income band, region, utility) exported to BigQuery so GA4 event marts can be segmented',
+    post_hook="{{ setup_white_label_rls(this.name) }}"
   )
 }}
 
@@ -33,6 +34,7 @@ WITH screenings AS (
         s.county,
         s.electric_provider,
         s.gas_heat_provider,
+        s.white_label_id,
         wl.white_label_code
     FROM {{ ref('int_complete_screener_data') }} AS s
     LEFT JOIN {{ ref('stg_white_label') }} AS wl
@@ -114,6 +116,9 @@ region_lists AS (
 
 SELECT
     b.uuid,
+    -- The column the RLS policy filters on. Not exported to BigQuery: the load
+    -- script names its columns and does not take this one.
+    b.white_label_id,
     b.white_label_code,
     b.county,
 

@@ -15,6 +15,12 @@ models:
         tests:
           - not_null
           - unique
+      - name: white_label_id
+        description: >
+          Tenant the screening belongs to. Present so the row-level-security
+          policy has a column to filter on; not exported to BigQuery.
+        tests:
+          - not_null
       - name: income_band
         description: "Below 100% FPL | 100-200% FPL | Above 200% FPL | Unknown"
         tests:
@@ -22,7 +28,12 @@ models:
           - accepted_values:
               arguments:
                 values:
-                  ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "Unknown"]
+                  [
+                    "Below 100% FPL",
+                    "100–200% FPL",
+                    "Above 200% FPL",
+                    "Unknown",
+                  ]
       - name: fpl_period
         description: >
           FPL year the band was computed against — the screening's own year,
