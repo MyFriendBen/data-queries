@@ -27,6 +27,11 @@
 # carries a p20-p80 range table beneath it, and any group smaller than
 # hp_min_group_size is suppressed once a segment filter narrows the population.
 #
+# Period-over-period: the partner asked for weekly with a WoW/MoM comparison.
+# Shipped as MONTHLY on the three headline numbers (top card), with weekly WoW
+# deferred until traffic supports a percentage that is not noise — the same call
+# she made on the Story 5 ranked path list. Revisit when volume grows.
+#
 # The tab opens filtered to "below 200% FPL" (hp_below_200_filter, defaulted on),
 # which is the partner's target population. Note the interaction: that default is
 # itself a segment, so suppression is active on open. At CESN volume the tab will
@@ -41,6 +46,16 @@ locals {
   # Raw interaction counts are not suppressed — they identify nobody, and at CESN
   # volume suppressing them would empty the tab.
   hp_min_group_size = 5
+
+  # Minimum prior-month base before a month-over-month change is shown at all.
+  # Separate from hp_min_group_size because it answers a different question: 5 is
+  # the disclosure floor, this is the "is the number meaningful" floor. A cell
+  # that survives suppression can still make noise look like a trend — 3 to 5
+  # households renders as +67%. Below this the change is withheld and the two
+  # raw counts still show, so the reader sees the base rather than a percentage.
+  # PROVISIONAL: 10 is an engineering default, pending the partner's answer on
+  # what floor she wants.
+  hp_min_mom_base = 10
 
   # The partner asked for any group under hp_min_group_size to be hidden. Applied
   # ONLY while a segment filter is narrowing the population, which is the case
@@ -425,6 +440,77 @@ locals {
     HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
   SQL
 
+  # ── Headline numbers, month over month ──────────────────────────────────────
+  # The partner asked for weekly trends with a WoW/MoM comparison. Delivered as
+  # MONTHLY on the three numbers she would actually quote, with weekly WoW
+  # deferred until traffic supports it — the same call she made on the Story 5
+  # ranked path list. At current volume a week-over-week percentage is mostly
+  # noise: the first day of data was 12 real events, and the tab defaults to
+  # below-200%-FPL on top of that.
+  #
+  # Rendered as a table rather than delta badges on purpose. Showing "this month"
+  # and "prior month" beside the percentage keeps the base visible, so a large
+  # change on a tiny denominator reads as what it is instead of as a finding.
+  hp_sql_headline_mom = <<-SQL
+    WITH journey AS (
+      SELECT
+        DATE_TRUNC(first_event_date, MONTH) AS m,
+        CAST(COUNTIF(reached_contractor_search) AS FLOAT64) AS contractor,
+        CAST(COUNTIF(saw_calculator_results) AS FLOAT64) AS results
+      FROM `${local.bq_dataset}.mart_heat_pump_user_journey`
+      WHERE ${local.hp_state_filter}
+        AND first_event_date >= DATE('${local.screener_analytics_epoch}')
+        [[AND first_event_date >= CAST({{start_date}} AS DATE)]]
+        [[AND first_event_date <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
+      GROUP BY m
+      HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
+    ),
+    impact AS (
+      SELECT
+        DATE_TRUNC(event_date_parsed, MONTH) AS m,
+        SUM(annual_emissions_forest_acres) AS acres
+      FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
+      WHERE ${local.hp_state_filter}
+        AND annual_emissions_forest_acres IS NOT NULL
+        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+        [[AND income_band = {{income_band}}]]
+        [[AND region_memberships LIKE CONCAT('%,', {{region}}, ',%')]]
+        [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
+        [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
+      GROUP BY m
+      HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
+    ),
+    metrics AS (
+      SELECT m, 'Reached a contractor search' AS metric, contractor AS value, 1 AS o FROM journey
+      UNION ALL
+      SELECT m, 'Saw calculator results', results, 2 FROM journey
+      UNION ALL
+      SELECT m, 'Emissions impact (forest acres)', ROUND(acres, 1), 3 FROM impact
+    ),
+    lagged AS (
+      SELECT m, metric, value, o,
+        LAG(value) OVER (PARTITION BY metric ORDER BY m) AS prior
+      FROM metrics
+    )
+    SELECT
+      FORMAT_DATE('%Y-%m', m) AS `Month`,
+      metric AS `Metric`,
+      value AS `This month`,
+      prior AS `Prior month`,
+      CASE
+        WHEN prior >= ${local.hp_min_mom_base}
+          THEN ROUND((value - prior) * 100.0 / prior, 1)
+      END AS `Change vs prior month (%)`
+    FROM lagged
+    ORDER BY m DESC, o
+  SQL
+
   # ── Story 7: does a bigger estimate drive action? ───────────────────────────
   # Debra's follow-up question. Buckets screenings by the size of the saving they
   # were shown, then reports what share of each bucket went on to a contractor
@@ -471,6 +557,30 @@ locals {
 }
 
 # ── Cards ─────────────────────────────────────────────────────────────────────
+
+resource "metabase_card" "hp_headline_mom" {
+  for_each = local.ga_tenants_enabled
+  json = jsonencode({
+    name                = "Headline Numbers, Month over Month"
+    description         = "The three figures worth quoting, by month, against the month before. Monthly rather than weekly because CESN volume makes a week-over-week percentage mostly noise; the raw counts sit beside the change so the base is always visible. A change is withheld when the prior month is under ${local.hp_min_mom_base}."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = local.hp_sql_headline_mom
+        template-tags = merge(local.ga_date_tags, local.hp_segment_tags)
+      }
+    }
+    display                = "table"
+    visualization_settings = {}
+    parameter_mappings     = []
+    parameters             = []
+  })
+}
 
 resource "metabase_card" "hp_engagement" {
   for_each = local.ga_tenants_enabled
@@ -813,11 +923,54 @@ locals {
     # Row 0: "data starts <epoch>" banner, matching the other analytics tabs.
     [local.tenant_screener_epoch_note_card[11]],
     [
-      # Row 2: HVAC page engagement (left) | calculator errors (right)
+      # Row 2: headline numbers month over month, above the detail cards.
+      {
+        card_id          = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+        dashboard_tab_id = 11
+        row              = 2
+        col              = 0
+        size_x           = 24
+        size_y           = 6
+        parameter_mappings = [
+          {
+            parameter_id = local._ga_start_date_param_id
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "start_date"]]
+          },
+          {
+            parameter_id = local._ga_end_date_param_id
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "end_date"]]
+          },
+          {
+            parameter_id = "hp_income_band_filter"
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "income_band"]]
+          },
+          {
+            parameter_id = "hp_region_filter"
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "region"]]
+          },
+          {
+            parameter_id = "hp_utility_filter"
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "utility"]]
+          },
+          {
+            parameter_id = "hp_below_200_filter"
+            card_id      = tonumber(metabase_card.hp_headline_mom["cesn"].id)
+            target       = ["variable", ["template-tag", "below_200"]]
+          }
+        ]
+        series                 = []
+        visualization_settings = {}
+      },
+      # Row 8: HVAC page engagement (left) | calculator errors (right)
       {
         card_id          = tonumber(metabase_card.hp_engagement["cesn"].id)
         dashboard_tab_id = 11
-        row              = 2
+        row              = 8
         col              = 0
         size_x           = 18
         size_y           = 7
@@ -859,7 +1012,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_calculator_errors["cesn"].id)
         dashboard_tab_id = 11
-        row              = 2
+        row              = 8
         col              = 18
         size_x           = 6
         size_y           = 7
@@ -902,7 +1055,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_click_through_rate["cesn"].id)
         dashboard_tab_id = 11
-        row              = 9
+        row              = 15
         col              = 0
         size_x           = 24
         size_y           = 7
@@ -945,7 +1098,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_page_funnel["cesn"].id)
         dashboard_tab_id = 11
-        row              = 16
+        row              = 22
         col              = 0
         size_x           = 12
         size_y           = 8
@@ -987,7 +1140,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_journey_start_end["cesn"].id)
         dashboard_tab_id = 11
-        row              = 16
+        row              = 22
         col              = 12
         size_x           = 12
         size_y           = 8
@@ -1030,7 +1183,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_calculator_funnel["cesn"].id)
         dashboard_tab_id = 11
-        row              = 24
+        row              = 30
         col              = 0
         size_x           = 12
         size_y           = 8
@@ -1072,7 +1225,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_contractor_correlation["cesn"].id)
         dashboard_tab_id = 11
-        row              = 24
+        row              = 30
         col              = 12
         size_x           = 12
         size_y           = 8
@@ -1115,7 +1268,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_savings_trend["cesn"].id)
         dashboard_tab_id = 11
-        row              = 32
+        row              = 38
         col              = 0
         size_x           = 12
         size_y           = 7
@@ -1157,7 +1310,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_emissions_trend["cesn"].id)
         dashboard_tab_id = 11
-        row              = 32
+        row              = 38
         col              = 12
         size_x           = 12
         size_y           = 7
@@ -1201,7 +1354,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_savings_range["cesn"].id)
         dashboard_tab_id = 11
-        row              = 39
+        row              = 45
         col              = 0
         size_x           = 12
         size_y           = 6
@@ -1243,7 +1396,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_savings_band_conversion["cesn"].id)
         dashboard_tab_id = 11
-        row              = 45
+        row              = 51
         col              = 0
         size_x           = 18
         size_y           = 7
@@ -1285,7 +1438,7 @@ locals {
       {
         card_id          = tonumber(metabase_card.hp_emissions_equivalency["cesn"].id)
         dashboard_tab_id = 11
-        row              = 45
+        row              = 51
         col              = 18
         size_x           = 6
         size_y           = 7
