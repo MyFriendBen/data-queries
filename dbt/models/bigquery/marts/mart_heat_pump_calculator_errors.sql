@@ -80,6 +80,8 @@ select
 
     count(*) as total_errors,
     count(distinct screener_uid) as users,
+    -- Daily distinct; merge the sketch rather than summing across a range.
+    hll_count.init(screener_uid) as users_hll,
     count(distinct session_key) as sessions,
 
     current_timestamp() as updated_at

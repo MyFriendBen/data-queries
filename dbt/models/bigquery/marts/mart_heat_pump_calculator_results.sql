@@ -60,13 +60,27 @@ with results as (
         -1 * annual_emissions_delta_p80 as annual_emissions_reduction_lbs_low,
         -1 * annual_emissions_delta_p20 as annual_emissions_reduction_lbs_high,
 
-        -- a screening can re-run the calculator; keep the latest result per uid
+        -- A screening can re-run the calculator, so collapse the edit-and-resubmit
+        -- loop to the final result. Partitioned by (uid, DATE), not uid alone:
+        -- deduping globally keeps only the newest result ever, and every card
+        -- date-filters AFTER this, so a screening that ran in July and re-ran in
+        -- August would vanish from a July-scoped view entirely. Per-day keeps both.
+        --
+        -- The residual: a screening that ran on two different days inside one
+        -- reporting week counts twice in that week's median. That is a household
+        -- slightly overweighted, against a household disappearing — and two runs
+        -- on different days are arguably two estimates anyway.
         row_number() over (
-            partition by screener_uid
+            partition by screener_uid, event_date
             order by event_timestamp desc
         ) as recency_rank
     from {{ ref('stg_ga_heat_pump_journey') }}
     where event_name = 'heat_pump_calculator_result'
+        -- In BigQuery every NULL falls into ONE partition, so without this a
+        -- whole batch of uid-less results would collapse to a single surviving
+        -- row and silently drop out of the totals and medians. The journey mart
+        -- drops them for the same reason: with no key there is nothing to join.
+        and screener_uid is not null
 ),
 
 latest as (

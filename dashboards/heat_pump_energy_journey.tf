@@ -11,11 +11,13 @@
 #   mart_heat_pump_user_journey        — per-uid milestone flags + first/last
 #                                        section (Stories 5/6)
 #
-# All cards are for_each = local.ga_tenants_enabled to match the other BigQuery
-# screener cards, but are only PLACED on the dashboard for "cesn" (via the layout
-# gate in metabase.tf, keyed on tenant_has_tab[...]["heat_pump_energy_journey"]).
-# CESN is the only tenant with the tab, and CESN is the only screener_state that
-# emits heat_pump_* events, so every card filters screener_state = 'cesn'.
+# Every card is built ONLY for tenants that have this tab, not for every tenant
+# with a BigQuery tab. The cards hardcode screener_state = 'cesn', so building
+# them per-tenant would drop a card carrying CESN data into every other tenant's
+# collection — unplaced on any dashboard, but browsable and runnable by their
+# users. Same gate and same reason as screener_cesn_funnel in
+# screener_analytics.tf. Every other BigQuery card is safe without it because it
+# filters on the tenant's own state; these do not.
 #
 # Date filtering mirrors the other BigQuery cards: an epoch floor plus the optional
 # {{start_date}}/{{end_date}} template tags (local.ga_date_tags), mapped onto the
@@ -111,7 +113,7 @@ locals {
     SELECT
       interaction AS `Interaction`,
       SUM(total_clicks) AS `Clicks`,
-      SUM(users) AS `Users`
+      HLL_COUNT.MERGE(users_hll) AS `Users`
     FROM `${local.bq_dataset}.mart_heat_pump_engagement`
     WHERE ${local.hp_state_filter}
       AND interaction IS NOT NULL
@@ -123,7 +125,7 @@ locals {
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
       [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY interaction, interaction_sort
-    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "HLL_COUNT.MERGE(users_hll)")}
     ORDER BY interaction_sort, `Clicks` DESC
   SQL
 
@@ -134,7 +136,8 @@ locals {
   hp_sql_click_through_rate = <<-SQL
     SELECT
       interaction AS `Interaction`,
-      ROUND(SUM(users) * 100.0 / NULLIF(SUM(view_users), 0), 1) AS `% of viewers who clicked`
+      ROUND(HLL_COUNT.MERGE(users_hll) * 100.0 / NULLIF(HLL_COUNT.MERGE(view_users_hll), 0), 1)
+        AS `% of viewers who clicked`
     FROM `${local.bq_dataset}.mart_heat_pump_engagement`
     WHERE ${local.hp_state_filter}
       AND interaction IS NOT NULL
@@ -147,7 +150,7 @@ locals {
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
       [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY interaction
-    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(view_users)")}
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "HLL_COUNT.MERGE(view_users_hll)")}
     ORDER BY `% of viewers who clicked` DESC
   SQL
 
@@ -158,7 +161,7 @@ locals {
   # (passed validation); the drop between them is validation failures.
   hp_sql_calculator_funnel = <<-SQL
     WITH agg AS (
-      SELECT stage, funnel_rank, SUM(users) AS users
+      SELECT stage, funnel_rank, HLL_COUNT.MERGE(users_hll) AS users
       FROM `${local.bq_dataset}.mart_heat_pump_calculator_funnel`
       WHERE ${local.hp_state_filter}
         AND funnel_rank < 10
@@ -170,7 +173,7 @@ locals {
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
         [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
       GROUP BY stage, funnel_rank
-      HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
+      HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "HLL_COUNT.MERGE(users_hll)")}
     )
     SELECT
       CASE stage
@@ -194,7 +197,7 @@ locals {
     SELECT
       error_label AS `Error`,
       SUM(total_errors) AS `Errors`,
-      SUM(users) AS `Users`
+      HLL_COUNT.MERGE(users_hll) AS `Users`
     FROM `${local.bq_dataset}.mart_heat_pump_calculator_errors`
     WHERE ${local.hp_state_filter}
       AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
@@ -205,7 +208,7 @@ locals {
       [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
       [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     GROUP BY error_label
-    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "SUM(users)")}
+    HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "HLL_COUNT.MERGE(users_hll)")}
     ORDER BY `Errors` DESC
   SQL
 
@@ -242,7 +245,11 @@ locals {
       UNION ALL
       SELECT 'Reached a contractor search', COUNTIF(reached_contractor_search), 7 FROM j
     )
-    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "(SELECT COUNT(*) FROM j)")}
+    -- Floor the row, not the cohort: (SELECT COUNT(*) FROM j) is the whole
+    -- cohort, so a stage reached by a single screening rendered as long as the
+    -- cohort cleared 5. `Screenings` is the stage's own count. Stage 1 is the
+    -- cohort itself, so a cohort under the floor still empties the card.
+    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "`Screenings`")}
     ORDER BY o
   SQL
 
@@ -306,25 +313,32 @@ locals {
         [[AND {{utility}} = 'Xcel' AND is_xcel_customer]]
         [[AND {{below_200}} = 'Below 200% FPL' AND is_below_200_fpl]]
     )
-    SELECT `Cohort`, `% of contractor-search users` FROM (
+    SELECT `Cohort`, `Users`, `% of contractor-search users` FROM (
       SELECT 'Also clicked "Learn more"' AS `Cohort`,
+        COUNTIF(clicked_learn_more) AS `Users`,
         ROUND(COUNTIF(clicked_learn_more) * 100.0 / NULLIF(COUNT(*), 0), 1) AS `% of contractor-search users`,
         1 AS o
       FROM reached
       UNION ALL
       SELECT 'Also engaged the calculator',
+        COUNTIF(engaged_calculator),
         ROUND(COUNTIF(engaged_calculator) * 100.0 / NULLIF(COUNT(*), 0), 1), 2
       FROM reached
       UNION ALL
       SELECT 'Also saw calculator results',
+        COUNTIF(saw_calculator_results),
         ROUND(COUNTIF(saw_calculator_results) * 100.0 / NULLIF(COUNT(*), 0), 1), 3
       FROM reached
       UNION ALL
       SELECT 'Also opened the contractor PDF',
+        COUNTIF(opened_contractor_pdf),
         ROUND(COUNTIF(opened_contractor_pdf) * 100.0 / NULLIF(COUNT(*), 0), 1), 4
       FROM reached
     )
-    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "(SELECT COUNT(*) FROM reached)")}
+    -- Floor each row's own subgroup, not the cohort. `Users` is also selected so
+    -- the percentage is never read without the count it came from; the chart
+    -- plots only the percentage.
+    WHERE TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "`Users`")}
     ORDER BY o
   SQL
 
@@ -472,7 +486,8 @@ locals {
     impact AS (
       SELECT
         DATE_TRUNC(event_date_parsed, MONTH) AS m,
-        SUM(annual_emissions_forest_acres) AS acres
+        SUM(annual_emissions_forest_acres) AS acres,
+        COUNT(*) AS screenings
       FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
       WHERE ${local.hp_state_filter}
         AND annual_emissions_forest_acres IS NOT NULL
@@ -486,28 +501,46 @@ locals {
       GROUP BY m
       HAVING TRUE ${replace(local.hp_suppress_when_segmented, "__N__", "COUNT(*)")}
     ),
+    -- `base` is the screening count behind the metric, which is what the floor
+    -- has to be evaluated against. For the two counts it equals the value; for
+    -- forest acres it does not, and applying a household floor of 10 to a
+    -- quantity of acres withheld the change for a 40-screening month totalling
+    -- 6 acres while showing it for a 3-screening month totalling 14.
     metrics AS (
-      SELECT m, 'Reached a contractor search' AS metric, contractor AS value, 1 AS o FROM journey
+      SELECT m, 'Reached a contractor search' AS metric, contractor AS value, contractor AS base, 1 AS o FROM journey
       UNION ALL
-      SELECT m, 'Saw calculator results', results, 2 FROM journey
+      SELECT m, 'Saw calculator results', results, results, 2 FROM journey
       UNION ALL
-      SELECT m, 'Emissions impact (forest acres)', ROUND(acres, 1), 3 FROM impact
+      SELECT m, 'Emissions impact (forest acres)', ROUND(acres, 1), screenings, 3 FROM impact
     ),
     lagged AS (
-      SELECT m, metric, value, o,
-        LAG(value) OVER (PARTITION BY metric ORDER BY m) AS prior
+      SELECT m, metric, value, base, o,
+        LAG(m) OVER (PARTITION BY metric ORDER BY m) AS prior_m,
+        LAG(value) OVER (PARTITION BY metric ORDER BY m) AS prior_value,
+        LAG(base) OVER (PARTITION BY metric ORDER BY m) AS prior_base
       FROM metrics
+    ),
+    -- LAG walks to the previous PRESENT row, which after a month with no data or
+    -- one dropped by the suppression above can be two or three months back. At
+    -- CESN volume with the below-200% default on, that is the expected case, so
+    -- anything not exactly one month back is not a prior month and is dropped
+    -- rather than silently mislabelled.
+    adjacent AS (
+      SELECT m, metric, value, base, o,
+        CASE WHEN DATE_DIFF(m, prior_m, MONTH) = 1 THEN prior_value END AS prior_value,
+        CASE WHEN DATE_DIFF(m, prior_m, MONTH) = 1 THEN prior_base END AS prior_base
+      FROM lagged
     )
     SELECT
       FORMAT_DATE('%Y-%m', m) AS `Month`,
       metric AS `Metric`,
       value AS `This month`,
-      prior AS `Prior month`,
+      prior_value AS `Prior month`,
       CASE
-        WHEN prior >= ${local.hp_min_mom_base}
-          THEN ROUND((value - prior) * 100.0 / prior, 1)
+        WHEN prior_base >= ${local.hp_min_mom_base} AND prior_value > 0
+          THEN ROUND((value - prior_value) * 100.0 / prior_value, 1)
       END AS `Change vs prior month (%)`
-    FROM lagged
+    FROM adjacent
     ORDER BY m DESC, o
   SQL
 
@@ -559,7 +592,7 @@ locals {
 # ── Cards ─────────────────────────────────────────────────────────────────────
 
 resource "metabase_card" "hp_headline_mom" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Headline Numbers, Month over Month"
     description         = "The three figures worth quoting, by month, against the month before. Monthly rather than weekly because CESN volume makes a week-over-week percentage mostly noise; the raw counts sit beside the change so the base is always visible. A change is withheld when the prior month is under ${local.hp_min_mom_base}."
@@ -583,7 +616,7 @@ resource "metabase_card" "hp_headline_mom" {
 }
 
 resource "metabase_card" "hp_engagement" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "HVAC Page Engagement"
     description         = "Clicks and unique users per interaction on the heat-pump journey: the 'Learn more' / 'Learn how to apply' links, the Calculate impact and Connect now CTAs, the two contractor searches, and the contractor-tips PDF broken out page by page."
@@ -611,7 +644,7 @@ resource "metabase_card" "hp_engagement" {
 }
 
 resource "metabase_card" "hp_click_through_rate" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "HVAC Page Click-Through Rate"
     description         = "Of the users who saw each section, the percent who clicked its link or CTA. Denominator is the section-view impression, so this is a true click-through rate, not a share of clicks."
@@ -639,7 +672,7 @@ resource "metabase_card" "hp_click_through_rate" {
 }
 
 resource "metabase_card" "hp_page_funnel" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Heat Pump Journey Drop-Off"
     description         = "Distinct screenings reaching each milestone of the HVAC page journey, in order, so you can see where people fall away on the path toward contacting a contractor. Counted once per screening."
@@ -666,7 +699,7 @@ resource "metabase_card" "hp_page_funnel" {
 }
 
 resource "metabase_card" "hp_journey_start_end" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Where Journeys Start and End"
     description         = "The section each screening engaged with first, and the last section it touched before leaving. Read alongside the drop-off chart: a section that is often the last one touched is where people give up."
@@ -694,7 +727,7 @@ resource "metabase_card" "hp_journey_start_end" {
 }
 
 resource "metabase_card" "hp_calculator_funnel" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Impact Calculator Funnel"
     description         = "Unique users reaching each step of the impact calculator, in order: household type → address → heating fuel → water heating → project type → Calculate impact → results shown → edit after results. The drop between 'Clicked Calculate impact' and 'Passed validation' is submissions that failed validation."
@@ -721,7 +754,7 @@ resource "metabase_card" "hp_calculator_funnel" {
 }
 
 resource "metabase_card" "hp_calculator_errors" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Impact Calculator Errors by Type"
     description         = "Calculator errors thrown, broken out by type: unsupported address, invalid response from the calculator, form validation, or other error."
@@ -749,7 +782,7 @@ resource "metabase_card" "hp_calculator_errors" {
 }
 
 resource "metabase_card" "hp_contractor_correlation" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Contractor-Search Users: Info Consumed"
     description         = "Of screenings that reached a contractor search (Power Ahead Colorado or Love Electric), the share that also clicked 'Learn more', engaged the impact calculator, saw results, or opened the contractor-tips PDF."
@@ -777,7 +810,7 @@ resource "metabase_card" "hp_contractor_correlation" {
 }
 
 resource "metabase_card" "hp_savings_trend" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Estimated Annual Bill Savings (weekly median)"
     description         = "Weekly median of the calculator's estimated annual bill saving, split by whether the screening went on to a contractor search. A gap between the two lines means the size of the estimate is influencing whether people act on it."
@@ -804,7 +837,7 @@ resource "metabase_card" "hp_savings_trend" {
 }
 
 resource "metabase_card" "hp_savings_range" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Estimated Annual Bill Savings — Range (p20–p80)"
     description         = "The low and high ends of the savings range each household was shown, weekly, beside the median from the chart above. Same cohort split, so the range can be read against the trend."
@@ -828,7 +861,7 @@ resource "metabase_card" "hp_savings_range" {
 }
 
 resource "metabase_card" "hp_emissions_trend" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Estimated Annual Emissions Reduction (weekly median)"
     description         = "Weekly median of the calculator's estimated annual emissions reduction in metric tons of CO2e, split by whether the screening went on to a contractor search. Converted from the pounds the calculator returns using the EPA factor the results page uses (2,204.62 lb per metric ton)."
@@ -855,7 +888,7 @@ resource "metabase_card" "hp_emissions_trend" {
 }
 
 resource "metabase_card" "hp_emissions_equivalency" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Total Emissions Impact (forest acres)"
     description         = "Every estimated annual emissions reduction in the selected period, added up and expressed as the EPA equivalency the results page shows users: acres of average U.S. forest sequestering carbon for one year. This is modelled potential impact from the calculator, not verified installations."
@@ -879,7 +912,7 @@ resource "metabase_card" "hp_emissions_equivalency" {
 }
 
 resource "metabase_card" "hp_savings_band_conversion" {
-  for_each = local.ga_tenants_enabled
+  for_each = { for k, v in local.ga_tenants_enabled : k => v if local.tenant_has_tab[k]["heat_pump_energy_journey"] }
   json = jsonencode({
     name                = "Does a Bigger Estimate Drive Action?"
     description         = "Screenings bucketed by the size of the annual saving they were shown, and the share of each bucket that went on to search for a contractor. Buckets with fewer than ${local.hp_min_group_size} screenings are hidden."

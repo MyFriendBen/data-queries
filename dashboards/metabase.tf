@@ -1711,7 +1711,10 @@ resource "metabase_dashboard" "tenant_analytics" {
         values_query_type  = "list"
         values_source_type = "static-list"
         values_source_config = {
-          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado"]
+          # "Unknown" is a real stored value — a county the seed does not match is
+          # written as ",Unknown,". Without it in the list that cohort cannot be
+          # selected or inspected. Matches the Income Band list, which has it.
+          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado", "Unknown"]
         }
       },
       {

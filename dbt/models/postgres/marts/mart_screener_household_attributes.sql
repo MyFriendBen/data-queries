@@ -44,7 +44,9 @@ WITH screenings AS (
 -- The screening's own year decides which FPL table applies. Banding against the
 -- CURRENT year instead would silently restate history every January, so a number
 -- a partner quoted to a funder would stop matching the dashboard. Screenings
--- from a year the constant does not cover clamp to the nearest year it does.
+-- from a year OUTSIDE the covered range clamp to the nearest year inside it.
+-- A gap INSIDE the range is not filled: it would leave annual_limit NULL and the
+-- band 'Unknown'. The published table is contiguous, so this does not arise today.
 fpl_periods AS (
     SELECT
         min(period::int) AS earliest_period,
@@ -55,10 +57,17 @@ fpl_periods AS (
 with_period AS (
     SELECT
         s.*,
-        least(
-            greatest(extract(YEAR FROM s.submission_date)::int, p.earliest_period),
-            p.latest_period
-        )::text AS fpl_period
+        -- Explicit NULL for a missing date. Postgres greatest() IGNORES NULLs, so
+        -- a NULL year silently came out as earliest_period and the screening was
+        -- banded against the oldest FPL table on record. int_complete_screener_data
+        -- filters to completed = TRUE so it should not occur; wrong-by-default is
+        -- the wrong failure mode for it if it ever does.
+        CASE WHEN s.submission_date IS NULL THEN NULL
+             ELSE least(
+                 greatest(extract(YEAR FROM s.submission_date)::int, p.earliest_period),
+                 p.latest_period
+             )::text
+        END AS fpl_period
     FROM screenings AS s
     CROSS JOIN fpl_periods AS p
 ),
@@ -100,6 +109,13 @@ regions AS (
     INNER JOIN {{ ref('co_county_regions') }} AS r
         ON lower(regexp_replace(trim(b.county), '\s+county$', '', 'i'))
          = lower(trim(r.county_name))
+        -- Colorado tenants only. The seed is a CO county list and this model is
+        -- built for every white label, so without this a Jefferson County,
+        -- Missouri screening is labelled ',DRCOG,Front Range,'. CO shares county
+        -- names with most states — Jefferson, Washington, Lincoln, Adams,
+        -- Douglas, Logan, Morgan, Boulder. Add a state column to the seed if a
+        -- second state ever needs rollups.
+        AND b.white_label_code IN ('co', 'cesn')
 ),
 
 region_lists AS (
@@ -153,8 +169,19 @@ SELECT
     --   select distinct electric_provider, gas_heat_provider from this model
     b.electric_provider,
     b.gas_heat_provider,
-    coalesce(lower(coalesce(b.electric_provider, '')) LIKE '%xcel%'
-            OR lower(coalesce(b.gas_heat_provider, '')) LIKE '%xcel%', FALSE) AS is_xcel_customer,
+    coalesce(
+        b.white_label_code IN ('co', 'cesn')
+        AND (
+            lower(coalesce(b.electric_provider, '')) LIKE '%xcel%'
+            OR lower(coalesce(b.gas_heat_provider, '')) LIKE '%xcel%'
+            -- Xcel's CO gas utility is legally Public Service Company of Colorado,
+            -- so a gas-only Xcel household can carry a PSCo slug and never match
+            -- '%xcel%' — the exact case the substring match exists to catch.
+            -- Scoped to CO because "public service" also names unrelated utilities
+            -- in other states (PNM, PSO, PSE&G).
+            OR lower(coalesce(b.gas_heat_provider, '')) LIKE '%public service%'
+            OR lower(coalesce(b.gas_heat_provider, '')) LIKE '%psco%'
+        ), FALSE) AS is_xcel_customer,
 
     current_timestamp AS updated_at
 

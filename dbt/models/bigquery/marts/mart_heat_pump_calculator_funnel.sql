@@ -117,6 +117,10 @@ select
 
     count(*) as total_clicks,
     count(distinct screener_uid) as users,
+    -- Distinct WITHIN THE DAY. Summing it over a range counts a screening once
+    -- per active day, which on a funnel can make a later stage exceed an earlier
+    -- one and render as a funnel that widens. Cards merge the sketch instead.
+    hll_count.init(screener_uid) as users_hll,
     count(distinct session_key) as sessions,
 
     current_timestamp() as updated_at

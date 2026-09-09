@@ -21,7 +21,11 @@ set -euo pipefail
 
 : "${DB_HOST:?}" "${DB_USER:?}" "${DB_PASS:?}" "${DB_NAME:?}" "${GCP_PROJECT_ID:?}"
 
-CSV="$(mktemp -t household_attributes.XXXXXX).csv"
+# No .csv suffix: appending one to mktemp's output names a DIFFERENT path, so
+# the file mktemp actually created leaks past the trap and the real output is
+# made by a plain redirect instead of atomically. bq takes --source_format=CSV,
+# so the extension buys nothing.
+CSV="$(mktemp -t household_attributes.XXXXXX)"
 trap 'rm -f "$CSV"' EXIT
 
 # Explicit column list, not SELECT *, for two reasons:

@@ -114,6 +114,10 @@ clicks_summary as (
         region_memberships, is_xcel_customer,
         count(*) as total_clicks,
         count(distinct screener_uid) as users,
+        -- `users` is distinct WITHIN THE DAY, so summing it across a date range
+        -- counts a screening once per day it was active. The sketch merges across
+        -- days into a real distinct count; cards read this, not sum(users).
+        hll_count.init(screener_uid) as users_hll,
         count(distinct session_key) as sessions
     from clicks
     group by event_date, event_date_parsed, event_week, screener_state,
@@ -126,60 +130,97 @@ clicks_summary as (
 section_views as (
     select
         e.event_date,
+        e.event_date_parsed,
+        date_trunc(e.event_date_parsed, week(monday)) as event_week,
         e.screener_state,
         e.section,
         coalesce(a.income_band, 'Unknown') as income_band,
+        coalesce(a.income_band_sort, 4) as income_band_sort,
+        coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
         coalesce(a.region_memberships, ',Unknown,') as region_memberships,
         coalesce(a.is_xcel_customer, false) as is_xcel_customer,
         count(*) as section_views,
         count(distinct e.screener_uid) as view_users,
+        hll_count.init(e.screener_uid) as view_users_hll,
         count(distinct to_json_string(struct(e.user_pseudo_id, e.ga_session_id))) as view_sessions
     from {{ ref('stg_ga_heat_pump_journey') }} e
     left join attributes a on e.screener_uid = a.screener_uid
     where e.event_name = 'heat_pump_section_view'
-    group by e.event_date, e.screener_state, e.section,
-        income_band, region_memberships, is_xcel_customer
+    group by e.event_date, e.event_date_parsed, event_week, e.screener_state, e.section,
+        income_band, income_band_sort, is_below_200_fpl, region_memberships, is_xcel_customer
+),
+
+-- Every interaction ever seen for a section. Needed because a day on which a
+-- section was VIEWED but nothing was clicked otherwise produces no row at all:
+-- joining views onto clicks means the CTR card, which sums the denominator per
+-- interaction, only ever sums it over days that already had a click. A section
+-- seen by 100 users/day for six click-free days and then 10 views / 3 clicks on
+-- day seven reported 30% instead of ~0.5%.
+interaction_catalog as (
+    select distinct section, interaction, interaction_sort
+    from clicks
+    where section is not null and interaction is not null
+),
+
+-- One row per (day, segment, interaction) whose section was viewed, clicked or
+-- not. This is the denominator side of the full outer join below.
+view_spine as (
+    select
+        v.event_date, v.event_date_parsed, v.event_week, v.screener_state,
+        i.interaction, i.interaction_sort, v.section,
+        v.income_band, v.income_band_sort, v.is_below_200_fpl,
+        v.region_memberships, v.is_xcel_customer,
+        v.section_views, v.view_users, v.view_users_hll, v.view_sessions
+    from section_views v
+    join interaction_catalog i on i.section = v.section
 )
 
 select
-    c.event_date,
-    c.event_date_parsed,
-    c.event_week,
-    c.screener_state,
-    c.interaction,
-    c.interaction_sort,
-    c.section,
+    coalesce(c.event_date, s.event_date) as event_date,
+    coalesce(c.event_date_parsed, s.event_date_parsed) as event_date_parsed,
+    coalesce(c.event_week, s.event_week) as event_week,
+    coalesce(c.screener_state, s.screener_state) as screener_state,
+    coalesce(c.interaction, s.interaction) as interaction,
+    coalesce(c.interaction_sort, s.interaction_sort) as interaction_sort,
+    coalesce(c.section, s.section) as section,
 
-    c.income_band,
-    c.income_band_sort,
-    c.is_below_200_fpl,
-    c.region_memberships,
-    c.is_xcel_customer,
+    coalesce(c.income_band, s.income_band) as income_band,
+    coalesce(c.income_band_sort, s.income_band_sort) as income_band_sort,
+    coalesce(c.is_below_200_fpl, s.is_below_200_fpl) as is_below_200_fpl,
+    coalesce(c.region_memberships, s.region_memberships) as region_memberships,
+    coalesce(c.is_xcel_customer, s.is_xcel_customer) as is_xcel_customer,
 
-    c.total_clicks,
-    c.users,
-    c.sessions,
+    -- Zero, not null: a viewed-but-unclicked row is a real 0 clicks.
+    coalesce(c.total_clicks, 0) as total_clicks,
+    coalesce(c.users, 0) as users,
+    c.users_hll,
+    coalesce(c.sessions, 0) as sessions,
 
-    v.section_views,
-    v.view_users,
-    v.view_sessions,
+    s.section_views,
+    s.view_users,
+    s.view_users_hll,
+    s.view_sessions,
 
     -- click-through rates (percent). NULLIF avoids divide-by-zero; null when the
     -- section had no recorded views that day.
-    round(c.total_clicks * 100.0 / nullif(v.section_views, 0), 1) as click_rate_pct,
-    round(c.users * 100.0 / nullif(v.view_users, 0), 1) as user_click_rate_pct,
-    round(c.sessions * 100.0 / nullif(v.view_sessions, 0), 1) as session_click_rate_pct,
+    round(coalesce(c.total_clicks, 0) * 100.0 / nullif(s.section_views, 0), 1) as click_rate_pct,
+    round(coalesce(c.users, 0) * 100.0 / nullif(s.view_users, 0), 1) as user_click_rate_pct,
+    round(coalesce(c.sessions, 0) * 100.0 / nullif(s.view_sessions, 0), 1) as session_click_rate_pct,
 
     current_timestamp() as updated_at
 
+-- FULL OUTER, not left-from-clicks: the left join dropped every view-only day
+-- from the denominator (see interaction_catalog above), and a plain views-driven
+-- left join would drop clicks recorded on a day with no section_view row.
 from clicks_summary c
-left join section_views v
-    on c.event_date = v.event_date
-    and ifnull(c.screener_state, '∅') = ifnull(v.screener_state, '∅')
-    and c.section = v.section
+full outer join view_spine s
+    on c.event_date = s.event_date
+    and ifnull(c.screener_state, '∅') = ifnull(s.screener_state, '∅')
+    and c.section = s.section
+    and c.interaction = s.interaction
     -- denominator must be scoped to the same segment as the numerator, or a
     -- filtered card would divide segment clicks by everyone's views
-    and c.income_band = v.income_band
-    and c.region_memberships = v.region_memberships
-    and c.is_xcel_customer = v.is_xcel_customer
-order by c.event_date desc, c.total_clicks desc
+    and c.income_band = s.income_band
+    and c.region_memberships = s.region_memberships
+    and c.is_xcel_customer = s.is_xcel_customer
+order by event_date desc, total_clicks desc
