@@ -36,6 +36,15 @@ jobs:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
+      - name: Set up the Google Cloud CLI
+        if: vars.BIGQUERY_ENABLED == 'true'
+        # load_household_bridge.sh shells out to `bq`. The auth action only writes
+        # a credentials file; it does not install the CLI, and the ubuntu-latest
+        # image does not carry it. Without this the nightly fails at
+        # "bq: command not found", and because the load sits between the two dbt
+        # builds it takes the BigQuery build down with it.
+        uses: google-github-actions/setup-gcloud@v3
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
@@ -63,6 +72,15 @@ jobs:
 
       - name: Run dbt build
         run: dbt build --target postgres
+
+      # Copies the Postgres household-attribute bridge into BigQuery, between the
+      # two dbt builds: after Postgres rebuilds the bridge mart, before the
+      # BigQuery build whose models read it.
+      - name: Load the household-attribute bridge into BigQuery
+        if: vars.BIGQUERY_ENABLED == 'true'
+        run: ./scripts/load_household_bridge.sh
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
 
       - name: Run dbt build (BigQuery)
         if: vars.BIGQUERY_ENABLED == 'true'

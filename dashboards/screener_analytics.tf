@@ -1564,7 +1564,7 @@ locals {
   # with the same "data starts <epoch>" banner the global dashboard shows. Keyed
   # by dashboard_tab_id; a single item so it can be spliced in as its own list.
   tenant_screener_epoch_note_card = {
-    for tab_id in [7, 8, 9, 10] : tab_id => {
+    for tab_id in [7, 8, 9, 10, 11] : tab_id => {
       card_id                = null
       dashboard_tab_id       = tab_id
       row                    = 0

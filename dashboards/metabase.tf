@@ -1658,6 +1658,79 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
+    # Heat Pump Journey (tab 11) income quick filter — CESN only. Kept in its own
+    # conditional element because it is the only parameter here carrying a
+    # `default`, and a tuple mixing object shapes cannot unify with the empty
+    # false branch.
+    #
+    # The partner's default view is "below 200% FPL". That spans the "Below 100%"
+    # and "100-200%" bands, so the single-select band filter below cannot express
+    # it. Backed by is_below_200_fpl on the bridge and defaulted ON, so the tab
+    # opens on the target population.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_below_200_filter"
+        name               = "Income Quick Filter"
+        slug               = "below_200"
+        type               = "string/="
+        sectionId          = "string"
+        default            = ["Below 200% FPL"]
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 200% FPL"]
+        }
+      }
+    ] : [],
+
+    # Heat Pump Journey (tab 11) segmentation filters — CESN only, since it is the
+    # only tenant with the tab. Static value lists: the bands and rollups are fixed
+    # by the partner, so a values-source card would be a query per dropdown for no
+    # benefit. Region rollups OVERLAP by design (a Pueblo household is both
+    # Southern and Front Range), so these scope cards but must never be rendered
+    # as a share of total.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_income_band_filter"
+        name               = "Income Band"
+        slug               = "income_band"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "Unknown"]
+        }
+      },
+      {
+        id                 = "hp_region_filter"
+        name               = "Region"
+        slug               = "region"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          # "Unknown" is a real stored value — a county the seed does not match is
+          # written as ",Unknown,". Without it in the list that cohort cannot be
+          # selected or inspected. Matches the Income Band list, which has it.
+          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado", "Unknown"]
+        }
+      },
+      {
+        id                 = "hp_utility_filter"
+        name               = "Utility"
+        slug               = "utility"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Xcel"]
+        }
+      }
+    ] : [],
+
     # UTM filters — NC only
     local.tenant_features[each.key].has_utm_filters ? [
       {
@@ -2315,6 +2388,8 @@ locals {
       # its layout so the tab itself stays row-ascending.
       local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
       local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
+      # Tab 11 (Heat Pump Journey): CESN-only, placed for the cesn tenant only.
+      flatten([for k in [each.key] : local.tenant_dashboard_heat_pump_layout if local.tenant_has_tab[k]["heat_pump_energy_journey"]]),
     )
   }
 }
