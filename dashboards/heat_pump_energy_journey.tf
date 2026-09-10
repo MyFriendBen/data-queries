@@ -356,7 +356,7 @@ locals {
         ELSE 'Did not'
       END AS `Cohort`,
       ROUND(APPROX_QUANTILES(annual_bill_savings, 100 IGNORE NULLS)[OFFSET(50)], 2)
-        AS `Median annual savings ($)`
+        AS `Median annual savings USD`
     FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
     WHERE ${local.hp_state_filter}
       AND annual_bill_savings IS NOT NULL
@@ -389,11 +389,11 @@ locals {
         ELSE 'Did not'
       END AS `Cohort`,
       ROUND(APPROX_QUANTILES(annual_bill_savings_low, 100 IGNORE NULLS)[OFFSET(50)], 2)
-        AS `Low end of range ($)`,
+        AS `Low end of range USD`,
       ROUND(APPROX_QUANTILES(annual_bill_savings, 100 IGNORE NULLS)[OFFSET(50)], 2)
-        AS `Median ($)`,
+        AS `Median USD`,
       ROUND(APPROX_QUANTILES(annual_bill_savings_high, 100 IGNORE NULLS)[OFFSET(50)], 2)
-        AS `High end of range ($)`
+        AS `High end of range USD`
     FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
     WHERE ${local.hp_state_filter}
       AND annual_bill_savings IS NOT NULL
@@ -419,7 +419,7 @@ locals {
         ELSE 'Did not'
       END AS `Cohort`,
       ROUND(APPROX_QUANTILES(annual_emissions_reduction_tons, 100 IGNORE NULLS)[OFFSET(50)], 2)
-        AS `Median annual reduction (metric tons CO2e)`
+        AS `Median annual reduction metric tons CO2e`
     FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
     WHERE ${local.hp_state_filter}
       AND annual_emissions_reduction_tons IS NOT NULL
@@ -440,7 +440,7 @@ locals {
   # shows ("acres of U.S. forests in one year"), totalled over the date range.
   hp_sql_emissions_equivalency = <<-SQL
     SELECT
-      ROUND(SUM(annual_emissions_forest_acres), 1) AS `Acres of U.S. forest (one year)`
+      ROUND(SUM(annual_emissions_forest_acres), 1) AS `Acres of US forest per year`
     FROM `${local.bq_dataset}.mart_heat_pump_calculator_results`
     WHERE ${local.hp_state_filter}
       AND annual_emissions_forest_acres IS NOT NULL
@@ -539,7 +539,7 @@ locals {
       CASE
         WHEN prior_base >= ${local.hp_min_mom_base} AND prior_value > 0
           THEN ROUND((value - prior_value) * 100.0 / prior_value, 1)
-      END AS `Change vs prior month (%)`
+      END AS `Change vs prior month %`
     FROM adjacent
     ORDER BY m DESC, o
   SQL
@@ -829,7 +829,7 @@ resource "metabase_card" "hp_savings_trend" {
     display = "line"
     visualization_settings = {
       "graph.dimensions" = ["Week", "Cohort"]
-      "graph.metrics"    = ["Median annual savings ($)"]
+      "graph.metrics"    = ["Median annual savings USD"]
     }
     parameter_mappings = []
     parameters         = []
@@ -880,7 +880,7 @@ resource "metabase_card" "hp_emissions_trend" {
     display = "line"
     visualization_settings = {
       "graph.dimensions" = ["Week", "Cohort"]
-      "graph.metrics"    = ["Median annual reduction (metric tons CO2e)"]
+      "graph.metrics"    = ["Median annual reduction metric tons CO2e"]
     }
     parameter_mappings = []
     parameters         = []
