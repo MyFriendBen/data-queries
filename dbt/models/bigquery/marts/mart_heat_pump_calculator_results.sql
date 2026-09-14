@@ -119,10 +119,10 @@ select
     coalesce(j.reached_contractor_search, false) as reached_contractor_search,
 
     -- Story 4 segmentation
-    coalesce(a.income_band, 'Unknown') as income_band,
+    coalesce(a.income_band, 'No income on record') as income_band,
     coalesce(a.income_band_sort, 4) as income_band_sort,
     coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
-    coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+    coalesce(a.region_memberships, ',No county on record,') as region_memberships,
     coalesce(a.is_xcel_customer, false) as is_xcel_customer,
 
     current_timestamp() as updated_at

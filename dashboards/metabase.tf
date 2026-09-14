@@ -1699,7 +1699,7 @@ resource "metabase_dashboard" "tenant_analytics" {
         values_query_type  = "list"
         values_source_type = "static-list"
         values_source_config = {
-          values = ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "Unknown"]
+          values = ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "No income on record"]
         }
       },
       {
@@ -1711,10 +1711,13 @@ resource "metabase_dashboard" "tenant_analytics" {
         values_query_type  = "list"
         values_source_type = "static-list"
         values_source_config = {
-          # "Unknown" is a real stored value — a county the seed does not match is
-          # written as ",Unknown,". Without it in the list that cohort cannot be
-          # selected or inspected. Matches the Income Band list, which has it.
-          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado", "Unknown"]
+          # The last entry is a real stored value — a county the seed does not
+          # match is written as ",No county on record,". Without it in the list that cohort
+          # cannot be selected or inspected. The partner asked for the two
+          # unknown buckets to be labelled explicitly rather than just "Unknown";
+          # they are worded per filter because a screening can have a known
+          # income and an unmatched county, or the reverse.
+          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado", "No county on record"]
         }
       },
       {
