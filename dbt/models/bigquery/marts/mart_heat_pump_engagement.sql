@@ -21,7 +21,7 @@
 -- SEGMENTATION (Story 4): income band, region memberships and the Xcel flag are
 -- joined from the household bridge and carried in the grain, so a dashboard
 -- filter re-scopes both the clicks and their section-view denominator. Rows for
--- screenings with no bridge match fall into 'Unknown' rather than disappearing.
+-- screenings with no bridge match fall into 'No income on record' / 'No county on record' rather than disappearing.
 --
 -- Three grains are carried so both "users" and "sessions" rates are possible:
 --   total_clicks  — raw event count
@@ -49,10 +49,10 @@ clicks as (
         date_trunc(e.event_date_parsed, week(monday)) as event_week,
         e.screener_state,
         e.screener_uid,
-        coalesce(a.income_band, 'Unknown') as income_band,
+        coalesce(a.income_band, 'No income on record') as income_band,
         coalesce(a.income_band_sort, 4) as income_band_sort,
         coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
-        coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+        coalesce(a.region_memberships, ',No county on record,') as region_memberships,
         coalesce(a.is_xcel_customer, false) as is_xcel_customer,
         to_json_string(struct(e.user_pseudo_id, e.ga_session_id)) as session_key,
         case
@@ -134,10 +134,10 @@ section_views as (
         date_trunc(e.event_date_parsed, week(monday)) as event_week,
         e.screener_state,
         e.section,
-        coalesce(a.income_band, 'Unknown') as income_band,
+        coalesce(a.income_band, 'No income on record') as income_band,
         coalesce(a.income_band_sort, 4) as income_band_sort,
         coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
-        coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+        coalesce(a.region_memberships, ',No county on record,') as region_memberships,
         coalesce(a.is_xcel_customer, false) as is_xcel_customer,
         count(*) as section_views,
         count(distinct e.screener_uid) as view_users,

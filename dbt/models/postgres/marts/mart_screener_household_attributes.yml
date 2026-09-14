@@ -22,7 +22,7 @@ models:
         tests:
           - not_null
       - name: income_band
-        description: "Below 100% FPL | 100-200% FPL | Above 200% FPL | Unknown"
+        description: "Below 100% FPL | 100-200% FPL | Above 200% FPL | No income on record"
         tests:
           - not_null
           - accepted_values:
@@ -32,7 +32,7 @@ models:
                     "Below 100% FPL",
                     "100–200% FPL",
                     "Above 200% FPL",
-                    "Unknown",
+                    "No income on record",
                   ]
       - name: fpl_period
         description: >
@@ -44,8 +44,9 @@ models:
       - name: region_memberships
         description: >
           Comma-wrapped list of the region rollups the county belongs to, e.g.
-          ',DRCOG,Front Range,'. Rollups overlap by design, so this is a filter
-          input and must never be rendered as a share of total.
+          ',DRCOG,Front Range,'. A county the seed does not match is written as
+          ',No county on record,'. Rollups overlap by design, so this is a filter input and
+          must never be rendered as a share of total.
         tests:
           - not_null
       - name: is_below_200_fpl

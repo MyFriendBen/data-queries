@@ -46,7 +46,7 @@ WITH screenings AS (
 -- a partner quoted to a funder would stop matching the dashboard. Screenings
 -- from a year OUTSIDE the covered range clamp to the nearest year inside it.
 -- A gap INSIDE the range is not filled: it would leave annual_limit NULL and the
--- band 'Unknown'. The published table is contiguous, so this does not arise today.
+-- band 'No income on record'. The published table is contiguous, so this does not arise today.
 fpl_periods AS (
     SELECT
         min(period::int) AS earliest_period,
@@ -141,7 +141,7 @@ SELECT
     -- Income: bucket only, never the underlying figure.
     b.fpl_period,
     CASE
-        WHEN b.fpl_percent IS NULL THEN 'Unknown'
+        WHEN b.fpl_percent IS NULL THEN 'No income on record'
         WHEN b.fpl_percent < 100 THEN 'Below 100% FPL'
         WHEN b.fpl_percent < 200 THEN '100–200% FPL'
         ELSE 'Above 200% FPL'
@@ -157,7 +157,7 @@ SELECT
     coalesce(b.fpl_percent IS NOT NULL AND b.fpl_percent < 200, FALSE)
         AS is_below_200_fpl,
 
-    coalesce(rl.region_memberships, ',Unknown,') AS region_memberships,
+    coalesce(rl.region_memberships, ',No county on record,') AS region_memberships,
 
     -- Utility: Xcel supplies both electricity and gas in Colorado, and the
     -- partner reads "Xcel customers" as either. Matched on a substring rather

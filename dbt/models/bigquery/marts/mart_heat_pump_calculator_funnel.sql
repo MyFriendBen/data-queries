@@ -23,7 +23,7 @@
 --
 -- SEGMENTATION (Story 4): income band, region memberships and the Xcel flag come
 -- from the household bridge and sit in the grain, so a dashboard filter rescopes
--- this model. Screenings with no bridge match land in 'Unknown' rather than
+-- this model. Screenings with no bridge match land in 'No income on record' / 'No county on record' rather than
 -- vanishing from the totals.
 
 with attributes as (
@@ -78,10 +78,10 @@ all_stages as (
 segmented as (
     select
         s.*,
-        coalesce(a.income_band, 'Unknown') as income_band,
+        coalesce(a.income_band, 'No income on record') as income_band,
         coalesce(a.income_band_sort, 4) as income_band_sort,
         coalesce(a.is_below_200_fpl, false) as is_below_200_fpl,
-        coalesce(a.region_memberships, ',Unknown,') as region_memberships,
+        coalesce(a.region_memberships, ',No county on record,') as region_memberships,
         coalesce(a.is_xcel_customer, false) as is_xcel_customer
     from all_stages s
     left join attributes a on s.screener_uid = a.screener_uid
