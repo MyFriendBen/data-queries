@@ -33,7 +33,15 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 
 **3. Create tenant database users with row-level security**
 
-Each tenant needs a dedicated database role whose name encodes the `white_label_id`. RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see their tenant's data; non-conforming roles get zero rows.
+Each tenant needs a dedicated database role, named `wl_<state>_<white_label_id>_ro` by
+convention. Under the current `session_guc` policy mode RLS filters on the
+`app.white_label_id` session GUC that Terraform pins on the Metabase connection
+(`additional-options`), not on the role name; a connection with no GUC set sees zero rows.
+The `mfb_rls_policy_mode` dbt var selects the mode — see `dbt/macros/row_level_security.sql`.
+
+Do **not** point a tenant connection at the dbt build user: it owns the `analytics`
+tables, the policy is `TO PUBLIC`, and the tables are not `FORCE ROW LEVEL SECURITY`, so
+the owner bypasses RLS entirely and the connection returns every tenant's rows.
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your MyFriendBen database
@@ -163,18 +171,28 @@ Data isolation is enforced at two layers:
 
 ### 1. Add Tenant to Configuration
 
-Edit `terraform.tfvars`:
+Add the tenant to the `tenants` default in `variables.tf` (CI supplies no `TF_VAR_tenants`,
+so that default is the production tenant map). `terraform.tfvars` is gitignored and
+overrides it for local development, where the `white_label_id` values differ from
+production — set both if you also test locally.
+
+`white_label_id` is required; `metabase.tf` reads `each.value.white_label_id` directly, so
+a tenant missing it fails the plan. It must equal `screener_whitelabel.id` for that white
+label (`SELECT id, code, name FROM screener_whitelabel;`).
 
 ```hcl
 # Add new tenant
 tenants = {
-  nc = { name = "nc", display_name = "North Carolina" }
-  co = { name = "co", display_name = "Colorado" }
-  tx = { name = "tx", display_name = "Texas" }  # ← New tenant
+  nc = { name = "nc", display_name = "North Carolina", white_label_id = 5 }
+  co = { name = "co", display_name = "Colorado", white_label_id = 1 }
+  tx = { name = "tx", display_name = "Texas", white_label_id = 40 }  # ← New tenant
 }
 
 # Add tenant database credentials
-# Convention: wl_<state>_<white_label_id>_ro — RLS policy extracts white_label_id from the username
+# Convention: wl_<state>_<white_label_id>_ro. Under the current session_guc policy mode
+# RLS filters on the app.white_label_id GUC that Terraform pins on the connection, not on
+# the role name — the name is a readability convention, kept accurate so the legacy
+# regex_user fallback still works if that mode is rolled back.
 tenant_db_credentials = {
   nc = { username = "wl_nc_5_ro",  password = "secure_password" }
   co = { username = "wl_co_1_ro",  password = "secure_password" }
@@ -267,9 +285,29 @@ them to top-of-funnel.
 
 `terraform-plan.yml` and `terraform-apply.yml` enumerate each tenant's DB secrets
 explicitly. In **both** files add `--arg` pairs, a `jq` merge line, and `env:` entries
-for `<STATE>_DB_USER` / `<STATE>_DB_PASS`, then create those GitHub secrets. The `jq`
-merge is guarded on non-empty values, so a tenant whose secrets are absent is omitted
-from `tenant_db_credentials` and falls back to the global credentials.
+for `<STATE>_DB_USER` / `<STATE>_DB_PASS`, then create those GitHub secrets in the
+`production` environment.
+
+> **Create the secrets and the database role BEFORE the first apply that includes the
+> new tenant.** The `jq` merge is guarded on non-empty values, so a tenant whose secrets
+> are missing is omitted from `tenant_db_credentials` — and `local.tenant_credentials`
+> (`variables.tf`) then falls back to `var.global_db_credentials`. That is the dbt build
+> user, which **owns** the `analytics` tables. The RLS policy is created `TO PUBLIC` and
+> the tables are not `FORCE ROW LEVEL SECURITY`, so PostgreSQL exempts the owner: the
+> `app.white_label_id` GUC is ignored and the connection returns **every tenant's rows**.
+> Because `permissions.tf` simultaneously grants the new `<Display Name> Viewers` and
+> `Editors` groups `query-builder` access to exactly that connection, the result is
+> silent cross-tenant exposure — not the empty dashboard a missing credential suggests.
+>
+> Verify isolation after apply, before adding anyone to the new groups:
+>
+> ```sql
+> -- expect exactly one distinct white_label_id, matching the tenant
+> SET ROLE wl_<state>_<id>_ro;
+> SET app.white_label_id = '<id>';
+> SELECT count(*), count(DISTINCT white_label_id) FROM analytics.mart_screener_data;
+> RESET ROLE;
+> ```
 
 ### 6. Create Database Role
 

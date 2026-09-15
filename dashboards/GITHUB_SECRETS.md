@@ -102,14 +102,30 @@ heroku pg:credentials:url -a cobenefits-api --name wl_co_1_ro
 GRANT USAGE ON SCHEMA analytics TO wl_co_1_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO wl_co_1_ro;
 
--- Grant access to the RLS view in public schema
-GRANT USAGE ON SCHEMA public TO wl_co_1_ro;
-GRANT SELECT ON public.data_tenant TO wl_co_1_ro;
-
--- Auto-grant SELECT on future tables created by the default credential
+-- Auto-grant SELECT on future tables created by the default credential.
+-- Required: without it a `dbt build --full-refresh` recreates the marts and the
+-- role loses SELECT, so working dashboards silently go empty.
 ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
   GRANT SELECT ON TABLES TO wl_co_1_ro;
 ```
+
+`<default_credential_user>` is the owner of the `analytics` tables — find it with
+`SELECT tableowner FROM pg_tables WHERE schemaname = 'analytics' GROUP BY 1;`.
+
+Run these with a single `-c` (`heroku pg:psql` accepts only one `--command`, and SQL
+piped on stdin is silently swallowed by its interactive session — it prints the connect
+banner and applies nothing). Confirm you see each `GRANT` / `ALTER DEFAULT PRIVILEGES`
+echoed back, then verify:
+
+```sql
+SELECT has_schema_privilege('wl_co_1_ro', 'analytics', 'USAGE');  -- must be true
+```
+
+A role can end up with table `SELECT` but no schema `USAGE`, which fails at query time
+rather than at grant time.
+
+> **Note:** older revisions of this guide also granted `SELECT` on `public.data_tenant`.
+> That view no longer exists; including it aborts the rest of the batch.
 
 ### Production Credentials Reference
 
@@ -123,6 +139,8 @@ ALTER DEFAULT PRIVILEGES FOR USER <default_credential_user> IN SCHEMA analytics
 | `IL_DB_USER/PASS` | `wl_il_39_ro` | IL tenant Metabase (white_label_id=39) |
 | `MA_DB_USER/PASS` | `wl_ma_38_ro` | MA tenant Metabase (white_label_id=38) |
 | `CESN_DB_USER/PASS` | `wl_cesn_4_ro` | CESN tenant Metabase (white_label_id=4) |
+| `KS_DB_USER/PASS` | `wl_ks_42_ro` | KS tenant Metabase (white_label_id=42) |
+| `MO_DB_USER/PASS` | `wl_mo_43_ro` | MO tenant Metabase (white_label_id=43) |
 | `CO_TAX_CALCULATOR_DB_USER/PASS` | `wl_co_tax_calculator_3_ro` | CO Tax Calculator Metabase (white_label_id=3) |
 
 ### Variables (Settings → Environments → production → Variables)
