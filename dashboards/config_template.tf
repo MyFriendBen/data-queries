@@ -86,6 +86,8 @@ locals {
     ma                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = true, has_total_individuals = true }
     cesn              = { has_tax_credits = false, has_immediate_needs = false, has_assets = false, has_expenses = false, has_partners = false, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = false }
     co_tax_calculator = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = false }
+    ks                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
+    mo                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
   }
 
   # All available dashboard tabs with fixed IDs — per tenant so names can vary
@@ -122,6 +124,8 @@ locals {
     wa = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
     il = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
     ma = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    ks = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+    mo = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
     # CESN has no share activity (no share feature on its results page), so it
     # gets no Share & Save tab; its two save cards live on the Results tab instead.
     cesn = ["all_time", "households", "benefits_needs", "cesn_homeowners_vs_renters", "screener_overview", "screener_form_journey", "screener_results", "heat_pump_energy_journey"]

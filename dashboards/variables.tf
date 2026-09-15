@@ -84,6 +84,16 @@ variable "tenants" {
       display_name   = "CO Tax Calculator"
       white_label_id = 3
     }
+    ks = {
+      name           = "ks"
+      display_name   = "Kansas"
+      white_label_id = 42
+    }
+    mo = {
+      name           = "mo"
+      display_name   = "Missouri"
+      white_label_id = 43
+    }
   }
 }
 

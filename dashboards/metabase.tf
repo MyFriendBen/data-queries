@@ -187,13 +187,23 @@ resource "metabase_collection" "tenant_collection_co_tax_calculator" {
   depends_on = [metabase_collection.tenant_collection_cesn]
 }
 
+resource "metabase_collection" "tenant_collection_ks" {
+  name       = "Kansas"
+  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+}
+
+resource "metabase_collection" "tenant_collection_mo" {
+  name       = "Missouri"
+  depends_on = [metabase_collection.tenant_collection_ks]
+}
+
 # Referrer overlay collection (not a tenant / white label). CU Denver is the
 # `cudenver` referrer inside the CO white label; its dashboard is scoped by a
 # hard-coded referrer predicate on top of the CO connection's white-label RLS.
 # See cu_denver_dashboard.tf.
 resource "metabase_collection" "cu_denver" {
   name       = "CU Denver"
-  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+  depends_on = [metabase_collection.tenant_collection_mo]
 }
 
 # Referrer overlay collection (not a tenant / white label). CPAL (Child
@@ -214,6 +224,8 @@ locals {
     il                = metabase_collection.tenant_collection_il
     ma                = metabase_collection.tenant_collection_ma
     cesn              = metabase_collection.tenant_collection_cesn
+    ks                = metabase_collection.tenant_collection_ks
+    mo                = metabase_collection.tenant_collection_mo
     co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
 

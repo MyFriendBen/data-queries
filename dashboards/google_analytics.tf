@@ -36,6 +36,8 @@ locals {
     il   = ["il"]
     ma   = ["ma"]
     cesn = ["cesn"]
+    ks   = ["ks"]
+    mo   = ["mo"]
   }
 
   # Pre-computed SQL IN clause per tenant for use in native queries.

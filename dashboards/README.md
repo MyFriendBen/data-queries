@@ -211,13 +211,71 @@ locals {
 }
 ```
 
-> **Note on permissions:** The `metabase_permissions_group.tenant`, collection permission entries, and data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`, so the new group, its collection permissions, and its data source permissions are all created automatically. No changes to `permissions.tf` are needed.
+> **Note on permissions:** `metabase_permissions_group.tenant` (`<Display Name> Viewers`), `metabase_permissions_group.tenant_editor` (`<Display Name> Editors`), the collection permission entries, and the data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`. The viewer group (read on its own collection), the editor group (write on its own collection), their `query-builder` access to their own database, the explicit `no` access to every other tenant database, and the Global Viewers grants are all created automatically. No changes to `permissions.tf` are needed.
 
-### 3. Create Database Role
+### 3. Add Feature Flags and Tab Selection
+
+Edit `config_template.tf` — both maps are keyed by tenant and indexed directly, so a
+missing entry fails the plan rather than falling back to a default.
+
+```hcl
+locals {
+  tenant_features = {
+    # Standard state tenant — copy an existing state's flags (e.g. il / wa)
+    mo = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
+  }
+
+  tenant_tabs = {
+    mo = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+  }
+}
+```
+
+Listing any of the four `screener_*` tabs also builds that tenant's screener card
+resources. Omit them (the `co_tax_calculator` pattern) if the white label has no GA4
+screener traffic yet, or its engagement tabs will render empty.
+
+### 4. Add the GA State Code Mapping
+
+Edit `google_analytics.tf` — `tenant_ga_state_codes` has **no fallback**, so a tenant
+with any screener tab but no entry here fails the plan.
+
+```hcl
+tenant_ga_state_codes = {
+  mo = ["mo"]
+}
+```
+
+Adding a non-CESN tenant also widens `all_screener_state_filter`, which changes the
+totals on the Global all-states screener cards.
+
+Then keep dbt in sync — add the slug to `vars.screener_state_slugs` in
+`dbt/dbt_project.yml`.
+
+### 5. Wire Up CI Credentials
+
+`terraform-plan.yml` and `terraform-apply.yml` enumerate each tenant's DB secrets
+explicitly. In **both** files add `--arg` pairs, a `jq` merge line, and `env:` entries
+for `<STATE>_DB_USER` / `<STATE>_DB_PASS`, then create those GitHub secrets. The `jq`
+merge is guarded on non-empty values, so a tenant whose secrets are absent is omitted
+from `tenant_db_credentials` and falls back to the global credentials.
+
+### 6. Create Database Role
 
 Create a new database role with row-level security (see Quick Start step 3 for detailed instructions).
 
-**Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new tenant.
+**Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new
+tenant — `SELECT id, code, name FROM screener_whitelabel;`. The `white_label_id` in
+`var.tenants` must match this `id`; Terraform passes it to Metabase as a JDBC option
+(`-c app.white_label_id=<id>`) and the RLS policy reads it from that session GUC. The
+`wl_<state>_<id>_ro` name is a readability convention under the current `session_guc`
+policy mode — filtering follows the GUC, not the role name — but keep it accurate so the
+legacy `regex_user` fallback still works if the mode is ever rolled back.
+
+For Heroku (production), create the credential with
+`heroku pg:credentials:create -a cobenefits-api --name wl_<state>_<id>_ro` and apply the
+grants below; see `GITHUB_SECRETS.md`. Grants are not automated — a tenant missing
+`USAGE`/`SELECT` gets dashboards that render with every card empty.
 
 ```bash
 # Set password as environment variable (keeps it out of shell history)
@@ -234,7 +292,7 @@ EOF
 unset DB_PASSWORD
 ```
 
-### 4. Deploy New Tenant
+### 7. Deploy New Tenant
 
 ```bash
 terraform plan   # Review changes
@@ -242,12 +300,17 @@ terraform apply  # Deploy new configuration
 ```
 
 Terraform will automatically:
-- Create the new `<Display Name> Viewers` permissions group
-- Grant it `read` access to the new tenant collection
-- Grant it `query-builder` access to the new tenant database only
+- Create the `<Display Name> Viewers` and `<Display Name> Editors` permissions groups
+- Grant Viewers `read` and Editors `write` access to the new tenant collection
+- Grant both `query-builder` access to the new tenant database only, and explicit `no` access to every other tenant database
 - Grant the Global Viewers group `read` access to the new collection and `query-builder-and-native` access to the new tenant database
 
 After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
+
+**Expect the first apply to fail.** A brand-new database connection has to finish its
+Metabase schema sync before `data.external.filter_field_ids` can resolve the partner and
+county field IDs. `time_sleep.wait_for_database_sync` covers the initial wait but will not
+re-trigger, so re-run `terraform apply` once the sync completes.
 
 
 ## Local Terraform State for Development
