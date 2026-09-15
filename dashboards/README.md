@@ -250,7 +250,18 @@ Adding a non-CESN tenant also widens `all_screener_state_filter`, which changes 
 totals on the Global all-states screener cards.
 
 Then keep dbt in sync — add the slug to `vars.screener_state_slugs` in
-`dbt/dbt_project.yml`.
+`dbt/dbt_project.yml`. That var is the single source of the known-code list: the
+`url_screener_state` macro and the state-attribution in
+`mart_screener_screening_funnel` / `mart_screener_results_revisits` all read it, so
+those marts need no per-state edits.
+
+A slug missing from that var fails silently rather than loudly. The two marts null out
+`screener_state` for any code they don't recognize, so the tenant's own
+`screener_state IN ('<slug>')` cards return no rows, and cards using those marts as a
+denominator divide by zero and render NULL — the Macro Funnel, Sessions per Screener,
+Results Page and Share & Save cards all look broken instead of merely empty. The nulled
+rows also fall into the null-state bucket the Global predicate retains, misattributing
+them to top-of-funnel.
 
 ### 5. Wire Up CI Credentials
 
