@@ -181,4 +181,35 @@ locals {
       password = var.global_db_credentials.password
     })
   }
+
+  # Tenants whose connection would be built from the global credentials rather than
+  # their own read-only role. The global credential is the dbt build user, which owns
+  # the analytics tables; the RLS policy is TO PUBLIC and the tables are not FORCE ROW
+  # LEVEL SECURITY, so the owner bypasses RLS and the app.white_label_id GUC is ignored.
+  # Such a connection serves EVERY tenant's rows to that tenant's Viewers/Editors.
+  tenants_using_global_credentials = [
+    for key, creds in local.tenant_credentials : key
+    if creds.username == var.global_db_credentials.username
+  ]
+}
+
+# Fails the run when a tenant has no dedicated credential, rather than silently
+# provisioning a connection that bypasses row-level security. Create the role and set
+# <STATE>_DB_USER / <STATE>_DB_PASS in the production environment before applying a new
+# tenant. A check block (not a variable validation) so it can compare the two credential
+# maps, and so local development — which legitimately points every tenant at one
+# superuser against a local database — only sees a warning.
+check "tenant_credentials_are_tenant_scoped" {
+  assert {
+    condition = length(local.tenants_using_global_credentials) == 0
+    # nonsensitive() so the tenant keys actually print: the credential maps are
+    # sensitive, which would otherwise redact the whole message. Only the keys are
+    # exposed, never a username or password.
+    error_message = join(" ", [
+      "These tenants would connect as the global (RLS-exempt owner) credential and expose every tenant's rows:",
+      join(", ", nonsensitive(local.tenants_using_global_credentials)),
+      "- create the wl_<state>_<white_label_id>_ro role and set <STATE>_DB_USER/<STATE>_DB_PASS",
+      "in the production environment, then re-run. See README 'Wire Up CI Credentials'.",
+    ])
+  }
 }
