@@ -193,12 +193,13 @@ locals {
   ]
 }
 
-# Fails the run when a tenant has no dedicated credential, rather than silently
-# provisioning a connection that bypasses row-level security. Create the role and set
-# <STATE>_DB_USER / <STATE>_DB_PASS in the production environment before applying a new
-# tenant. A check block (not a variable validation) so it can compare the two credential
-# maps, and so local development — which legitimately points every tenant at one
-# superuser against a local database — only sees a warning.
+# Surfaces the RLS-bypass fallback early, at the top of plan output, before Terraform
+# reaches the resources. A check block only WARNS and does not affect the exit code —
+# the blocking guard is the precondition on metabase_database.tenant_postgres
+# (metabase.tf), which refuses to create a connection whose username is not that
+# tenant's wl_<state>_<white_label_id>_ro role. This is intentionally the looser of the
+# two: it catches the specific global-credential fallback for every tenant at once,
+# including tenants whose resources a targeted plan would skip.
 check "tenant_credentials_are_tenant_scoped" {
   assert {
     condition = length(local.tenants_using_global_credentials) == 0

@@ -299,6 +299,16 @@ for `<STATE>_DB_USER` / `<STATE>_DB_PASS`, then create those GitHub secrets in t
 > `Editors` groups `query-builder` access to exactly that connection, the result is
 > silent cross-tenant exposure — not the empty dashboard a missing credential suggests.
 >
+> A `precondition` on `metabase_database.tenant_postgres` blocks this: it requires each
+> tenant's username to match `wl_<state>_<white_label_id>_ro` for that tenant's own
+> `white_label_id`, so a missing, empty, misnamed, or wrong-ID credential fails the plan
+> with a non-zero exit before the connection is created. A `check` block in
+> `variables.tf` additionally lists every affected tenant at the top of plan output, but
+> `check` blocks only warn — the precondition is what actually stops the apply.
+>
+> Still run the isolation query below after a first-time apply. The precondition proves
+> the role *name* is right; only querying proves the grants and RLS policy are.
+>
 > Verify isolation after apply, before adding anyone to the new groups:
 >
 > ```sql
