@@ -180,6 +180,10 @@ rather than at grant time.
 | `CESN_DB_PASS` | CESN tenant credential password | Same as above |
 | `CO_TAX_CALCULATOR_DB_USER` | CO Tax Calculator credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_co_tax_calculator_3_ro` |
 | `CO_TAX_CALCULATOR_DB_PASS` | CO Tax Calculator credential password | Same as above |
+| `KS_DB_USER` | KS tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_ks_42_ro` |
+| `KS_DB_PASS` | KS tenant credential password | Same as above |
+| `MO_DB_USER` | MO tenant credential username | `heroku pg:credentials:url -a cobenefits-api --name wl_mo_43_ro` |
+| `MO_DB_PASS` | MO tenant credential password | Same as above |
 | `BIGQUERY_SA_KEY` | BigQuery service account key (JSON) | From `metabase-bigquery@mfb-data.iam.gserviceaccount.com` |
 
 ---
