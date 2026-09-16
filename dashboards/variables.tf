@@ -84,6 +84,16 @@ variable "tenants" {
       display_name   = "CO Tax Calculator"
       white_label_id = 3
     }
+    ks = {
+      name           = "ks"
+      display_name   = "Kansas"
+      white_label_id = 42
+    }
+    mo = {
+      name           = "mo"
+      display_name   = "Missouri"
+      white_label_id = 43
+    }
   }
 }
 
@@ -170,5 +180,37 @@ locals {
       username = var.global_db_credentials.username
       password = var.global_db_credentials.password
     })
+  }
+
+  # Tenants whose connection would be built from the global credentials rather than
+  # their own read-only role. The global credential is the dbt build user, which owns
+  # the analytics tables; the RLS policy is TO PUBLIC and the tables are not FORCE ROW
+  # LEVEL SECURITY, so the owner bypasses RLS and the app.white_label_id GUC is ignored.
+  # Such a connection serves EVERY tenant's rows to that tenant's Viewers/Editors.
+  tenants_using_global_credentials = [
+    for key, creds in local.tenant_credentials : key
+    if creds.username == var.global_db_credentials.username
+  ]
+}
+
+# Surfaces the RLS-bypass fallback early, at the top of plan output, before Terraform
+# reaches the resources. A check block only WARNS and does not affect the exit code —
+# the blocking guard is the precondition on metabase_database.tenant_postgres
+# (metabase.tf), which refuses to create a connection whose username is not that
+# tenant's wl_<state>_<white_label_id>_ro role. This is intentionally the looser of the
+# two: it catches the specific global-credential fallback for every tenant at once,
+# including tenants whose resources a targeted plan would skip.
+check "tenant_credentials_are_tenant_scoped" {
+  assert {
+    condition = length(local.tenants_using_global_credentials) == 0
+    # nonsensitive() so the tenant keys actually print: the credential maps are
+    # sensitive, which would otherwise redact the whole message. Only the keys are
+    # exposed, never a username or password.
+    error_message = join(" ", [
+      "These tenants would connect as the global (RLS-exempt owner) credential and expose every tenant's rows:",
+      join(", ", nonsensitive(local.tenants_using_global_credentials)),
+      "- create the wl_<state>_<white_label_id>_ro role and set <STATE>_DB_USER/<STATE>_DB_PASS",
+      "in the production environment, then re-run. See README 'Wire Up CI Credentials'.",
+    ])
   }
 }

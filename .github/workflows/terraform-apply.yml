@@ -62,6 +62,8 @@ jobs:
             --arg ma_user "$MA_DB_USER" --arg ma_pass "$MA_DB_PASS" \
             --arg cesn_user "$CESN_DB_USER" --arg cesn_pass "$CESN_DB_PASS" \
             --arg cotc_user "$CO_TAX_CALCULATOR_DB_USER" --arg cotc_pass "$CO_TAX_CALCULATOR_DB_PASS" \
+            --arg ks_user "$KS_DB_USER" --arg ks_pass "$KS_DB_PASS" \
+            --arg mo_user "$MO_DB_USER" --arg mo_pass "$MO_DB_PASS" \
             '
               {}
               + (if $nc_user != "" and $nc_pass != "" then {nc: {username: $nc_user, password: $nc_pass}} else {} end)
@@ -72,6 +74,8 @@ jobs:
               + (if $ma_user != "" and $ma_pass != "" then {ma: {username: $ma_user, password: $ma_pass}} else {} end)
               + (if $cesn_user != "" and $cesn_pass != "" then {cesn: {username: $cesn_user, password: $cesn_pass}} else {} end)
               + (if $cotc_user != "" and $cotc_pass != "" then {co_tax_calculator: {username: $cotc_user, password: $cotc_pass}} else {} end)
+              + (if $ks_user != "" and $ks_pass != "" then {ks: {username: $ks_user, password: $ks_pass}} else {} end)
+              + (if $mo_user != "" and $mo_pass != "" then {mo: {username: $mo_user, password: $mo_pass}} else {} end)
             ')
           echo "TF_VAR_global_db_credentials=$global_creds" >> "$GITHUB_ENV"
           echo "TF_VAR_tenant_db_credentials=$tenant_creds" >> "$GITHUB_ENV"
@@ -94,6 +98,10 @@ jobs:
           CESN_DB_PASS: ${{ secrets.CESN_DB_PASS }}
           CO_TAX_CALCULATOR_DB_USER: ${{ secrets.CO_TAX_CALCULATOR_DB_USER }}
           CO_TAX_CALCULATOR_DB_PASS: ${{ secrets.CO_TAX_CALCULATOR_DB_PASS }}
+          KS_DB_USER: ${{ secrets.KS_DB_USER }}
+          KS_DB_PASS: ${{ secrets.KS_DB_PASS }}
+          MO_DB_USER: ${{ secrets.MO_DB_USER }}
+          MO_DB_PASS: ${{ secrets.MO_DB_PASS }}
 
       - name: Terraform Init
         run: terraform init

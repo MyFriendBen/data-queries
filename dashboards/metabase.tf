@@ -68,6 +68,32 @@ resource "metabase_database" "tenant_postgres" {
       "password",
     ]
   }
+
+  # Blocks before the connection is created, rather than provisioning one that
+  # bypasses row-level security. The global credential is the dbt build user, which
+  # owns the analytics tables; the RLS policy is TO PUBLIC and the tables are not
+  # FORCE ROW LEVEL SECURITY, so the owner is exempt, the app.white_label_id GUC is
+  # ignored, and the connection serves every tenant's rows to that tenant's Viewers
+  # and Editors. Also rejects an empty or misnamed username, and cross-checks the
+  # embedded ID against white_label_id — the role name and the GUC are set from
+  # separate inputs and nothing else compares them.
+  lifecycle {
+    precondition {
+      condition = can(regex(
+        "^wl_[a-z_]+_${each.value.white_label_id}_ro$",
+        nonsensitive(local.tenant_credentials[each.key].username)
+      ))
+      error_message = join(" ", [
+        "Tenant '${each.key}' must connect as its own read-only role named",
+        "wl_<state>_${each.value.white_label_id}_ro (white_label_id ${each.value.white_label_id}).",
+        "An unset <STATE>_DB_USER/<STATE>_DB_PASS falls back to the global, RLS-exempt owner",
+        "credential and would expose every tenant's rows; a role whose embedded ID disagrees",
+        "with white_label_id points the dashboard at the wrong white label.",
+        "Create the role and set the secrets in the production environment, then re-run.",
+        "See README 'Wire Up CI Credentials'.",
+      ])
+    }
+  }
 }
 
 # Wait for Metabase to sync database schemas before creating cards/dashboards
@@ -187,13 +213,23 @@ resource "metabase_collection" "tenant_collection_co_tax_calculator" {
   depends_on = [metabase_collection.tenant_collection_cesn]
 }
 
+resource "metabase_collection" "tenant_collection_ks" {
+  name       = "Kansas"
+  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+}
+
+resource "metabase_collection" "tenant_collection_mo" {
+  name       = "Missouri"
+  depends_on = [metabase_collection.tenant_collection_ks]
+}
+
 # Referrer overlay collection (not a tenant / white label). CU Denver is the
 # `cudenver` referrer inside the CO white label; its dashboard is scoped by a
 # hard-coded referrer predicate on top of the CO connection's white-label RLS.
 # See cu_denver_dashboard.tf.
 resource "metabase_collection" "cu_denver" {
   name       = "CU Denver"
-  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+  depends_on = [metabase_collection.tenant_collection_mo]
 }
 
 # Referrer overlay collection (not a tenant / white label). CPAL (Child
@@ -214,6 +250,8 @@ locals {
     il                = metabase_collection.tenant_collection_il
     ma                = metabase_collection.tenant_collection_ma
     cesn              = metabase_collection.tenant_collection_cesn
+    ks                = metabase_collection.tenant_collection_ks
+    mo                = metabase_collection.tenant_collection_mo
     co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
 
