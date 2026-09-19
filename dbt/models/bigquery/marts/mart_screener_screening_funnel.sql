@@ -85,17 +85,22 @@ per_screener as (
     group by screener_uid
 )
 
--- Cumulative funnel flags: a later stage implies every earlier one, so the
--- dashboard COUNTIFs form a true monotonic subset chain (created >= saw_results
--- >= viewed_details >= applied) even if a screener fired a later event without a
--- recorded earlier one.
---
+
 -- completion_time_seconds: first tracked event for the screener_uid (its earliest
 -- moment on the ladder, post-disclaimer) to its first clean screener_results_loaded.
 -- Null when the screener never reached a clean results load (reached_results
 -- false) — cumulative saw_results can still be true via more_info/apply with no
 -- recorded results_loaded, which correctly excludes those from a completion-time
 -- calculation since there's no results timestamp to measure to.
+--
+-- NOTE: This metric is computed at the screener_uid grain and therefore measures
+-- time across return visits. The older session-bounded card intentionally
+-- excluded screeners that completed across multiple sessions (they were NULL
+-- and omitted from the median), so historic median values (for example the
+-- familiar "under 6 minutes" figure) reflect only single-session finishers.
+-- Including multi-session completions gives a more complete view of users'
+-- journeys but will typically increase the median compared to the old
+-- session-bounded measure. Keep this in mind when comparing to prior reports.
 select
     screener_uid,
     screener_state,
