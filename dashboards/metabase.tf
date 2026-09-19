@@ -1087,9 +1087,21 @@ locals {
     }] : [],
     var.bigquery_enabled ? [
       {
-        card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
+        # Small scalar: Completion Time (approx. median) — mirror tenant layout
+        card_id                = tonumber(metabase_card.global_screener_completion_time[0].id)
         dashboard_tab_id       = 4
         row                    = 2
+        col                    = 0
+        size_x                 = 6
+        size_y                 = 4
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        card_id                = tonumber(metabase_card.global_screener_macro_funnel[0].id)
+        dashboard_tab_id       = 4
+        row                    = 6
         col                    = 0
         size_x                 = 24
         size_y                 = 8
@@ -1101,9 +1113,21 @@ locals {
         # Sessions-per-screener distribution, directly below the conversion funnel.
         card_id                = tonumber(metabase_card.global_screener_sessions_per_screener[0].id)
         dashboard_tab_id       = 4
-        row                    = 10
+        row                    = 14
         col                    = 0
         size_x                 = 24
+        size_y                 = 8
+        parameter_mappings     = []
+        series                 = []
+        visualization_settings = {}
+      },
+      {
+        # Header & footer chrome nav (left) + language distribution (right)
+        card_id                = tonumber(metabase_card.global_screener_chrome_nav[0].id)
+        dashboard_tab_id       = 4
+        row                    = 22
+        col                    = 0
+        size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1112,22 +1136,9 @@ locals {
       {
         card_id                = tonumber(metabase_card.global_screener_language_distribution[0].id)
         dashboard_tab_id       = 4
-        row                    = 18
-        col                    = 0
-        size_x                 = 24
-        size_y                 = 8
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      },
-      # footer / site-chrome cards (global-only): chrome nav (full width),
-      # then social + feedback/share sharing a row below it
-      {
-        card_id                = tonumber(metabase_card.global_screener_chrome_nav[0].id)
-        dashboard_tab_id       = 4
-        row                    = 26
-        col                    = 0
-        size_x                 = 24
+        row                    = 22
+        col                    = 12
+        size_x                 = 12
         size_y                 = 8
         parameter_mappings     = []
         series                 = []
@@ -1136,7 +1147,7 @@ locals {
       {
         card_id                = tonumber(metabase_card.global_screener_social_clicks[0].id)
         dashboard_tab_id       = 4
-        row                    = 34
+        row                    = 30
         col                    = 0
         size_x                 = 12
         size_y                 = 6
@@ -1147,7 +1158,7 @@ locals {
       {
         card_id                = tonumber(metabase_card.global_screener_footer_feedback_share[0].id)
         dashboard_tab_id       = 4
-        row                    = 34
+        row                    = 30
         col                    = 12
         size_x                 = 12
         size_y                 = 6
