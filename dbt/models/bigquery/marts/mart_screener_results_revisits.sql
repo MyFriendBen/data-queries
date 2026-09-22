@@ -41,9 +41,10 @@ select
     -- lowercase code — a screening's events can carry the legacy display-name
     -- format (e.g. "Colorado") that the dashboard state IN-list doesn't
     -- recognize. Derived the same way as mart_screener_screening_funnel so the
-    -- two agree on which screenings pass the state filter.
+    -- two agree on which screenings pass the state filter, including reading the
+    -- known codes from the screener_state_slugs var.
     array_agg(
-        if(screener_state in ('co','nc','tx','wa','il','ma','cesn'), screener_state, null)
+        if(screener_state in ({{ "'" ~ var('screener_state_slugs') | join("', '") ~ "'" }}), screener_state, null)
         ignore nulls order by event_timestamp limit 1
     )[safe_offset(0)] as screener_state,
     max(is_cesn) as is_cesn,

@@ -61,8 +61,12 @@ per_screener as (
         -- display-name format (e.g. "Colorado") that the dashboard state IN-list
         -- doesn't recognize, which would drop the screener from state-filtered
         -- cards even though its later events use the clean code ("co").
+        --
+        -- The known codes come from the screener_state_slugs var so this stays in
+        -- step with tenant_ga_state_codes in the dashboards Terraform; a state
+        -- missing here is nulled out and vanishes from its own per-tenant cards.
         array_agg(
-            if(screener_state in ('co','nc','tx','wa','il','ma','cesn'), screener_state, null)
+            if(screener_state in ({{ "'" ~ var('screener_state_slugs') | join("', '") ~ "'" }}), screener_state, null)
             ignore nulls order by event_timestamp limit 1
         )[safe_offset(0)] as screener_state,
         min(event_date_parsed) as event_date_parsed,

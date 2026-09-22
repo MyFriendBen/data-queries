@@ -48,6 +48,14 @@ tenant_db_credentials = {
     username = "wl_co_tax_calculator_3_ro"
     password = "your_password"
   }
+  ks = {
+    username = "wl_ks_42_ro"
+    password = "your_password"
+  }
+  mo = {
+    username = "wl_mo_43_ro"
+    password = "your_password"
+  }
 }
 
 # Tenant Configuration (Non-sensitive)
@@ -94,6 +102,16 @@ tenants = {
     name           = "co_tax_calculator"
     display_name   = "CO Tax Calculator"
     white_label_id = 3
+  }
+  ks = {
+    name           = "ks"
+    display_name   = "Kansas"
+    white_label_id = 42
+  }
+  mo = {
+    name           = "mo"
+    display_name   = "Missouri"
+    white_label_id = 43
   }
 }
 

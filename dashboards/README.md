@@ -33,7 +33,15 @@ Open http://localhost:3001 in your browser (or the URL shown by the setup script
 
 **3. Create tenant database users with row-level security**
 
-Each tenant needs a dedicated database role whose name encodes the `white_label_id`. RLS uses **username-based filtering** — the policy extracts the `white_label_id` from the connecting role's name. Only roles matching the `wl_<state>_<white_label_id>_ro` convention see their tenant's data; non-conforming roles get zero rows.
+Each tenant needs a dedicated database role, named `wl_<state>_<white_label_id>_ro` by
+convention. Under the current `session_guc` policy mode RLS filters on the
+`app.white_label_id` session GUC that Terraform pins on the Metabase connection
+(`additional-options`), not on the role name; a connection with no GUC set sees zero rows.
+The `mfb_rls_policy_mode` dbt var selects the mode — see `dbt/macros/row_level_security.sql`.
+
+Do **not** point a tenant connection at the dbt build user: it owns the `analytics`
+tables, the policy is `TO PUBLIC`, and the tables are not `FORCE ROW LEVEL SECURITY`, so
+the owner bypasses RLS entirely and the connection returns every tenant's rows.
 
 **Important:** Before running these commands:
 - Replace `white_label_id` values with the correct IDs from your MyFriendBen database
@@ -163,18 +171,28 @@ Data isolation is enforced at two layers:
 
 ### 1. Add Tenant to Configuration
 
-Edit `terraform.tfvars`:
+Add the tenant to the `tenants` default in `variables.tf` (CI supplies no `TF_VAR_tenants`,
+so that default is the production tenant map). `terraform.tfvars` is gitignored and
+overrides it for local development, where the `white_label_id` values differ from
+production — set both if you also test locally.
+
+`white_label_id` is required; `metabase.tf` reads `each.value.white_label_id` directly, so
+a tenant missing it fails the plan. It must equal `screener_whitelabel.id` for that white
+label (`SELECT id, code, name FROM screener_whitelabel;`).
 
 ```hcl
 # Add new tenant
 tenants = {
-  nc = { name = "nc", display_name = "North Carolina" }
-  co = { name = "co", display_name = "Colorado" }
-  tx = { name = "tx", display_name = "Texas" }  # ← New tenant
+  nc = { name = "nc", display_name = "North Carolina", white_label_id = 5 }
+  co = { name = "co", display_name = "Colorado", white_label_id = 1 }
+  tx = { name = "tx", display_name = "Texas", white_label_id = 40 }  # ← New tenant
 }
 
 # Add tenant database credentials
-# Convention: wl_<state>_<white_label_id>_ro — RLS policy extracts white_label_id from the username
+# Convention: wl_<state>_<white_label_id>_ro. Under the current session_guc policy mode
+# RLS filters on the app.white_label_id GUC that Terraform pins on the connection, not on
+# the role name — the name is a readability convention, kept accurate so the legacy
+# regex_user fallback still works if that mode is rolled back.
 tenant_db_credentials = {
   nc = { username = "wl_nc_5_ro",  password = "secure_password" }
   co = { username = "wl_co_1_ro",  password = "secure_password" }
@@ -211,13 +229,112 @@ locals {
 }
 ```
 
-> **Note on permissions:** The `metabase_permissions_group.tenant`, collection permission entries, and data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`, so the new group, its collection permissions, and its data source permissions are all created automatically. No changes to `permissions.tf` are needed.
+> **Note on permissions:** `metabase_permissions_group.tenant` (`<Display Name> Viewers`), `metabase_permissions_group.tenant_editor` (`<Display Name> Editors`), the collection permission entries, and the data permission entries in `permissions.tf` all use `for_each`/`for` over `var.tenants`. The viewer group (read on its own collection), the editor group (write on its own collection), their `query-builder` access to their own database, the explicit `no` access to every other tenant database, and the Global Viewers grants are all created automatically. No changes to `permissions.tf` are needed.
 
-### 3. Create Database Role
+### 3. Add Feature Flags and Tab Selection
+
+Edit `config_template.tf` — both maps are keyed by tenant and indexed directly, so a
+missing entry fails the plan rather than falling back to a default.
+
+```hcl
+locals {
+  tenant_features = {
+    # Standard state tenant — copy an existing state's flags (e.g. il / wa)
+    mo = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
+  }
+
+  tenant_tabs = {
+    mo = ["all_time", "households", "benefits_needs", "screener_overview", "screener_form_journey", "screener_results", "screener_sharing_saving"]
+  }
+}
+```
+
+Listing any of the four `screener_*` tabs also builds that tenant's screener card
+resources. Omit them (the `co_tax_calculator` pattern) if the white label has no GA4
+screener traffic yet, or its engagement tabs will render empty.
+
+### 4. Add the GA State Code Mapping
+
+Edit `google_analytics.tf` — `tenant_ga_state_codes` has **no fallback**, so a tenant
+with any screener tab but no entry here fails the plan.
+
+```hcl
+tenant_ga_state_codes = {
+  mo = ["mo"]
+}
+```
+
+Adding a non-CESN tenant also widens `all_screener_state_filter`, which changes the
+totals on the Global all-states screener cards.
+
+Then keep dbt in sync — add the slug to `vars.screener_state_slugs` in
+`dbt/dbt_project.yml`. That var is the single source of the known-code list: the
+`url_screener_state` macro and the state-attribution in
+`mart_screener_screening_funnel` / `mart_screener_results_revisits` all read it, so
+those marts need no per-state edits.
+
+A slug missing from that var fails silently rather than loudly. The two marts null out
+`screener_state` for any code they don't recognize, so the tenant's own
+`screener_state IN ('<slug>')` cards return no rows, and cards using those marts as a
+denominator divide by zero and render NULL — the Macro Funnel, Sessions per Screener,
+Results Page and Share & Save cards all look broken instead of merely empty. The nulled
+rows also fall into the null-state bucket the Global predicate retains, misattributing
+them to top-of-funnel.
+
+### 5. Wire Up CI Credentials
+
+`terraform-plan.yml` and `terraform-apply.yml` enumerate each tenant's DB secrets
+explicitly. In **both** files add `--arg` pairs, a `jq` merge line, and `env:` entries
+for `<STATE>_DB_USER` / `<STATE>_DB_PASS`, then create those GitHub secrets in the
+`production` environment.
+
+> **Create the secrets and the database role BEFORE the first apply that includes the
+> new tenant.** The `jq` merge is guarded on non-empty values, so a tenant whose secrets
+> are missing is omitted from `tenant_db_credentials` — and `local.tenant_credentials`
+> (`variables.tf`) then falls back to `var.global_db_credentials`. That is the dbt build
+> user, which **owns** the `analytics` tables. The RLS policy is created `TO PUBLIC` and
+> the tables are not `FORCE ROW LEVEL SECURITY`, so PostgreSQL exempts the owner: the
+> `app.white_label_id` GUC is ignored and the connection returns **every tenant's rows**.
+> Because `permissions.tf` simultaneously grants the new `<Display Name> Viewers` and
+> `Editors` groups `query-builder` access to exactly that connection, the result is
+> silent cross-tenant exposure — not the empty dashboard a missing credential suggests.
+>
+> A `precondition` on `metabase_database.tenant_postgres` blocks this: it requires each
+> tenant's username to match `wl_<state>_<white_label_id>_ro` for that tenant's own
+> `white_label_id`, so a missing, empty, misnamed, or wrong-ID credential fails the plan
+> with a non-zero exit before the connection is created. A `check` block in
+> `variables.tf` additionally lists every affected tenant at the top of plan output, but
+> `check` blocks only warn — the precondition is what actually stops the apply.
+>
+> Still run the isolation query below after a first-time apply. The precondition proves
+> the role *name* is right; only querying proves the grants and RLS policy are.
+>
+> Verify isolation after apply, before adding anyone to the new groups:
+>
+> ```sql
+> -- expect exactly one distinct white_label_id, matching the tenant
+> SET ROLE wl_<state>_<id>_ro;
+> SET app.white_label_id = '<id>';
+> SELECT count(*), count(DISTINCT white_label_id) FROM analytics.mart_screener_data;
+> RESET ROLE;
+> ```
+
+### 6. Create Database Role
 
 Create a new database role with row-level security (see Quick Start step 3 for detailed instructions).
 
-**Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new tenant.
+**Note:** Check your MyFriendBen database to find the correct `white_label_id` for the new
+tenant — `SELECT id, code, name FROM screener_whitelabel;`. The `white_label_id` in
+`var.tenants` must match this `id`; Terraform passes it to Metabase as a JDBC option
+(`-c app.white_label_id=<id>`) and the RLS policy reads it from that session GUC. The
+`wl_<state>_<id>_ro` name is a readability convention under the current `session_guc`
+policy mode — filtering follows the GUC, not the role name — but keep it accurate so the
+legacy `regex_user` fallback still works if the mode is ever rolled back.
+
+For Heroku (production), create the credential with
+`heroku pg:credentials:create -a cobenefits-api --name wl_<state>_<id>_ro` and apply the
+grants below; see `GITHUB_SECRETS.md`. Grants are not automated — a tenant missing
+`USAGE`/`SELECT` gets dashboards that render with every card empty.
 
 ```bash
 # Set password as environment variable (keeps it out of shell history)
@@ -234,7 +351,7 @@ EOF
 unset DB_PASSWORD
 ```
 
-### 4. Deploy New Tenant
+### 7. Deploy New Tenant
 
 ```bash
 terraform plan   # Review changes
@@ -242,12 +359,17 @@ terraform apply  # Deploy new configuration
 ```
 
 Terraform will automatically:
-- Create the new `<Display Name> Viewers` permissions group
-- Grant it `read` access to the new tenant collection
-- Grant it `query-builder` access to the new tenant database only
+- Create the `<Display Name> Viewers` and `<Display Name> Editors` permissions groups
+- Grant Viewers `read` and Editors `write` access to the new tenant collection
+- Grant both `query-builder` access to the new tenant database only, and explicit `no` access to every other tenant database
 - Grant the Global Viewers group `read` access to the new collection and `query-builder-and-native` access to the new tenant database
 
 After deploying, assign users to the new group in Metabase: **Admin → People → [user] → Edit groups**.
+
+**Expect the first apply to fail.** A brand-new database connection has to finish its
+Metabase schema sync before `data.external.filter_field_ids` can resolve the partner and
+county field IDs. `time_sleep.wait_for_database_sync` covers the initial wait but will not
+re-trigger, so re-run `terraform apply` once the sync completes.
 
 
 ## Local Terraform State for Development

@@ -68,6 +68,32 @@ resource "metabase_database" "tenant_postgres" {
       "password",
     ]
   }
+
+  # Blocks before the connection is created, rather than provisioning one that
+  # bypasses row-level security. The global credential is the dbt build user, which
+  # owns the analytics tables; the RLS policy is TO PUBLIC and the tables are not
+  # FORCE ROW LEVEL SECURITY, so the owner is exempt, the app.white_label_id GUC is
+  # ignored, and the connection serves every tenant's rows to that tenant's Viewers
+  # and Editors. Also rejects an empty or misnamed username, and cross-checks the
+  # embedded ID against white_label_id — the role name and the GUC are set from
+  # separate inputs and nothing else compares them.
+  lifecycle {
+    precondition {
+      condition = can(regex(
+        "^wl_[a-z_]+_${each.value.white_label_id}_ro$",
+        nonsensitive(local.tenant_credentials[each.key].username)
+      ))
+      error_message = join(" ", [
+        "Tenant '${each.key}' must connect as its own read-only role named",
+        "wl_<state>_${each.value.white_label_id}_ro (white_label_id ${each.value.white_label_id}).",
+        "An unset <STATE>_DB_USER/<STATE>_DB_PASS falls back to the global, RLS-exempt owner",
+        "credential and would expose every tenant's rows; a role whose embedded ID disagrees",
+        "with white_label_id points the dashboard at the wrong white label.",
+        "Create the role and set the secrets in the production environment, then re-run.",
+        "See README 'Wire Up CI Credentials'.",
+      ])
+    }
+  }
 }
 
 # Wait for Metabase to sync database schemas before creating cards/dashboards
@@ -187,13 +213,23 @@ resource "metabase_collection" "tenant_collection_co_tax_calculator" {
   depends_on = [metabase_collection.tenant_collection_cesn]
 }
 
+resource "metabase_collection" "tenant_collection_ks" {
+  name       = "Kansas"
+  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+}
+
+resource "metabase_collection" "tenant_collection_mo" {
+  name       = "Missouri"
+  depends_on = [metabase_collection.tenant_collection_ks]
+}
+
 # Referrer overlay collection (not a tenant / white label). CU Denver is the
 # `cudenver` referrer inside the CO white label; its dashboard is scoped by a
 # hard-coded referrer predicate on top of the CO connection's white-label RLS.
 # See cu_denver_dashboard.tf.
 resource "metabase_collection" "cu_denver" {
   name       = "CU Denver"
-  depends_on = [metabase_collection.tenant_collection_co_tax_calculator]
+  depends_on = [metabase_collection.tenant_collection_mo]
 }
 
 # Referrer overlay collection (not a tenant / white label). CPAL (Child
@@ -214,6 +250,8 @@ locals {
     il                = metabase_collection.tenant_collection_il
     ma                = metabase_collection.tenant_collection_ma
     cesn              = metabase_collection.tenant_collection_cesn
+    ks                = metabase_collection.tenant_collection_ks
+    mo                = metabase_collection.tenant_collection_mo
     co_tax_calculator = metabase_collection.tenant_collection_co_tax_calculator
   }
 
@@ -1669,6 +1707,82 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
+    # Heat Pump Journey (tab 11) income quick filter — CESN only. Kept in its own
+    # conditional element because it is the only parameter here carrying a
+    # `default`, and a tuple mixing object shapes cannot unify with the empty
+    # false branch.
+    #
+    # The partner's default view is "below 200% FPL". That spans the "Below 100%"
+    # and "100-200%" bands, so the single-select band filter below cannot express
+    # it. Backed by is_below_200_fpl on the bridge and defaulted ON, so the tab
+    # opens on the target population.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_below_200_filter"
+        name               = "Income Quick Filter"
+        slug               = "below_200"
+        type               = "string/="
+        sectionId          = "string"
+        default            = ["Below 200% FPL"]
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 200% FPL"]
+        }
+      }
+    ] : [],
+
+    # Heat Pump Journey (tab 11) segmentation filters — CESN only, since it is the
+    # only tenant with the tab. Static value lists: the bands and rollups are fixed
+    # by the partner, so a values-source card would be a query per dropdown for no
+    # benefit. Region rollups OVERLAP by design (a Pueblo household is both
+    # Southern and Front Range), so these scope cards but must never be rendered
+    # as a share of total.
+    local.tenant_has_tab[each.key]["heat_pump_energy_journey"] ? [
+      {
+        id                 = "hp_income_band_filter"
+        name               = "Income Band"
+        slug               = "income_band"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Below 100% FPL", "100–200% FPL", "Above 200% FPL", "No income on record"]
+        }
+      },
+      {
+        id                 = "hp_region_filter"
+        name               = "Region"
+        slug               = "region"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          # The last entry is a real stored value — a county the seed does not
+          # match is written as ",No county on record,". Without it in the list that cohort
+          # cannot be selected or inspected. The partner asked for the two
+          # unknown buckets to be labelled explicitly rather than just "Unknown";
+          # they are worded per filter because a screening can have a known
+          # income and an unmatched county, or the reverse.
+          values = ["DRCOG", "Front Range", "Western Slope", "Southern", "Eastern Plains", "Other Colorado", "No county on record"]
+        }
+      },
+      {
+        id                 = "hp_utility_filter"
+        name               = "Utility"
+        slug               = "utility"
+        type               = "string/="
+        sectionId          = "string"
+        values_query_type  = "list"
+        values_source_type = "static-list"
+        values_source_config = {
+          values = ["Xcel"]
+        }
+      }
+    ] : [],
+
     # UTM filters — NC only
     local.tenant_features[each.key].has_utm_filters ? [
       {
@@ -2326,6 +2440,8 @@ locals {
       # its layout so the tab itself stays row-ascending.
       local.tenant_has_tab[each.key]["screener_overview"] ? [local.tenant_screener_epoch_note_card[10]] : [],
       local.tenant_has_tab[each.key]["screener_overview"] ? local.tenant_dashboard_screener_overview_layout[each.key] : [],
+      # Tab 11 (Heat Pump Journey): CESN-only, placed for the cesn tenant only.
+      flatten([for k in [each.key] : local.tenant_dashboard_heat_pump_layout if local.tenant_has_tab[k]["heat_pump_energy_journey"]]),
     )
   }
 }
