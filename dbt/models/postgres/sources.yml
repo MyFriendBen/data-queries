@@ -302,6 +302,12 @@ sources:
         description: >
           One turn per row. Assistant rows carry the reply metadata that makes Benji's
           cost and latency answerable per turn; user rows leave those NULL.
+
+          Two writers, not one. mfb-ai-service inserts every row and never updates one;
+          benefits-api writes `rating` / `rated_at` afterwards, when a household presses
+          a thumb (MFB-1915). So this table is not append-only, and a turn-grain model
+          that assumes a row never changes after insert will go stale on exactly the
+          column most worth reading.
         tests:
           # `seq` is assigned as MAX(seq)+1 by mfb-ai-service under a row lock, with a
           # UNIQUE(conversation_id, seq) constraint as the backstop. If that constraint
@@ -364,5 +370,46 @@ sources:
             description: "Upstream model latency for this reply (assistant rows only)"
           - name: error
             description: "Upstream error recorded against this turn, when there was one"
+          - name: rating
+            description: >
+              The household's own verdict on this reply: 1 thumbs up, -1 thumbs down,
+              NULL unrated (MFB-1915). Assistant rows only.
+
+              THE ONLY DIRECT QUALITY SIGNAL IN THIS SCHEMA. Everything else about
+              whether Benji is any good has to be inferred from behavior — turn count,
+              drop-off, rephrasing — and this is the one column where someone said so.
+              Sums and averages directly: AVG(rating) is the score for a white label or
+              a prompt_version, with no CASE needed, which is why it is -1/1 rather
+              than a boolean.
+
+              Unrated dominates and is NOT a bad rating. Any rate-of-approval metric
+              has to filter `rating IS NOT NULL` or it will report the response rate
+              instead, and will move when usage moves rather than when quality does.
+
+              NULL is two different facts, separated by `rated_at`. A rating is cleared
+              by writing NULL back, so `rating IS NULL AND rated_at IS NOT NULL` is a
+              household that rated this reply and took it back — which is a verdict,
+              not silence — while `rated_at IS NULL` is nobody having touched it.
+
+              Written by benefits-api, not by mfb-ai-service, unlike every other column
+              on this table (see the source description). It is also the only one that
+              changes after the row is inserted, so a turn-grain model built on this
+              table is no longer append-only.
+            tests:
+              # `quote: false` because this is a smallint. The default renders the
+              # values as string literals, which Postgres would coerce anyway — but
+              # only by accident of this column's type, and the coercion is not
+              # something a reader should have to know about to trust the test.
+              - accepted_values:
+                  arguments:
+                    values: [1, -1]
+                    quote: false
+                  config:
+                    where: "rating is not null"
+          - name: rated_at
+            description: >
+              When the rating was last written, INCLUDING when it was cleared, and never
+              reset. This is what makes a withdrawn rating distinguishable from an
+              unrated reply; see `rating`. NULL means nobody has ever rated this turn.
           - name: created_at
             description: "When the turn was stored"
