@@ -406,6 +406,46 @@ sources:
                     quote: false
                   config:
                     where: "rating is not null"
+          - name: rating_reason
+            description: >
+              Why the reply was rated down: one of `inaccurate`, `not_my_results`,
+              `bad_link`, `unanswered`, `hard_to_follow`, `wrong_tone`, `other`
+              (MFB-1915). NULL on anything not rated down, enforced by a check
+              constraint.
+
+              A STORED CODE, NOT DISPLAY TEXT. The label a household saw is a
+              translated string in the frontend, so the same code may have been worded
+              differently at different times and in different languages — group by this
+              column, never by anything user-facing, and do not assume the English
+              wording was stable.
+
+              MOST THUMBS-DOWNS WILL HAVE NO REASON, BY DESIGN. The chips are offered
+              after the rating is already saved and are skippable, so NULL here means
+              "not asked or declined", not missing data. A reason breakdown is
+              `WHERE rating = -1 AND rating_reason IS NOT NULL`, and its denominator is
+              that filtered set — not all thumbs-downs, or the chart silently reports
+              chip-completion rate.
+
+              `other` is the taxonomy's own alarm. Read its share as a signal that the
+              code list is wrong rather than as a category worth charting.
+
+              Codes are append-only in spirit: a retired code is dropped from the UI,
+              never renamed, so historical rows keep meaning what they said. A code
+              appearing here that is not in the list above means the vocabulary moved
+              and this description is stale.
+            tests:
+              - accepted_values:
+                  arguments:
+                    values:
+                      - inaccurate
+                      - not_my_results
+                      - bad_link
+                      - unanswered
+                      - hard_to_follow
+                      - wrong_tone
+                      - other
+                  config:
+                    where: "rating_reason is not null"
           - name: rated_at
             description: >
               When the rating was last written, INCLUDING when it was cleared, and never
