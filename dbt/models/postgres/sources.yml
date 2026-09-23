@@ -409,8 +409,7 @@ sources:
           - name: rating_reason
             description: >
               Why the reply was rated down: one of `inaccurate`, `not_my_results`,
-              `bad_link`, `unanswered`, `hard_to_follow`, `wrong_tone`, `other`
-              (MFB-1915). NULL on anything not rated down, enforced by a check
+              `unanswered`, `hard_to_follow`, `other` (MFB-1915). NULL on anything not rated down, enforced by a check
               constraint.
 
               A STORED CODE, NOT DISPLAY TEXT. The label a household saw is a
@@ -439,10 +438,8 @@ sources:
                     values:
                       - inaccurate
                       - not_my_results
-                      - bad_link
                       - unanswered
                       - hard_to_follow
-                      - wrong_tone
                       - other
                   config:
                     where: "rating_reason is not null"
