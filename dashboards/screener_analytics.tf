@@ -98,6 +98,33 @@ resource "metabase_card" "screener_sessions_per_screener" {
   })
 }
 
+resource "metabase_card" "screener_completion_time" {
+  for_each = local.ga_tenants_enabled
+
+  json = jsonencode({
+    name                = "Completion Time (approx. median)"
+    description         = "Median time from starting a screener to reaching a clean results load. Half of screeners finish faster than this."
+    collection_id       = tonumber(local.tenant_collection_map[each.key].id)
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_completion_time, "__STATE_FILTER_CESN__", "screener_state IN (${local.tenant_ga_state_filter[each.key]})")
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Time to Completion"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
 # Header language switches — bar. State comes from the emitted param, so pre-white-
 # label switches (most language changes happen on the landing page) don't appear
 # here; the all-states version on the global dashboard covers those.
@@ -1581,9 +1608,31 @@ locals {
     for key, tenant in var.tenants : key => (
       var.bigquery_enabled && contains(keys(local.ga_tenants_enabled), key) ? concat([
         {
-          card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
+          card_id          = tonumber(metabase_card.screener_completion_time[key].id)
           dashboard_tab_id = 10
           row              = 2
+          col              = 0
+          size_x           = 6
+          size_y           = 4
+          parameter_mappings = [
+            {
+              parameter_id = local._ga_start_date_param_id
+              card_id      = tonumber(metabase_card.screener_completion_time[key].id)
+              target       = ["variable", ["template-tag", "start_date"]]
+            },
+            {
+              parameter_id = local._ga_end_date_param_id
+              card_id      = tonumber(metabase_card.screener_completion_time[key].id)
+              target       = ["variable", ["template-tag", "end_date"]]
+            }
+          ]
+          series                 = []
+          visualization_settings = {}
+        },
+        {
+          card_id          = tonumber(metabase_card.screener_macro_funnel[key].id)
+          dashboard_tab_id = 10
+          row              = 6
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1606,7 +1655,7 @@ locals {
           # Sessions-per-screener distribution, directly below the conversion funnel.
           card_id          = tonumber(metabase_card.screener_sessions_per_screener[key].id)
           dashboard_tab_id = 10
-          row              = 10
+          row              = 14
           col              = 0
           size_x           = 24
           size_y           = 8
@@ -1629,7 +1678,7 @@ locals {
           # Header & footer link engagement + language switches share a row.
           card_id          = tonumber(metabase_card.screener_chrome_nav[key].id)
           dashboard_tab_id = 10
-          row              = 18
+          row              = 22
           col              = 0
           size_x           = 12
           size_y           = 8
@@ -1651,7 +1700,7 @@ locals {
         {
           card_id          = tonumber(metabase_card.screener_language_distribution[key].id)
           dashboard_tab_id = 10
-          row              = 18
+          row              = 22
           col              = 12
           size_x           = 12
           size_y           = 8
@@ -1678,7 +1727,7 @@ locals {
             # Social clicks + footer feedback/share share the next row.
             card_id          = tonumber(metabase_card.screener_social_clicks[key].id)
             dashboard_tab_id = 10
-            row              = 26
+            row              = 30
             col              = 0
             size_x           = 12
             size_y           = 8
@@ -1700,7 +1749,7 @@ locals {
           {
             card_id          = tonumber(metabase_card.screener_footer_feedback_share[key].id)
             dashboard_tab_id = 10
-            row              = 26
+            row              = 30
             col              = 12
             size_x           = 12
             size_y           = 8
