@@ -214,3 +214,26 @@ check "tenant_credentials_are_tenant_scoped" {
     ])
   }
 }
+
+# Launch date for the 211 Metro Chicago referrer dashboard (chicago211_dashboard.tf).
+#
+# Null until they launch, which is the current state: with no date set, no date
+# predicate is emitted. That is safe because the referrer predicate already
+# excludes every pre-launch screener — nothing can carry ?referrer=211chicago
+# before the link exists. Set this at launch so a stray pre-launch test link
+# cannot show up in their numbers either.
+#
+# Deploy-time value, deliberately not a dashboard filter: a viewer must not be
+# able to move it. Changing it is one edit plus an apply, and every card picks
+# it up at once.
+variable "chicago211_launch_date" {
+  description = "ISO date (YYYY-MM-DD); 211 Metro Chicago cards count only screeners submitted on or after it. Null disables the date predicate."
+  type        = string
+  default     = null
+
+  # Interpolated straight into card SQL, so constrain the shape.
+  validation {
+    condition     = var.chicago211_launch_date == null || can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.chicago211_launch_date))
+    error_message = "chicago211_launch_date must be null or an ISO date, e.g. 2026-11-01."
+  }
+}
