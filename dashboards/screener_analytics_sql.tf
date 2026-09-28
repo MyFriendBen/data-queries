@@ -911,44 +911,92 @@ locals {
 
   # ── Form Journey: household-member add/edit/delete actions ──────────────────────
   # How people build their household on the member step. Bar = distinct screenings
-  # per action; total events on hover. The numeric sort_key orders add->edit->delete
+  # per action; total events + raw counts on hover. sort_key orders add->edit->delete
   # (Metabase sorts the category axis alphabetically otherwise).
-  # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
-  # screening-grain, deduped across days, so this is correct over any window). Total
-  # events (additive) on hover. sort_key orders add->edit->delete.
-  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that engaged
-  # the roster step, the share that took each action. BOTH numerator and denominator
-  # count distinct screener_uid (screening grain) so the ratio is valid — a
-  # session-keyed denominator would mix grains and exceed 100% (one browser session
-  # can run multiple screenings). Denominator = screenings that VIEWED the member step
-  # OR took a member action (union), from the screening-keyed views mart + the section
-  # mart. The union guarantees every actor is in the denominator, so the bar can never
-  # exceed 100% even at a window's start edge (where an action's paired view may fall
-  # just below the date floor). Spans both the new 'member-basics' slug and the
-  # pre-MFB-1348 'household-members' slug for cutover coverage. Raw count + total
-  # events on hover. sort_key orders add->edit->delete.
+  #
+  # Each action is only ever shown to screenings past its own household-size gate —
+  # Add/Delete/Edit need 2+ members, Delete-from-summary needs 3+ — so "% of Eligible
+  # Screenings" rates each bar against its own gated denominator (MFB-1573).
+  #
+  # No direct household-size signal exists, so `denominators` infers 2+/3+ from three
+  # OR'd sources: viewing member-basics/household-members at all (that step only
+  # renders once household size was answered 2+ — dbt/macros/screener_steps.sql),
+  # mart_screener_household_size's page-view proxy, and firing ANY household-member
+  # action (every action in the gates table needs 2+; delete_from_summary additionally
+  # proves 3+ — not naming individual actions here so an unmapped one can't land in a
+  # numerator with no matching denominator evidence).
+  #
+  # `viewer_ids` (screenings that viewed the member step OR took an action, spanning
+  # both the 'member-basics' and pre-MFB-1348 'household-members' slugs) stays the
+  # full population each denominator narrows — never re-windowed independently — so a
+  # bar can't exceed 100% even at a window's start edge.
   screener_sql_household_member_engagement = <<-SQL
-    WITH viewers AS (
-      SELECT COUNT(DISTINCT screener_uid) AS n FROM (
-        SELECT screener_uid
-        FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
-        WHERE __STATE_FILTER__
-          AND screener_step_name IN ('member-basics', 'household-members')
-          AND viewed
-        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-        UNION DISTINCT
-        SELECT screener_uid
-        FROM `${local.bq_dataset}.mart_screener_section_engagement`
-        WHERE __STATE_FILTER__
-          AND section = 'Household Members'
-        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      )
+    WITH roster_viewers AS (
+      SELECT screener_uid
+      FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
+      WHERE __STATE_FILTER__
+        AND screener_step_name IN ('member-basics', 'household-members')
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    hh_actions AS (
+      SELECT screener_uid, action, total_actions
+      FROM `${local.bq_dataset}.mart_screener_section_engagement`
+      WHERE __STATE_FILTER__
+        AND section = 'Household Members'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewer_ids AS (
+      SELECT screener_uid FROM roster_viewers
+      UNION DISTINCT
+      SELECT screener_uid FROM hh_actions
+    ),
+    action_takers AS (
+      SELECT
+        screener_uid,
+        LOGICAL_OR(action = 'delete_from_summary') AS took_3plus_action
+      FROM hh_actions
+      GROUP BY screener_uid
+    ),
+    sized AS (
+      -- State-scoped read of the mart so the join doesn't pull every tenant's rows.
+      SELECT screener_uid, household_size
+      FROM `${local.bq_dataset}.mart_screener_household_size`
+      WHERE __STATE_FILTER__
+    ),
+    denominators AS (
+      SELECT
+        COUNT(DISTINCT IF(
+          rv.screener_uid IS NOT NULL
+          OR COALESCE(hs.household_size, 0) >= 2
+          OR atk.screener_uid IS NOT NULL,
+          v.screener_uid, NULL
+        )) AS n_2plus,
+        COUNT(DISTINCT IF(
+          COALESCE(hs.household_size, 0) >= 3 OR COALESCE(atk.took_3plus_action, FALSE),
+          v.screener_uid, NULL
+        )) AS n_3plus
+      FROM viewer_ids v
+      LEFT JOIN roster_viewers rv USING (screener_uid)
+      LEFT JOIN sized hs USING (screener_uid)
+      LEFT JOIN action_takers atk USING (screener_uid)
+    ),
+    action_counts AS (
+      -- Kept separate from the denominator-picking CASE below — BigQuery rejects
+      -- a GROUP BY column used as an IF condition alongside a subquery/aggregate
+      -- in the same SELECT item.
+      SELECT
+        action,
+        COUNT(DISTINCT screener_uid) AS screenings,
+        SUM(total_actions) AS total_actions
+      FROM hh_actions
+      GROUP BY action
     )
-    SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
+    SELECT `Action`, `% of Eligible Screenings`, `Screenings`, `Total Actions` FROM (
       SELECT
         CASE action
           WHEN 'add' THEN 1
@@ -964,16 +1012,12 @@ locals {
           WHEN 'delete_from_summary' THEN 'Delete (from summary)'
           ELSE INITCAP(action)
         END AS `Action`,
-        ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Household-Step Viewers`,
-        COUNT(DISTINCT screener_uid) AS `Screenings`,
-        SUM(total_actions) AS `Total Actions`
-      FROM `${local.bq_dataset}.mart_screener_section_engagement`
-      WHERE __STATE_FILTER__
-        AND section = 'Household Members'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY action, sort_key
+        ROUND(screenings * 100.0 /
+          NULLIF(IF(action = 'delete_from_summary', d.n_3plus, d.n_2plus), 0), 1) AS `% of Eligible Screenings`,
+        screenings AS `Screenings`,
+        total_actions AS `Total Actions`
+      FROM action_counts
+      CROSS JOIN denominators d
     )
     ORDER BY sort_key
   SQL
