@@ -34,3 +34,26 @@ models:
           combination_of_columns:
             - referrer_code
             - white_label_id
+
+  - name: stg_white_label_programs
+    description: "One row per white label × program name it sees: its own programs plus the federal ones, the federal row winning a shared name. Join on (white_label_id, name_abbreviated) to resolve a screen's program without fanning out."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - white_label_id
+            - name_abbreviated
+    columns:
+      - name: white_label_id
+        description: "The white label seeing the program (never the federal one itself)"
+        tests:
+          - not_null
+      - name: name_abbreviated
+        description: "Program slug, shared by a federal row and the state rows it replaced"
+        tests:
+          - not_null
+      - name: program_id
+        description: "programs_program row the white label resolves this name to"
+        tests:
+          - not_null
+      - name: is_federal
+        description: "Whether the resolved row belongs to the federal white label"

@@ -28,11 +28,12 @@ INNER JOIN {{ ref('stg_program_eligibility') }} AS pe
         msd.latest_snapshot_id = pe.eligibility_snapshot_id
         AND pe.annual_value > 0
         AND msd.white_label_id = pe.white_label_id
-LEFT JOIN {{ source('django_apps', 'programs_program') }} AS pp
+-- The screen's own program row or the federal one it sees (federal winning a shared name).
+LEFT JOIN {{ ref('stg_white_label_programs') }} AS wp
     ON
-        pe.name_abbreviated = pp.name_abbreviated
-        AND msd.white_label_id = pp.white_label_id
+        pe.name_abbreviated = wp.name_abbreviated
+        AND msd.white_label_id = wp.white_label_id
 LEFT JOIN {{ source('django_apps', 'translations_translation_translation') }} AS pn
     ON
-        pp.name_id = pn.master_id
+        wp.name_id = pn.master_id
         AND pn.language_code = 'en-us'
