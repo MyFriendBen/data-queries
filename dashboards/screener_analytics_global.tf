@@ -609,7 +609,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "The % of eligible screenings that took each action. Add, Delete, and Edit are rated against screenings with 2+ household members; Delete (from summary) needs 3+ members and is rated against that stricter group. Household size is inferred from behavior, so eligibility may be slightly undercounted."
+    description         = "The % of eligible screenings that took each action. Add, Delete, and Edit are rated against screenings with 2+ household members; Delete (from summary) needs 3+ members and is rated against that stricter group. Household size is inferred from behavior, so Delete (from summary)'s eligibility count may not exactly match the household's final size."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null

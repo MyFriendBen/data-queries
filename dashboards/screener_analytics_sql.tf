@@ -918,21 +918,29 @@ locals {
   # Add/Delete/Edit need 2+ members, Delete-from-summary needs 3+ — so "% of Eligible
   # Screenings" rates each bar against its own gated denominator (MFB-1573).
   #
-  # No direct household-size signal exists, so `denominators` infers 2+/3+ from three
-  # OR'd sources: viewing member-basics/household-members at all (that step only
-  # renders once household size was answered 2+ — dbt/macros/screener_steps.sql),
-  # mart_screener_household_size's page-view proxy, and firing ANY household-member
-  # action (every action in the gates table needs 2+; delete_from_summary additionally
-  # proves 3+ — not naming individual actions here so an unmapped one can't land in a
-  # numerator with no matching denominator evidence).
+  # `viewer_ids` (roster_viewers UNION hh_actions, spanning both the 'member-basics'
+  # and pre-MFB-1348 'household-members' slugs) is screenings that reached the
+  # household step. n_2plus is exactly that count — not a further-narrowed subset.
+  # That's deliberate, not a missed gate: viewing the roster step and taking ANY
+  # household-member action both already independently prove 2+ members
+  # (dbt/macros/screener_steps.sql: "member-basics shows only for household size >
+  # 1"; every action in the gates table needs 2+), and those two ways are the ONLY
+  # ways into viewer_ids — so there's no screening left for a page-view-size check
+  # to further exclude. mart_screener_household_size only does real work for
+  # n_3plus below, which viewer_ids does not already guarantee.
+  # (Assumes the legacy 'household-members' slug was gated the same way as
+  # 'member-basics' — not separately confirmed, but its volume is bounded/legacy,
+  # and an overcount here can't break the <=100% guarantee below.)
   #
-  # `viewer_ids` (screenings that viewed the member step OR took an action, spanning
-  # both the 'member-basics' and pre-MFB-1348 'household-members' slugs) stays the
-  # full population each denominator narrows — never re-windowed independently — so a
-  # bar can't exceed 100% even at a window's start edge.
+  # n_3plus narrows to household_size >= 3 (the page-view proxy) OR
+  # delete_from_summary self-evidence (proves 3+ even if the proxy under-observed
+  # this screening). Neither signal is re-windowed independently — narrowing the
+  # already-windowed viewer_ids, rather than rebuilding an independently-windowed
+  # count, is what keeps the union's <=100% guarantee intact even at a window's
+  # start edge.
   screener_sql_household_member_engagement = <<-SQL
     WITH roster_viewers AS (
-      SELECT screener_uid
+      SELECT DISTINCT screener_uid
       FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
       WHERE __STATE_FILTER__
         AND screener_step_name IN ('member-basics', 'household-members')
@@ -963,32 +971,30 @@ locals {
       GROUP BY screener_uid
     ),
     sized AS (
-      -- State-scoped read of the mart so the join doesn't pull every tenant's rows.
+      -- State-scoped so the join doesn't pull every tenant's rows. No date bound
+      -- here on purpose — the mart is a lifetime/peak fact, not day-windowed (see
+      -- its own header); viewer_ids above is what windows the population. One
+      -- side effect: a screening whose 3rd-member view happened outside the
+      -- selected window still counts toward n_3plus for that window.
       SELECT screener_uid, household_size
       FROM `${local.bq_dataset}.mart_screener_household_size`
       WHERE __STATE_FILTER__
     ),
     denominators AS (
       SELECT
-        COUNT(DISTINCT IF(
-          rv.screener_uid IS NOT NULL
-          OR COALESCE(hs.household_size, 0) >= 2
-          OR atk.screener_uid IS NOT NULL,
-          v.screener_uid, NULL
-        )) AS n_2plus,
-        COUNT(DISTINCT IF(
-          COALESCE(hs.household_size, 0) >= 3 OR COALESCE(atk.took_3plus_action, FALSE),
-          v.screener_uid, NULL
-        )) AS n_3plus
+        COUNT(DISTINCT v.screener_uid) AS n_2plus,
+        COUNTIF(
+          COALESCE(hs.household_size, 0) >= 3 OR COALESCE(atk.took_3plus_action, FALSE)
+        ) AS n_3plus
       FROM viewer_ids v
-      LEFT JOIN roster_viewers rv USING (screener_uid)
       LEFT JOIN sized hs USING (screener_uid)
       LEFT JOIN action_takers atk USING (screener_uid)
     ),
     action_counts AS (
-      -- Kept separate from the denominator-picking CASE below — BigQuery rejects
-      -- a GROUP BY column used as an IF condition alongside a subquery/aggregate
-      -- in the same SELECT item.
+      -- Kept separate from the denominator-picking CASE below — combining the
+      -- per-action GROUP BY with the IF-based denominator picker in one query
+      -- reliably triggered a BigQuery grouping error in testing. The exact
+      -- underlying rule wasn't pinned down, but the two-stage split avoids it.
       SELECT
         action,
         COUNT(DISTINCT screener_uid) AS screenings,
