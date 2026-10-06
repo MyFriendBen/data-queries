@@ -12,8 +12,8 @@ WITH federal AS (
 )
 
 -- DISTINCT ON keeps the screen x benefit grain: a screen can hold rows for both a federal
--- program and the deactivated state row it replaced (same name), and the federal one wins,
--- matching the API.
+-- program and the state row it replaced (same name). As in the API, the active row wins, then
+-- the federal one.
 SELECT DISTINCT ON (cb.screen_id, pp.name_abbreviated)
     cb.screen_id,
     -- The screen's white label, not the program's: RLS scopes on this column, and a federal
@@ -40,4 +40,9 @@ INNER JOIN {{ ref('mart_screener_data') }} AS msd
 LEFT JOIN {{ source('django_apps', 'translations_translation_translation') }} AS pn
     ON pp.name_id = pn.master_id
     AND pn.language_code = 'en-us'
-ORDER BY cb.screen_id ASC, pp.name_abbreviated ASC, (pp.white_label_id = federal.id) DESC NULLS LAST, pp.id ASC
+ORDER BY
+    cb.screen_id ASC,
+    pp.name_abbreviated ASC,
+    pp.active DESC,
+    (pp.white_label_id = federal.id) DESC NULLS LAST,
+    pp.id ASC

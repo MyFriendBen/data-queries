@@ -1,7 +1,7 @@
 {{
   config(
     materialized='view',
-    description='One row per white label x program name that white label sees: its own programs plus the ones under the federal white label, which every white label sees. When a name exists on both sides (a state row deactivated after its program moved to federal), the federal row wins, matching the API (benefits-api programs/federal.py). Join on (white_label_id, name_abbreviated) to resolve the program a screen sees without fanning out.'
+    description='One row per white label x program name that white label sees: its own programs plus the ones under the federal white label, which every white label sees. When a name exists on both sides, an active row beats an inactive one and, between two rows in the same state, the federal row wins, matching the API (benefits-api programs/federal.py preferred_program). Join on (white_label_id, name_abbreviated) to resolve the program a screen sees without fanning out.'
   )
 }}
 
@@ -18,6 +18,7 @@ candidates AS (
         pp.id AS program_id,
         pp.name_id,
         pp.category_id,
+        pp.active,
         COALESCE(pp.white_label_id = federal.id, FALSE) AS is_federal
     FROM {{ source('django_apps', 'screener_whitelabel') }} AS wl
     LEFT JOIN federal ON TRUE
@@ -37,4 +38,4 @@ SELECT DISTINCT ON (white_label_id, name_abbreviated)
     category_id,
     is_federal
 FROM candidates
-ORDER BY white_label_id ASC, name_abbreviated ASC, is_federal DESC, program_id ASC
+ORDER BY white_label_id ASC, name_abbreviated ASC, active DESC, is_federal DESC, program_id ASC

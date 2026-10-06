@@ -36,7 +36,7 @@ models:
             - white_label_id
 
   - name: stg_white_label_programs
-    description: "One row per white label × program name it sees: its own programs plus the federal ones, the federal row winning a shared name. Join on (white_label_id, name_abbreviated) to resolve a screen's program without fanning out."
+    description: "One row per white label × program name it sees: its own programs plus the federal ones. For a shared name the active row wins, then the federal one. Join on (white_label_id, name_abbreviated) to resolve a screen's program without fanning out."
     tests:
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
