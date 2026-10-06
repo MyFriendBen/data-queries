@@ -72,6 +72,11 @@ per_screener as (
         min(event_date_parsed) as event_date_parsed,
         logical_or(lower(screener_state) = 'cesn') as is_cesn,
         count(distinct ga_session_id) as distinct_sessions,
+        -- Time-to-completion inputs: earliest event overall (screening start) and
+        -- earliest clean results load, both at screener_uid grain so a screening
+        -- that spans multiple sessions/days still measures from its true start.
+        min(event_timestamp) as first_event_ts,
+        min(case when event_name = 'screener_results_loaded' then event_timestamp end) as first_results_ts,
         -- Base "reached results" = clean results load only, the same event the
         -- Results-Page "Results Viewed" card counts (error / none-eligible
         -- outcomes excluded). Note saw_results below is the CUMULATIVE flag, so it
@@ -84,10 +89,22 @@ per_screener as (
     group by screener_uid
 )
 
--- Cumulative funnel flags: a later stage implies every earlier one, so the
--- dashboard COUNTIFs form a true monotonic subset chain (created >= saw_results
--- >= viewed_details >= applied) even if a screener fired a later event without a
--- recorded earlier one.
+
+-- completion_time_seconds: first tracked event for the screener_uid (its earliest
+-- moment on the ladder, post-disclaimer) to its first clean screener_results_loaded.
+-- Null when the screener never reached a clean results load (reached_results
+-- false) — cumulative saw_results can still be true via more_info/apply with no
+-- recorded results_loaded, which correctly excludes those from a completion-time
+-- calculation since there's no results timestamp to measure to.
+--
+-- NOTE: This metric is computed at the screener_uid grain and therefore measures
+-- time across return visits. The older session-bounded card intentionally
+-- excluded screeners that completed across multiple sessions (they were NULL
+-- and omitted from the median), so historic median values (for example the
+-- familiar "under 6 minutes" figure) reflect only single-session finishers.
+-- Including multi-session completions gives a more complete view of users'
+-- journeys but will typically increase the median compared to the old
+-- session-bounded measure. Keep this in mind when comparing to prior reports.
 select
     screener_uid,
     screener_state,
@@ -97,5 +114,9 @@ select
     reached_results or clicked_more_info or clicked_apply as saw_results,
     clicked_more_info or clicked_apply                    as viewed_details,
     clicked_apply                                         as applied,
+    case
+        when reached_results and first_results_ts > first_event_ts
+        then (first_results_ts - first_event_ts) / 1000000.0
+    end as completion_time_seconds,
     current_timestamp() as updated_at
 from per_screener

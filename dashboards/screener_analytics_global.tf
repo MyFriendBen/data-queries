@@ -79,6 +79,33 @@ resource "metabase_card" "global_screener_sessions_per_screener" {
   })
 }
 
+resource "metabase_card" "global_screener_completion_time" {
+  count = var.bigquery_enabled ? 1 : 0
+
+  json = jsonencode({
+    name                = "Completion Time (approx. median)"
+    description         = "Median time from starting a screener to reaching a clean results load. Half of screeners finish faster than this."
+    collection_id       = local.global_col_id
+    collection_position = null
+    cache_ttl           = null
+    query_type          = "native"
+    dataset_query = {
+      database = tonumber(metabase_database.bigquery[0].id)
+      type     = "native"
+      native = {
+        query         = replace(local.screener_sql_completion_time, "__STATE_FILTER_CESN__", local.all_screener_global_predicate)
+        template-tags = local.ga_date_tags
+      }
+    }
+    display = "scalar"
+    visualization_settings = {
+      "scalar.field" = "Time to Completion"
+    }
+    parameter_mappings = []
+    parameters         = []
+  })
+}
+
 resource "metabase_card" "global_screener_language_distribution" {
   count = var.bigquery_enabled ? 1 : 0
 

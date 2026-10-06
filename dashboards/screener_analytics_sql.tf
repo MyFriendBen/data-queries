@@ -73,6 +73,31 @@ locals {
     ORDER BY sort_order
   SQL
 
+  # ── Tab 10 (Overview): median time to completion ──────────────────────────────
+  # Median of completion_time_seconds (screening-grain: first tracked event ->
+  # first clean screener_results_loaded, computed in the mart) across screeners
+  # that reached a clean results load. APPROX_QUANTILES over the per-screening
+  # rows gives a true overall median (unlike the retired GA-session card, which
+  # averaged daily medians as an approximation). Reads the per-screener screening
+  # mart. __STATE_FILTER_CESN__.
+  screener_sql_completion_time = <<-SQL
+    SELECT
+      CONCAT(
+        LPAD(CAST(DIV(secs, 3600) AS STRING), 2, '0'), ':',
+        LPAD(CAST(DIV(MOD(secs, 3600), 60) AS STRING), 2, '0'), ':',
+        LPAD(CAST(MOD(secs, 60) AS STRING), 2, '0')
+      ) AS `Time to Completion`
+    FROM (
+      SELECT CAST(ROUND(APPROX_QUANTILES(completion_time_seconds, 100 IGNORE NULLS)[OFFSET(50)]) AS INT64) AS secs
+      FROM `${local.bq_dataset}.mart_screener_screening_funnel`
+      WHERE __STATE_FILTER_CESN__
+        AND completion_time_seconds IS NOT NULL
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    )
+  SQL
+
   # ── Tab 7 (Form Journey): step drop-off funnel ──────────────────────────────
   # "Furthest step reached" funnel: each bar counts sessions that got AT LEAST as
   # far as that step, so it's monotonic by construction. mart_screener_furthest_step
