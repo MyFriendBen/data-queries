@@ -26,7 +26,8 @@ candidates AS (
         ON
             wl.id = pp.white_label_id
             OR federal.id = pp.white_label_id
-    -- No screen is created under the federal white label itself.
+    -- Only test screens are saved under the federal white label itself, and reporting
+    -- excludes test data, so it gets no rows of its own.
     WHERE federal.id IS NULL OR wl.id != federal.id
 )
 
