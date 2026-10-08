@@ -79,7 +79,7 @@ locals {
   # Add a new tenant here instead of scattering tenant-key conditionals across layout files.
   tenant_features = {
     nc                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = true, has_utm_filters = true, has_demographics_card = false, has_total_individuals = false }
-    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
+    co                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = true, has_demographics_card = false, has_total_individuals = true }
     tx                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
     wa                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
     il                = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
