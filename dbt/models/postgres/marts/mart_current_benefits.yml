@@ -4,9 +4,9 @@ models:
   - name: mart_current_benefits
     description: "One row per screen × benefit, sourced from the screener_current_benefits join table (replaces the legacy screener_screen.has_* columns dropped in MFB-720)."
     tests:
-      # Grain depends on the `pp.white_label_id = msd.white_label_id` filter in the
-      # model: without it, a single screen could pull in two programs_program rows
-      # sharing the same name_abbreviated across white labels and break uniqueness.
+      # Grain depends on the model's white-label filter (the screen's own programs or
+      # federal ones) and its DISTINCT ON: without them, a single screen could pull in
+      # two programs_program rows sharing the same name_abbreviated and break uniqueness.
       - dbt_utils.unique_combination_of_columns:
           combination_of_columns:
             - screen_id
@@ -18,7 +18,7 @@ models:
           - not_null
 
       - name: white_label_id
-        description: "White label organization ID used for row-level security"
+        description: "The screen's white label organization ID, used for row-level security. For a federal program this is still the screen's white label, not the federal one."
         tests:
           - not_null
 

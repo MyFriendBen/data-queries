@@ -1,0 +1,42 @@
+{{
+  config(
+    materialized='view',
+    description='One row per white label x program name that white label sees: its own programs plus the ones under the federal white label, which every white label sees. When a name exists on both sides, an active row beats an inactive one and, between two rows in the same state, the federal row wins, matching the API (benefits-api programs/federal.py preferred_program). Join on (white_label_id, name_abbreviated) to resolve the program a screen sees without fanning out.'
+  )
+}}
+
+WITH federal AS (
+    SELECT id
+    FROM {{ source('django_apps', 'screener_whitelabel') }}
+    WHERE code = 'federal'
+),
+
+candidates AS (
+    SELECT
+        wl.id AS white_label_id,
+        pp.name_abbreviated,
+        pp.id AS program_id,
+        pp.name_id,
+        pp.category_id,
+        pp.active,
+        COALESCE(pp.white_label_id = federal.id, FALSE) AS is_federal
+    FROM {{ source('django_apps', 'screener_whitelabel') }} AS wl
+    LEFT JOIN federal ON TRUE
+    INNER JOIN {{ source('django_apps', 'programs_program') }} AS pp
+        ON
+            wl.id = pp.white_label_id
+            OR federal.id = pp.white_label_id
+    -- Only test screens are saved under the federal white label itself, and reporting
+    -- excludes test data, so it gets no rows of its own.
+    WHERE federal.id IS NULL OR wl.id != federal.id
+)
+
+SELECT DISTINCT ON (white_label_id, name_abbreviated)
+    white_label_id,
+    name_abbreviated,
+    program_id,
+    name_id,
+    category_id,
+    is_federal
+FROM candidates
+ORDER BY white_label_id ASC, name_abbreviated ASC, active DESC, is_federal DESC, program_id ASC
