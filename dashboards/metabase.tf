@@ -583,7 +583,7 @@ resource "metabase_card" "tenant_county_values" {
   }))
 }
 
-# Helper cards for UTM filter dropdown values (NC only)
+# Helper cards for UTM filter dropdown values (tenants with has_utm_filters)
 resource "metabase_card" "tenant_utm_campaign_values" {
   for_each = { for k, v in var.tenants : k => v if local.tenant_features[k].has_utm_filters }
 
@@ -1791,7 +1791,7 @@ resource "metabase_dashboard" "tenant_analytics" {
       }
     ] : [],
 
-    # UTM filters — NC only
+    # UTM filters — tenants with has_utm_filters
     local.tenant_features[each.key].has_utm_filters ? [
       {
         id                 = "utm_campaign_filter"
