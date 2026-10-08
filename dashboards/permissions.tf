@@ -99,6 +99,11 @@ resource "metabase_collection_graph" "graph" {
   # cause graph errors. See local.ignored_group_ids for the full derivation.
   ignored_groups = local.ignored_group_ids
 
+  # Metabase rejects a permissions update (409) if the permissions changed after
+  # Terraform read them. Updating both graphs at once triggers that, so update
+  # them one after the other.
+  depends_on = [metabase_permissions_graph.graph]
+
   permissions = concat(
     # --- Global group: read access to the global collection ------------------
     [
