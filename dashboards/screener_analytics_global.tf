@@ -636,7 +636,7 @@ resource "metabase_card" "global_screener_household_member_engagement" {
 
   json = jsonencode({
     name                = "Household Member Actions"
-    description         = "Of screenings that reached the household step, the % that took each add/edit/delete action. Actions have their own visibility rules (e.g. delete needs 3+ members), so gated actions read low against the shared denominator."
+    description         = "Add/Delete/Edit need 2+ household members; Delete (from summary) needs 3+ and uses that stricter group. Size is estimated from pages viewed, so Delete (from summary) may read slightly high."
     collection_id       = local.global_col_id
     collection_position = null
     cache_ttl           = null
@@ -652,10 +652,10 @@ resource "metabase_card" "global_screener_household_member_engagement" {
     display = "bar"
     visualization_settings = {
       "graph.dimensions"  = ["Action"]
-      "graph.metrics"     = ["% of Household-Step Viewers"]
-      "column_settings"   = { "[\"name\",\"% of Household-Step Viewers\"]" = { suffix = "%" } }
+      "graph.metrics"     = ["% of Eligible Screenings"]
+      "column_settings"   = { "[\"name\",\"% of Eligible Screenings\"]" = { suffix = "%" } }
       "graph.show_values" = true
-      "series_settings"   = { "% of Household-Step Viewers" = { color = "#edc948" } }
+      "series_settings"   = { "% of Eligible Screenings" = { color = "#edc948" } }
     }
     parameter_mappings = []
     parameters         = []

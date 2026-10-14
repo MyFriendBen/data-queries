@@ -936,44 +936,98 @@ locals {
 
   # ── Form Journey: household-member add/edit/delete actions ──────────────────────
   # How people build their household on the member step. Bar = distinct screenings
-  # per action; total events on hover. The numeric sort_key orders add->edit->delete
+  # per action; total events + raw counts on hover. sort_key orders add->edit->delete
   # (Metabase sorts the category axis alphabetically otherwise).
-  # Bar = distinct screenings per action (COUNT(DISTINCT screener_uid) — the mart is
-  # screening-grain, deduped across days, so this is correct over any window). Total
-  # events (additive) on hover. sort_key orders add->edit->delete.
-  # The PLOTTED bar is "% of Household-Step Viewers" — of the screenings that engaged
-  # the roster step, the share that took each action. BOTH numerator and denominator
-  # count distinct screener_uid (screening grain) so the ratio is valid — a
-  # session-keyed denominator would mix grains and exceed 100% (one browser session
-  # can run multiple screenings). Denominator = screenings that VIEWED the member step
-  # OR took a member action (union), from the screening-keyed views mart + the section
-  # mart. The union guarantees every actor is in the denominator, so the bar can never
-  # exceed 100% even at a window's start edge (where an action's paired view may fall
-  # just below the date floor). Spans both the new 'member-basics' slug and the
-  # pre-MFB-1348 'household-members' slug for cutover coverage. Raw count + total
-  # events on hover. sort_key orders add->edit->delete.
+  #
+  # Each action is only ever shown to screenings past its own household-size gate —
+  # Add/Delete/Edit need 2+ members, Delete-from-summary needs 3+ — so "% of Eligible
+  # Screenings" rates each bar against its own gated denominator (MFB-1573).
+  #
+  # `viewer_ids` (roster_viewers UNION hh_actions, spanning both the 'member-basics'
+  # and pre-MFB-1348 'household-members' slugs) is screenings that reached the
+  # household step. n_2plus is exactly that count — not a further-narrowed subset.
+  # That's deliberate, not a missed gate: viewing the roster step and taking ANY
+  # household-member action both already independently prove 2+ members
+  # (dbt/macros/screener_steps.sql: "member-basics shows only for household size >
+  # 1"; every action in the gates table needs 2+), and those two ways are the ONLY
+  # ways into viewer_ids — so there's no screening left for a page-view-size check
+  # to further exclude. mart_screener_household_size only does real work for
+  # n_3plus below, which viewer_ids does not already guarantee.
+  # (Assumes the legacy 'household-members' slug was gated the same way as
+  # 'member-basics' — not separately confirmed, but its volume is bounded/legacy,
+  # and an overcount here can't break the <=100% guarantee below.)
+  #
+  # n_3plus narrows to household_size >= 3 (the page-view proxy) OR
+  # delete_from_summary self-evidence (proves 3+ even if the proxy under-observed
+  # this screening). Neither signal is re-windowed independently — narrowing the
+  # already-windowed viewer_ids, rather than rebuilding an independently-windowed
+  # count, is what keeps the union's <=100% guarantee intact even at a window's
+  # start edge.
   screener_sql_household_member_engagement = <<-SQL
-    WITH viewers AS (
-      SELECT COUNT(DISTINCT screener_uid) AS n FROM (
-        SELECT screener_uid
-        FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
-        WHERE __STATE_FILTER__
-          AND screener_step_name IN ('member-basics', 'household-members')
-          AND viewed
-        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-        UNION DISTINCT
-        SELECT screener_uid
-        FROM `${local.bq_dataset}.mart_screener_section_engagement`
-        WHERE __STATE_FILTER__
-          AND section = 'Household Members'
-        AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-        [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-        [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      )
+    WITH roster_viewers AS (
+      SELECT DISTINCT screener_uid
+      FROM `${local.bq_dataset}.mart_screener_step_views_by_screening`
+      WHERE __STATE_FILTER__
+        AND screener_step_name IN ('member-basics', 'household-members')
+        AND viewed
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    hh_actions AS (
+      SELECT screener_uid, action, total_actions
+      FROM `${local.bq_dataset}.mart_screener_section_engagement`
+      WHERE __STATE_FILTER__
+        AND section = 'Household Members'
+      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
+      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
+      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
+    ),
+    viewer_ids AS (
+      SELECT screener_uid FROM roster_viewers
+      UNION DISTINCT
+      SELECT screener_uid FROM hh_actions
+    ),
+    action_takers AS (
+      SELECT
+        screener_uid,
+        LOGICAL_OR(action = 'delete_from_summary') AS took_3plus_action
+      FROM hh_actions
+      GROUP BY screener_uid
+    ),
+    sized AS (
+      -- State-scoped so the join doesn't pull every tenant's rows. No date bound
+      -- here on purpose — the mart is a lifetime/peak fact, not day-windowed (see
+      -- its own header); viewer_ids above is what windows the population. One
+      -- side effect: a screening whose 3rd-member view happened outside the
+      -- selected window still counts toward n_3plus for that window.
+      SELECT screener_uid, household_size
+      FROM `${local.bq_dataset}.mart_screener_household_size`
+      WHERE __STATE_FILTER__
+    ),
+    denominators AS (
+      SELECT
+        COUNT(DISTINCT v.screener_uid) AS n_2plus,
+        COUNTIF(
+          COALESCE(hs.household_size, 0) >= 3 OR COALESCE(atk.took_3plus_action, FALSE)
+        ) AS n_3plus
+      FROM viewer_ids v
+      LEFT JOIN sized hs USING (screener_uid)
+      LEFT JOIN action_takers atk USING (screener_uid)
+    ),
+    action_counts AS (
+      -- Kept separate from the denominator-picking CASE below — combining the
+      -- per-action GROUP BY with the IF-based denominator picker in one query
+      -- reliably triggered a BigQuery grouping error in testing. The exact
+      -- underlying rule wasn't pinned down, but the two-stage split avoids it.
+      SELECT
+        action,
+        COUNT(DISTINCT screener_uid) AS screenings,
+        SUM(total_actions) AS total_actions
+      FROM hh_actions
+      GROUP BY action
     )
-    SELECT `Action`, `% of Household-Step Viewers`, `Screenings`, `Total Actions` FROM (
+    SELECT `Action`, `% of Eligible Screenings`, `Screenings`, `Total Actions` FROM (
       SELECT
         CASE action
           WHEN 'add' THEN 1
@@ -989,16 +1043,12 @@ locals {
           WHEN 'delete_from_summary' THEN 'Delete (from summary)'
           ELSE INITCAP(action)
         END AS `Action`,
-        ROUND(COUNT(DISTINCT screener_uid) * 100.0 / NULLIF((SELECT n FROM viewers), 0), 1) AS `% of Household-Step Viewers`,
-        COUNT(DISTINCT screener_uid) AS `Screenings`,
-        SUM(total_actions) AS `Total Actions`
-      FROM `${local.bq_dataset}.mart_screener_section_engagement`
-      WHERE __STATE_FILTER__
-        AND section = 'Household Members'
-      AND event_date_parsed >= DATE('${local.screener_analytics_epoch}')
-      [[AND event_date_parsed >= CAST({{start_date}} AS DATE)]]
-      [[AND event_date_parsed <= CAST({{end_date}} AS DATE)]]
-      GROUP BY action, sort_key
+        ROUND(screenings * 100.0 /
+          NULLIF(IF(action = 'delete_from_summary', d.n_3plus, d.n_2plus), 0), 1) AS `% of Eligible Screenings`,
+        screenings AS `Screenings`,
+        total_actions AS `Total Actions`
+      FROM action_counts
+      CROSS JOIN denominators d
     )
     ORDER BY sort_key
   SQL
