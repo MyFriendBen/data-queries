@@ -1,7 +1,7 @@
 # =============================================================================
 # 211 Metro Chicago dashboard — MFB-1884
 # =============================================================================
-# 211 Metro Chicago is the `211chicago` referrer inside the IL white label —
+# 211 Metro Chicago is the `211_metro_chicago` referrer inside the IL white label —
 # NOT a tenant. Same pattern as cpal_dashboard.tf and cu_denver_dashboard.tf:
 # cards query the IL tenant connection (so white-label RLS limits rows to
 # white_label_id = 39) and additionally apply a scope predicate baked into each
@@ -10,10 +10,8 @@
 # a viewer sees exactly what is defined here and cannot broaden it.
 #
 # Card set deliberately mirrors CPAL's rather than the full Illinois tenant
-# dashboard: partner-facing referrer dashboards are the compact shape, and
-# 211 Metro Chicago has not launched, so there is no usage yet to tell us which
-# of the tenant dashboard's ~80 cards they would actually want. Grow it once
-# they are live.
+# dashboard: partner-facing referrer dashboards are the compact shape. Grow it
+# once they tell us which of the tenant dashboard's ~80 cards they want.
 #
 # -----------------------------------------------------------------------------
 # Three layers of scoping, only the first enforced below Metabase:
@@ -34,16 +32,13 @@ locals {
   chicago211_db_id  = tonumber(metabase_database.tenant_postgres["il"].id)
   chicago211_col_id = tonumber(metabase_collection.chicago211.id)
 
-  # Scoped to traffic that arrived through their link.
-  #
-  # NOTE for when they launch: this keys on `referrer_code`, which counts only
-  # screens carrying ?referrer=211chicago. CPAL instead keys on the mart's
-  # `partner` column, which is derived from referrer_code OR the user-selected
-  # referral_source — for CPAL that second path is 21 of 100 screeners. The
-  # Referrer row currently has show_in_dropdown = False, so there is no second
-  # path to miss yet; switch this to `partner = '211 Metro Chicago'` at the same
-  # time that flag is flipped, or dropdown-attributed screens silently vanish.
-  chicago211_referrer_predicate = "referrer_code = '211chicago'"
+  # Screens attributed to 211 Metro Chicago, as CPAL does it: the mart's
+  # `partner` column is the Referrer's display name, derived from referrer_code
+  # (their ?referrer=211_metro_chicago link) OR the user-selected referral_source
+  # (they're in the screener's referral dropdown), so both paths count. RLS on
+  # the IL connection keeps the name from matching another state's referrer.
+  # If the Referrer's name is ever edited in the admin, change it here too.
+  chicago211_referrer_predicate = "partner = '211 Metro Chicago'"
 
   # Cook County. Normalized both sides because county text arrives as either
   # "Cook" or "Cook County" depending on where it was set — the same normalizer
@@ -56,10 +51,8 @@ locals {
   # See MFB-1885 §4.
   chicago211_county_predicate = "lower(regexp_replace(trim(county), '\\s+county$', '', 'i')) = 'cook'"
 
-  # Only applied once a launch date is set (see variables.tf). Until then the
-  # referrer predicate alone already excludes every pre-launch screener, because
-  # no screen can carry the referrer code before the link exists — the date is a
-  # guard against a stray pre-launch test link, not the thing doing the work.
+  # Only applied once a launch date is set (see variables.tf). Unset, the cards
+  # cover all of their screeners since the referrer first appeared (June 2026).
   chicago211_date_predicate = (
     var.chicago211_launch_date == null
     ? ""

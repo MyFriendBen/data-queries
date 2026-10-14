@@ -217,11 +217,9 @@ check "tenant_credentials_are_tenant_scoped" {
 
 # Launch date for the 211 Metro Chicago referrer dashboard (chicago211_dashboard.tf).
 #
-# Null until they launch, which is the current state: with no date set, no date
-# predicate is emitted. That is safe because the referrer predicate already
-# excludes every pre-launch screener — nothing can carry ?referrer=211chicago
-# before the link exists. Set this at launch so a stray pre-launch test link
-# cannot show up in their numbers either.
+# Null by default: no date predicate is emitted, so the cards cover every
+# screener attributed to them (their referrer has been live since June 2026).
+# Set it only to start their numbers from a chosen date.
 #
 # Deploy-time value, deliberately not a dashboard filter: a viewer must not be
 # able to move it. Changing it is one edit plus an apply, and every card picks
