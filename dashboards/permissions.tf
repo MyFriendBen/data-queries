@@ -66,10 +66,10 @@ resource "metabase_permissions_group" "cpal" {
 }
 
 # --- 211 Metro Chicago referrer viewer group ----------------------
-# 211 Metro Chicago is the `211chicago` referrer inside the IL white label, not
+# 211 Metro Chicago is the `211_metro_chicago` referrer inside the IL white label, not
 # a tenant — same pattern as CPAL. View-only: read on the 211 Metro Chicago
 # collection and NO ad-hoc DB query access (cards are pre-scoped to their
-# referrer code, Cook County and, once set, their launch date, so viewers
+# partner attribution, Cook County and, once set, their launch date, so viewers
 # cannot broaden the scope). Members are added manually in the Metabase UI.
 resource "metabase_permissions_group" "chicago211" {
   name = "211 Metro Chicago Viewers"

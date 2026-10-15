@@ -241,7 +241,7 @@ resource "metabase_collection" "cpal" {
 }
 
 # Referrer overlay collection (not a tenant / white label). 211 Metro Chicago
-# is the `211chicago` referrer inside the IL white label — same pattern as CPAL
+# is the `211_metro_chicago` referrer inside the IL white label — same pattern as CPAL
 # inside TX. See chicago211_dashboard.tf and MFB-1884.
 resource "metabase_collection" "chicago211" {
   name       = "211 Metro Chicago"
