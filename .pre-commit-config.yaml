@@ -16,7 +16,7 @@ repos:
 
   # SQL formatting
   - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 4.0.4
+    rev: 4.4.0
     hooks:
       - id: sqlfluff-fix
         additional_dependencies: ["sqlfluff[rs]"]
