@@ -196,7 +196,25 @@ resource "metabase_collection_graph" "graph" {
         collection = metabase_collection.chicago211.id
         permission = "read"
       }
-    ]
+    ],
+
+    # --- Referrer dashboards (referrer_dashboards.tf) --------------------------
+    # Global group reads every referrer collection; each viewer group reads only
+    # its own.
+    flatten([
+      for key, d in local.referrer_dashboards : [
+        {
+          group      = metabase_permissions_group.global.id
+          collection = d.collection_id
+          permission = "read"
+        },
+        {
+          group      = metabase_permissions_group.referrer[key].id
+          collection = d.collection_id
+          permission = "read"
+        },
+      ]
+    ])
   )
 }
 
@@ -273,6 +291,7 @@ locals {
     [metabase_permissions_group.cu_denver.id],
     [metabase_permissions_group.cpal.id],
     [metabase_permissions_group.chicago211.id],
+    [for k, g in metabase_permissions_group.referrer : g.id],
     [for k, g in metabase_permissions_group.tenant : g.id],
     [for k, g in metabase_permissions_group.tenant_editor : g.id]
   )
@@ -467,6 +486,22 @@ resource "metabase_permissions_graph" "graph" {
         download       = { schemas = "full" }
         data_model     = null
       }
-    ]
+    ],
+
+    # --- Referrer dashboard groups: NO query access to any database -----------
+    # Same rationale as CU Denver, CPAL and 211 Metro Chicago: RLS only enforces
+    # the white label, so query-builder access would expose the whole state.
+    flatten([
+      for key, g in metabase_permissions_group.referrer : [
+        for db_id in local.all_known_db_ids : {
+          group          = g.id
+          database       = tonumber(db_id)
+          view_data      = "unrestricted"
+          create_queries = "no"
+          download       = { schemas = "full" }
+          data_model     = null
+        }
+      ]
+    ])
   )
 }
