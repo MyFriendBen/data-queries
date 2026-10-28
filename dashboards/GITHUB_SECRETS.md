@@ -74,9 +74,7 @@ See `BIGQUERY_INTEGRATION.md` for full details.
 
 Production uses Heroku Postgres Standard-tier, which supports multiple credentials. RLS is enforced by extracting the `white_label_id` from the credential username via `regexp_match(current_user, '^wl_[a-z_]+_([0-9]+)_ro$')`.
 
-This same pattern is used in two places:
-- **dbt analytics tables** — the RLS policy in `dbt/macros/row_level_security.sql` filters rows by the extracted ID
-- **`data_tenant` view** — a `security_barrier` view in `public` schema that filters the legacy `data` table the same way
+This pattern is used by the dbt analytics tables: the RLS policy in `dbt/macros/row_level_security.sql` filters rows by the extracted ID.
 
 Credential names must follow the convention `wl_<state>_<white_label_id>_ro`:
 - `wl_nc_5_ro` → extracts `5` (NC)

@@ -24,7 +24,6 @@ repos:
         # which bypasses .sqlfluffignore. This exclude ensures they are skipped.
         exclude: |
           (?x)^(
-            data-queries/v1_deprecated/|
             dbt/models/bigquery/.*
           )
 

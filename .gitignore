@@ -1,6 +1,3 @@
-# data-queries
-data-queries/create.sh
-
 # dbt
 .env
 profiles.yml
