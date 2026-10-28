@@ -277,10 +277,8 @@ locals {
     ])
   }
 
-  # Overview tab grid. The provider fails an apply with "inconsistent result"
-  # unless cards_json is in the order Metabase returns it: dashboard_tab_id,
-  # then row, then col. Keep this list in that order; the engagement tabs
-  # inherit the tenant layouts' order.
+  # Overview tab grid. Order doesn't matter: metabase_dashboard.referrer sorts
+  # every dashcard by tab, row and col before handing them to the provider.
   referrer_dashboard_layout = [
     # Row 0 — raw totals
     { card = "completed_screeners", row = 0, col = 0, size_x = 6, size_y = 4 },
@@ -327,6 +325,61 @@ resource "metabase_card" "referrer" {
   }
 }
 
+# Every dashcard per referrer dashboard, unsorted (metabase_dashboard.referrer
+# sorts them for the provider).
+locals {
+  referrer_dashboard_cards = {
+    for key, d in local.referrer_dashboards : key => concat(
+      [
+        for c in local.referrer_dashboard_layout : {
+          card_id                = tonumber(metabase_card.referrer["${key}/${c.card}"].id)
+          dashboard_tab_id       = 1
+          row                    = c.row
+          col                    = c.col
+          size_x                 = c.size_x
+          size_y                 = c.size_y
+          parameter_mappings     = []
+          series                 = []
+          visualization_settings = {}
+        }
+      ],
+      # Engagement tabs: the tenant grids, note first (row 0), with each tenant
+      # card swapped for the partner copy.
+      flatten([
+        for tab in [
+          { id = 2, layout = local.tenant_dashboard_screener_overview_layout[d.tenant] },
+          { id = 3, layout = local.tenant_dashboard_screener_results_layout[d.tenant] },
+          ] : concat(
+          [{
+            card_id                = null
+            dashboard_tab_id       = tab.id
+            row                    = 0
+            col                    = 0
+            size_x                 = 24
+            size_y                 = 2
+            parameter_mappings     = []
+            series                 = []
+            visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.referrer_ga_note[key] }
+          }],
+          [
+            for dc in tab.layout : {
+              card_id                = tonumber(metabase_card.referrer["${key}/${local.referrer_tenant_card_key_by_id[d.tenant][tostring(dc.card_id)]}"].id)
+              dashboard_tab_id       = tab.id
+              row                    = dc.row
+              col                    = dc.col
+              size_x                 = dc.size_x
+              size_y                 = dc.size_y
+              parameter_mappings     = []
+              series                 = []
+              visualization_settings = {}
+            }
+          ],
+        ) if contains(keys(local.referrer_ga_dashboards), key)
+      ]),
+    )
+  }
+}
+
 resource "metabase_dashboard" "referrer" {
   for_each = local.referrer_dashboards
 
@@ -343,54 +396,19 @@ resource "metabase_dashboard" "referrer" {
     ] : [],
   ))
 
-  cards_json = jsonencode(concat(
-    [
-      for c in local.referrer_dashboard_layout : {
-        card_id                = tonumber(metabase_card.referrer["${each.key}/${c.card}"].id)
-        dashboard_tab_id       = 1
-        row                    = c.row
-        col                    = c.col
-        size_x                 = c.size_x
-        size_y                 = c.size_y
-        parameter_mappings     = []
-        series                 = []
-        visualization_settings = {}
-      }
-    ],
-    # Engagement tabs: the tenant grids, note first (row 0), with each tenant
-    # card swapped for the partner copy.
-    flatten([
-      for tab in [
-        { id = 2, layout = local.tenant_dashboard_screener_overview_layout[each.value.tenant] },
-        { id = 3, layout = local.tenant_dashboard_screener_results_layout[each.value.tenant] },
-        ] : concat(
-        [{
-          card_id                = null
-          dashboard_tab_id       = tab.id
-          row                    = 0
-          col                    = 0
-          size_x                 = 24
-          size_y                 = 2
-          parameter_mappings     = []
-          series                 = []
-          visualization_settings = { virtual_card = { name = null, dataset_query = {}, display = "text", visualization_settings = {} }, text = local.referrer_ga_note[each.key] }
-        }],
-        [
-          for dc in tab.layout : {
-            card_id                = tonumber(metabase_card.referrer["${each.key}/${local.referrer_tenant_card_key_by_id[each.value.tenant][tostring(dc.card_id)]}"].id)
-            dashboard_tab_id       = tab.id
-            row                    = dc.row
-            col                    = dc.col
-            size_x                 = dc.size_x
-            size_y                 = dc.size_y
-            parameter_mappings     = []
-            series                 = []
-            visualization_settings = {}
-          }
-        ],
-      ) if contains(keys(local.referrer_ga_dashboards), each.key)
-    ]),
-  ))
+  # The provider fails an apply with "inconsistent result" unless cards_json is
+  # in the order Metabase returns it: tab, then row, then col. The engagement
+  # tabs inherit the tenant layouts, which aren't in col order within a row, so
+  # sort here, the same way metabase_dashboard.tenant_analytics does. Each card
+  # becomes one zero-padded "tab|row|col|i" key; the trailing index is the LAST
+  # field and points back at the card.
+  cards_json = jsonencode([
+    for entry in sort([
+      for i, c in local.referrer_dashboard_cards[each.key] :
+      format("%05d|%05d|%05d|%05d", c.dashboard_tab_id, c.row, c.col, i)
+    ]) :
+    local.referrer_dashboard_cards[each.key][tonumber(element(split("|", entry), length(split("|", entry)) - 1))]
+  ])
 }
 
 # 211 Metro Chicago moved onto the map from its hand-written
