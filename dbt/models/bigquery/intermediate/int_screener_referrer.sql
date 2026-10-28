@@ -72,7 +72,8 @@ by_session as (
         any_value(screener_referrer) as screener_referrer
     from session_candidates
     group by session_key
-    having count(distinct screener_referrer) = 1
+    -- Qualified: bare, BigQuery resolves it to the any_value alias above.
+    having count(distinct session_candidates.screener_referrer) = 1
 )
 
 select
