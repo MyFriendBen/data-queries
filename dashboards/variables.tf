@@ -215,7 +215,7 @@ check "tenant_credentials_are_tenant_scoped" {
   }
 }
 
-# Launch date for the 211 Metro Chicago referrer dashboard (chicago211_dashboard.tf).
+# Launch date for the 211 Metro Chicago referrer dashboard (referrer_dashboards.tf).
 #
 # Null by default: no date predicate is emitted, so the cards cover every
 # screener attributed to them (their referrer has been live since June 2026).

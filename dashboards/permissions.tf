@@ -65,15 +65,8 @@ resource "metabase_permissions_group" "cpal" {
   name = "CPAL Viewers"
 }
 
-# --- 211 Metro Chicago referrer viewer group ----------------------
-# 211 Metro Chicago is the `211_metro_chicago` referrer inside the IL white label, not
-# a tenant — same pattern as CPAL. View-only: read on the 211 Metro Chicago
-# collection and NO ad-hoc DB query access (cards are pre-scoped to their
-# partner attribution, Cook County and, once set, their launch date, so viewers
-# cannot broaden the scope). Members are added manually in the Metabase UI.
-resource "metabase_permissions_group" "chicago211" {
-  name = "211 Metro Chicago Viewers"
-}
+# Referrer dashboard viewer groups (211 Metro Chicago, Denver Preschool Program,
+# ...) are generated from local.referrer_dashboards in referrer_dashboards.tf.
 
 # =============================================================================
 # Collection Permissions Graph
@@ -144,15 +137,6 @@ resource "metabase_collection_graph" "graph" {
       }
     ],
 
-    # --- Global group: read on the 211 Metro Chicago referrer collection -----
-    [
-      {
-        group      = metabase_permissions_group.global.id
-        collection = metabase_collection.chicago211.id
-        permission = "read"
-      }
-    ],
-
     # --- Per-tenant group: read-only access to their own collection ----------
     [
       for key, tenant in var.tenants : {
@@ -189,14 +173,24 @@ resource "metabase_collection_graph" "graph" {
       }
     ],
 
-    # --- 211 Metro Chicago group: read on their own collection only -----------
-    [
-      {
-        group      = metabase_permissions_group.chicago211.id
-        collection = metabase_collection.chicago211.id
-        permission = "read"
-      }
-    ]
+
+    # --- Referrer dashboards (referrer_dashboards.tf) --------------------------
+    # Global group reads every referrer collection; each viewer group reads only
+    # its own.
+    flatten([
+      for key, d in local.referrer_dashboards : [
+        {
+          group      = metabase_permissions_group.global.id
+          collection = d.collection_id
+          permission = "read"
+        },
+        {
+          group      = metabase_permissions_group.referrer[key].id
+          collection = d.collection_id
+          permission = "read"
+        },
+      ]
+    ])
   )
 }
 
@@ -272,7 +266,7 @@ locals {
     [metabase_permissions_group.global.id],
     [metabase_permissions_group.cu_denver.id],
     [metabase_permissions_group.cpal.id],
-    [metabase_permissions_group.chicago211.id],
+    [for k, g in metabase_permissions_group.referrer : g.id],
     [for k, g in metabase_permissions_group.tenant : g.id],
     [for k, g in metabase_permissions_group.tenant_editor : g.id]
   )
@@ -453,20 +447,21 @@ resource "metabase_permissions_graph" "graph" {
       }
     ],
 
-    # --- 211 Metro Chicago group: NO query access to any database -------------
-    # Same rationale as CU Denver and CPAL. This is what makes the Cook County
-    # and referrer limits stick: RLS on the IL connection only enforces the
-    # white label, so query-builder access would let a viewer see all of
-    # Illinois.
-    [
-      for db_id in local.all_known_db_ids : {
-        group          = metabase_permissions_group.chicago211.id
-        database       = tonumber(db_id)
-        view_data      = "unrestricted"
-        create_queries = "no"
-        download       = { schemas = "full" }
-        data_model     = null
-      }
-    ]
+
+    # --- Referrer dashboard groups: NO query access to any database -----------
+    # Same rationale as CU Denver and CPAL: RLS only enforces
+    # the white label, so query-builder access would expose the whole state.
+    flatten([
+      for key, g in metabase_permissions_group.referrer : [
+        for db_id in local.all_known_db_ids : {
+          group          = g.id
+          database       = tonumber(db_id)
+          view_data      = "unrestricted"
+          create_queries = "no"
+          download       = { schemas = "full" }
+          data_model     = null
+        }
+      ]
+    ])
   )
 }

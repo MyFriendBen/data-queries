@@ -27,10 +27,12 @@ with navigator_events as (
         program_id,
         navigator_id,
         navigator_name,
+        referrer.screener_referrer,
         -- real contact_method for engaged clicks; a distinct sentinel for impressions
         case when event_name = 'screener_navigator_shown' then '__shown__'
              else contact_method end as contact_method
     from {{ ref('stg_ga_screener_program_interactions') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name in ('screener_navigator_engaged', 'screener_navigator_shown')
         -- program_id + navigator_id are the stable keys; guard the grain
         and program_id is not null
@@ -42,6 +44,7 @@ aggregated as (
         event_date,
         event_date_parsed,
         screener_state,
+        screener_referrer,
         program_id,
         navigator_id,
         max(navigator_name) as navigator_name,
@@ -49,13 +52,14 @@ aggregated as (
         count(*) as total_engagements,
         count(distinct screener_uid) as screenings_with_engagement
     from navigator_events
-    group by event_date, event_date_parsed, screener_state, program_id, navigator_id, contact_method
+    group by event_date, event_date_parsed, screener_state, screener_referrer, program_id, navigator_id, contact_method
 )
 
 select
     a.event_date,
     a.event_date_parsed,
     a.screener_state,
+    a.screener_referrer,
     a.program_id,
     a.navigator_id,
     -- fall back to the id if a name was never captured for this program

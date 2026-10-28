@@ -27,8 +27,10 @@ with loads as (
         event_date_parsed,
         event_timestamp,
         screener_state,
-        is_cesn
+        is_cesn,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_results_outcomes') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_results_loaded'
         and screener_uid is not null
 )
@@ -48,6 +50,8 @@ select
         ignore nulls order by event_timestamp limit 1
     )[safe_offset(0)] as screener_state,
     max(is_cesn) as is_cesn,
+    -- One referrer per screener_uid.
+    any_value(screener_referrer) as screener_referrer,
 
     current_timestamp() as updated_at
 

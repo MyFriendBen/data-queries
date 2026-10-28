@@ -82,11 +82,13 @@ combined as (
 -- history. A card counts distinct screener_uid over its date range for a true
 -- cross-day distinct.
 select distinct
-    event_date_parsed,
-    screener_state,
-    is_cesn,
+    combined.event_date_parsed,
+    combined.screener_state,
+    referrer.screener_referrer,
+    combined.is_cesn,
     metric,
     dimension,
     contact_method,
-    screener_uid
+    combined.screener_uid
 from combined
+{{ join_screener_referrer('screener', 'combined.screener_uid') }}

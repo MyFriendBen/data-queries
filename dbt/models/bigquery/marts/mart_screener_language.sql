@@ -19,6 +19,7 @@ select
     event_date,
     event_date_parsed,
     coalesce(screener_state, url_screener_state) as screener_state,
+    referrer.screener_referrer,
     language_name,
 
     count(*) as total_changes,
@@ -31,6 +32,7 @@ select
     current_timestamp() as updated_at
 
 from {{ ref('stg_ga_screener_step_interactions') }}
+{{ join_screener_referrer('session', 'to_json_string(struct(user_pseudo_id, ga_session_id))') }}
 where event_name = 'screener_language_changed'
     and language_name is not null
-group by event_date, event_date_parsed, coalesce(screener_state, url_screener_state), language_name
+group by event_date, event_date_parsed, coalesce(screener_state, url_screener_state), referrer.screener_referrer, language_name

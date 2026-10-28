@@ -19,6 +19,7 @@ with interactions as (
         screener_uid,
         program_id,
         document_name,
+        referrer.screener_referrer,
         case event_name
             when 'screener_apply_click' then 'apply'
             when 'screener_program_more_info' then 'more_info'
@@ -30,6 +31,7 @@ with interactions as (
             when 'screener_program_shown' then 'shown'
         end as interaction_type
     from {{ ref('stg_ga_screener_program_interactions') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name in (
         'screener_apply_click',
         'screener_program_more_info',
@@ -50,6 +52,7 @@ distinct_rows as (
     select distinct
         event_date_parsed,
         screener_state,
+        screener_referrer,
         interaction_type,
         program_id,
         document_name,
@@ -62,6 +65,7 @@ distinct_rows as (
 select
     d.event_date_parsed,
     d.screener_state,
+    d.screener_referrer,
     d.interaction_type,
     d.program_id,
     coalesce(pn.program_name, d.program_id) as program_name,

@@ -65,6 +65,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    referrer.screener_referrer,
     link_group,
     link_location,
     link_label,
@@ -82,5 +83,6 @@ select
     current_timestamp() as updated_at
 
 from classified
-group by event_date, event_date_parsed, screener_state, link_group, link_location, link_label, screener_step_name
+{{ join_screener_referrer('session', 'classified.session_key') }}
+group by event_date, event_date_parsed, screener_state, screener_referrer, link_group, link_location, link_label, screener_step_name
 order by event_date desc, screener_state, total_clicks desc

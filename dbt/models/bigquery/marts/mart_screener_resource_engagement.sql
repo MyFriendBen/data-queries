@@ -100,6 +100,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    referrer.screener_referrer,
     is_cesn,
     metric,
     dimension,
@@ -111,5 +112,6 @@ select
     current_timestamp() as updated_at
 
 from combined
-group by event_date, event_date_parsed, screener_state, is_cesn, metric, dimension, contact_method
+{{ join_screener_referrer('screener', 'combined.screener_uid') }}
+group by event_date, event_date_parsed, screener_state, screener_referrer, is_cesn, metric, dimension, contact_method
 order by event_date desc, screener_state, metric, total_clicks desc

@@ -15,8 +15,10 @@ with engaged as (
         event_date_parsed,
         screener_state,
         screener_uid,
-        coalesce(filter_type, '(unknown)') as filter_type
+        coalesce(filter_type, '(unknown)') as filter_type,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_ui_events') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_filter_engaged'
         and screener_uid is not null
 )
@@ -25,6 +27,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    screener_referrer,
     filter_type,
 
     count(distinct screener_uid) as screenings_engaged,
@@ -33,5 +36,5 @@ select
     current_timestamp() as updated_at
 
 from engaged
-group by event_date, event_date_parsed, screener_state, filter_type
+group by event_date, event_date_parsed, screener_state, screener_referrer, filter_type
 order by event_date desc, screener_state
