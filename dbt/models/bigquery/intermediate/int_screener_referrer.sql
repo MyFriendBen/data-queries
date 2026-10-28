@@ -5,7 +5,10 @@
 }}
 
 -- Referrer lookup: which partner referrer each screener and each GA session
--- belongs to, so referrer dashboards can scope the GA4 event marts.
+-- belongs to. The screener event marts join it (join_screener_referrer macro)
+-- to carry a screener_referrer column, which referrer dashboards filter on.
+-- A table, not the layer's default view: ~17 marts join it per run, and as a
+-- view each join would re-read the raw GA export.
 --
 -- One row per key:
 --   key_type = 'screener' -> key is a screener_uid    (joins screening-grain marts)
@@ -18,16 +21,20 @@
 -- screener_form_step only. A screener's referrer can't change (the app locks it
 -- from the entry URL), so one tagged step is enough:
 --   * a screener takes the referrer of its earliest tagged step;
---   * a session takes the referrer tagged in it, or else the referrer of any
---     screener it touched, which covers later visits that resumed a referred
---     screener.
--- Sessions that never reach a form step carry no referrer and are absent here.
+--   * a session takes the referrer tagged in it or of any screener it touched,
+--     which covers later visits that resumed a referred screener. A session
+--     that touched screeners from two different referrers is left out, so none
+--     of its activity is credited to either partner.
+-- Sessions that never reach a form step carry no referrer and are absent here,
+-- as are sessions with a null user_pseudo_id or ga_session_id (their key can't
+-- tell one visit from another).
 --
 -- Forward-only: rows exist only for events after the GTM tag started forwarding.
 
 with form_events as (
     select
         to_json_string(struct(user_pseudo_id, ga_session_id)) as session_key,
+        user_pseudo_id is not null and ga_session_id is not null as has_session,
         screener_uid,
         nullif(trim(screener_referrer), '') as screener_referrer,
         event_timestamp
@@ -44,17 +51,28 @@ by_screener as (
     group by screener_uid
 ),
 
+session_candidates as (
+    select session_key, screener_referrer
+    from form_events
+    where has_session
+        and screener_referrer is not null
+
+    union distinct
+
+    select f.session_key, s.screener_referrer
+    from form_events as f
+    inner join by_screener as s
+        on f.screener_uid = s.screener_uid
+    where f.has_session
+),
+
 by_session as (
     select
-        f.session_key,
-        coalesce(
-            array_agg(f.screener_referrer ignore nulls order by f.event_timestamp limit 1)[safe_offset(0)],
-            array_agg(s.screener_referrer ignore nulls order by f.event_timestamp limit 1)[safe_offset(0)]
-        ) as screener_referrer
-    from form_events as f
-    left join by_screener as s
-        on f.screener_uid = s.screener_uid
-    group by f.session_key
+        session_key,
+        any_value(screener_referrer) as screener_referrer
+    from session_candidates
+    group by session_key
+    having count(distinct screener_referrer) = 1
 )
 
 select
@@ -72,4 +90,3 @@ select
     screener_referrer,
     current_timestamp() as updated_at
 from by_session
-where screener_referrer is not null

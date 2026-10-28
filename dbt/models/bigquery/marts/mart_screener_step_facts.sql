@@ -55,6 +55,9 @@ per_session_step as (
 )
 
 select
-    *,
-    {{ screener_step_label('screener_step_name') }} as screener_step_label
-from per_session_step
+    p.*,
+    referrer.screener_referrer,
+    {{ screener_step_label('p.screener_step_name') }} as screener_step_label
+from per_session_step as p
+{{ join_screener_referrer('session', 'p.session_key') }}
+

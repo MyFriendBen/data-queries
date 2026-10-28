@@ -242,14 +242,16 @@ resource "metabase_collection" "cpal" {
 
 # Referrer overlay collection (not a tenant / white label). 211 Metro Chicago
 # is the `211_metro_chicago` referrer inside the IL white label — same pattern as CPAL
-# inside TX. See chicago211_dashboard.tf and MFB-1884.
+# inside TX. Its dashboard is an entry in local.referrer_dashboards
+# (referrer_dashboards.tf). See MFB-1884.
 resource "metabase_collection" "chicago211" {
   name       = "211 Metro Chicago"
   depends_on = [metabase_collection.cpal]
 }
 
 # Referrer dashboard collections — one per entry in local.referrer_dashboards
-# (referrer_dashboards.tf), chained like the ones above.
+# (referrer_dashboards.tf), chained like the ones above. Chain the next one off
+# metabase_collection.dpp.
 resource "metabase_collection" "dpp" {
   name       = "Denver Preschool Program"
   depends_on = [metabase_collection.chicago211]

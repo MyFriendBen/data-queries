@@ -17,8 +17,10 @@ with nps as (
         screener_state,
         screener_uid,
         event_name,
-        nps_score
+        nps_score,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_ui_events') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name in (
         'screener_nps_score_submitted',
         'screener_nps_reason_submitted',
@@ -31,6 +33,7 @@ select
     event_date,
     event_date_parsed,
     screener_state,
+    screener_referrer,
     nps_score,
 
     case
@@ -48,5 +51,5 @@ select
     current_timestamp() as updated_at
 
 from nps
-group by event_date, event_date_parsed, screener_state, nps_score, nps_category
+group by event_date, event_date_parsed, screener_state, screener_referrer, nps_score, nps_category
 order by event_date desc, screener_state, nps_score

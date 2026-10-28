@@ -106,17 +106,19 @@ per_screener as (
 -- journeys but will typically increase the median compared to the old
 -- session-bounded measure. Keep this in mind when comparing to prior reports.
 select
-    screener_uid,
-    screener_state,
-    event_date_parsed,
-    is_cesn,
-    distinct_sessions,
-    reached_results or clicked_more_info or clicked_apply as saw_results,
-    clicked_more_info or clicked_apply                    as viewed_details,
-    clicked_apply                                         as applied,
+    p.screener_uid,
+    p.screener_state,
+    referrer.screener_referrer,
+    p.event_date_parsed,
+    p.is_cesn,
+    p.distinct_sessions,
+    p.reached_results or p.clicked_more_info or p.clicked_apply as saw_results,
+    p.clicked_more_info or p.clicked_apply                      as viewed_details,
+    p.clicked_apply                                             as applied,
     case
-        when reached_results and first_results_ts > first_event_ts
-        then (first_results_ts - first_event_ts) / 1000000.0
+        when p.reached_results and p.first_results_ts > p.first_event_ts
+        then (p.first_results_ts - p.first_event_ts) / 1000000.0
     end as completion_time_seconds,
     current_timestamp() as updated_at
-from per_screener
+from per_screener as p
+{{ join_screener_referrer('screener', 'p.screener_uid') }}

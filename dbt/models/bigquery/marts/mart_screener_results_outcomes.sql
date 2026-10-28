@@ -4,7 +4,9 @@
   )
 }}
 
--- Screener results outcomes - daily grain by state
+-- Screener results outcomes - daily grain by state and partner referrer
+-- (screener_referrer, see join_screener_referrer). The avg/median columns are
+-- per row, so they can't be combined across referrers; no dashboard reads them.
 -- Powers the Results dashboard tab's outcome summary: results loaded vs.
 -- none-eligible vs. error, and the distribution of programs found / estimated
 -- value among screenings that loaded results.
@@ -19,8 +21,10 @@ with results_loaded as (
         is_cesn,
         screener_uid,
         program_count,
-        total_estimated_value
+        total_estimated_value,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_results_outcomes') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_results_loaded'
 ),
 
@@ -33,8 +37,10 @@ none_eligible_event as (
         event_date_parsed,
         screener_state,
         is_cesn,
-        screener_uid
+        screener_uid,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_results_outcomes') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_results_none_eligible'
 ),
 
@@ -74,9 +80,13 @@ none_eligible_proxy as (
 ),
 
 none_eligible as (
-    select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_event
-    union distinct
-    select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_proxy
+    select n.*, referrer.screener_referrer
+    from (
+        select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_event
+        union distinct
+        select event_date, event_date_parsed, screener_state, is_cesn, screener_uid from none_eligible_proxy
+    ) as n
+    {{ join_screener_referrer('screener', 'n.screener_uid') }}
 ),
 
 results_errors as (
@@ -85,8 +95,10 @@ results_errors as (
         event_date_parsed,
         screener_state,
         is_cesn,
-        screener_uid
+        screener_uid,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_results_outcomes') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_results_error'
 ),
 
@@ -96,8 +108,10 @@ error_recoveries as (
         event_date_parsed,
         screener_state,
         is_cesn,
-        screener_uid
+        screener_uid,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_results_outcomes') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name = 'screener_results_error_recovery'
 ),
 
@@ -112,39 +126,39 @@ error_recoveries as (
 -- the distinct-screener_uid count (screening grain).
 results_loaded_summary as (
     select
-        event_date, event_date_parsed, screener_state, is_cesn,
+        event_date, event_date_parsed, screener_state, is_cesn, screener_referrer,
         count(distinct screener_uid) as screenings_results_loaded,
         round(avg(program_count), 2) as avg_program_count,
         round(approx_quantiles(program_count, 100 ignore nulls)[offset(50)], 2) as median_program_count,
         round(avg(total_estimated_value), 2) as avg_total_estimated_value,
         round(approx_quantiles(total_estimated_value, 100 ignore nulls)[offset(50)], 2) as median_total_estimated_value
     from results_loaded
-    group by event_date, event_date_parsed, screener_state, is_cesn
+    group by event_date, event_date_parsed, screener_state, is_cesn, screener_referrer
 ),
 
 none_eligible_summary as (
-    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_none_eligible
-    from none_eligible group by event_date, screener_state, is_cesn
+    select event_date, screener_state, is_cesn, screener_referrer, count(distinct screener_uid) as screenings_none_eligible
+    from none_eligible group by event_date, screener_state, is_cesn, screener_referrer
 ),
 
 results_errors_summary as (
-    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_results_error
-    from results_errors group by event_date, screener_state, is_cesn
+    select event_date, screener_state, is_cesn, screener_referrer, count(distinct screener_uid) as screenings_results_error
+    from results_errors group by event_date, screener_state, is_cesn, screener_referrer
 ),
 
 error_recoveries_summary as (
-    select event_date, screener_state, is_cesn, count(distinct screener_uid) as screenings_error_recovered
-    from error_recoveries group by event_date, screener_state, is_cesn
+    select event_date, screener_state, is_cesn, screener_referrer, count(distinct screener_uid) as screenings_error_recovered
+    from error_recoveries group by event_date, screener_state, is_cesn, screener_referrer
 ),
 
 date_state_grain as (
-    select event_date, event_date_parsed, screener_state, is_cesn from results_loaded
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_referrer from results_loaded
     union distinct
-    select event_date, event_date_parsed, screener_state, is_cesn from none_eligible
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_referrer from none_eligible
     union distinct
-    select event_date, event_date_parsed, screener_state, is_cesn from results_errors
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_referrer from results_errors
     union distinct
-    select event_date, event_date_parsed, screener_state, is_cesn from error_recoveries
+    select event_date, event_date_parsed, screener_state, is_cesn, screener_referrer from error_recoveries
 )
 
 select
@@ -152,6 +166,7 @@ select
     g.event_date_parsed,
     g.screener_state,
     g.is_cesn,
+    g.screener_referrer,
 
     coalesce(rl.screenings_results_loaded, 0) as screenings_results_loaded,
     coalesce(ne.screenings_none_eligible, 0) as screenings_none_eligible,
@@ -173,16 +188,20 @@ left join results_loaded_summary rl
     on g.event_date = rl.event_date
     and ifnull(g.screener_state, '∅') = ifnull(rl.screener_state, '∅')
     and g.is_cesn = rl.is_cesn
+    and ifnull(g.screener_referrer, '∅') = ifnull(rl.screener_referrer, '∅')
 left join none_eligible_summary ne
     on g.event_date = ne.event_date
     and ifnull(g.screener_state, '∅') = ifnull(ne.screener_state, '∅')
     and g.is_cesn = ne.is_cesn
+    and ifnull(g.screener_referrer, '∅') = ifnull(ne.screener_referrer, '∅')
 left join results_errors_summary re
     on g.event_date = re.event_date
     and ifnull(g.screener_state, '∅') = ifnull(re.screener_state, '∅')
     and g.is_cesn = re.is_cesn
+    and ifnull(g.screener_referrer, '∅') = ifnull(re.screener_referrer, '∅')
 left join error_recoveries_summary er
     on g.event_date = er.event_date
     and ifnull(g.screener_state, '∅') = ifnull(er.screener_state, '∅')
     and g.is_cesn = er.is_cesn
+    and ifnull(g.screener_referrer, '∅') = ifnull(er.screener_referrer, '∅')
 order by g.event_date desc, g.screener_state

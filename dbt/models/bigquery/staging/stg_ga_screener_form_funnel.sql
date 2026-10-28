@@ -49,7 +49,7 @@ with per_event as (
         -- param; null on non-CESN events and events without it.
         max(case when ep.key = 'screener_path' then ep.value.string_value end) as screener_path,
         -- Partner referrer code the screener was entered with (?referrer=). GTM
-        -- forwards it on screener_form_step only; mart_screener_referrer spreads
+        -- forwards it on screener_form_step only; int_screener_referrer spreads
         -- it to the screener and session so other event marts can be scoped.
         max(case when ep.key = 'screener_referrer' then ep.value.string_value end) as screener_referrer,
 

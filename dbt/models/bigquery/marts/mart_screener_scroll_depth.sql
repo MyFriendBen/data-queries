@@ -28,8 +28,10 @@ with scroll as (
         tab_name,
         depth,
         event_date_parsed,
-        screener_state
+        screener_state,
+        referrer.screener_referrer
     from {{ ref('stg_ga_screener_scroll_depth') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where depth is not null
         and tab_name is not null
 ),
@@ -41,7 +43,8 @@ furthest as (
         tab_name,
         max(depth) as furthest_depth,
         min(event_date_parsed) as event_date_parsed,
-        any_value(screener_state) as screener_state
+        any_value(screener_state) as screener_state,
+        any_value(screener_referrer) as screener_referrer
     from scroll
     group by screener_uid, tab_name
 )
@@ -49,6 +52,7 @@ furthest as (
 select
     event_date_parsed,
     screener_state,
+    screener_referrer,
     tab_name,
     furthest_depth as depth,
 
@@ -58,5 +62,5 @@ select
     current_timestamp() as updated_at
 
 from furthest
-group by event_date_parsed, screener_state, tab_name, furthest_depth
+group by event_date_parsed, screener_state, screener_referrer, tab_name, furthest_depth
 order by event_date_parsed desc, screener_state, tab_name, depth

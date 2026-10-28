@@ -101,12 +101,15 @@ with_session_state as (
 select
     element_group,
     element,
-    session_key,
+    with_session_state.session_key,
     max(event_date_parsed) as event_date_parsed,
     max(screener_state) as screener_state,
+    -- One referrer per session_key.
+    max(referrer.screener_referrer) as screener_referrer,
 
     current_timestamp() as updated_at
 
 from with_session_state
+{{ join_screener_referrer('session', 'with_session_state.session_key') }}
 where element is not null
-group by element_group, element, session_key
+group by element_group, element, with_session_state.session_key

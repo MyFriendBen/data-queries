@@ -25,6 +25,7 @@ with interactions as (
         screener_uid,
         program_id,
         document_name,
+        referrer.screener_referrer,
         case event_name
             when 'screener_apply_click' then 'apply'
             when 'screener_program_more_info' then 'more_info'
@@ -38,6 +39,7 @@ with interactions as (
             when 'screener_program_shown' then 'shown'
         end as interaction_type
     from {{ ref('stg_ga_screener_program_interactions') }}
+    {{ join_screener_referrer('screener', 'screener_uid') }}
     where event_name in (
         'screener_apply_click',
         'screener_program_more_info',
@@ -63,6 +65,7 @@ aggregated as (
         event_date,
         event_date_parsed,
         screener_state,
+        screener_referrer,
         program_id,
         interaction_type,
         -- null except for document_download and document_shown rows
@@ -70,13 +73,14 @@ aggregated as (
         count(*) as total_interactions,
         count(distinct screener_uid) as screenings_with_interaction
     from interactions
-    group by event_date, event_date_parsed, screener_state, program_id, interaction_type, document_name
+    group by event_date, event_date_parsed, screener_state, screener_referrer, program_id, interaction_type, document_name
 )
 
 select
     a.event_date,
     a.event_date_parsed,
     a.screener_state,
+    a.screener_referrer,
     a.program_id,
     -- fall back to the id if a name was never captured for this program
     coalesce(pn.program_name, a.program_id) as program_name,
