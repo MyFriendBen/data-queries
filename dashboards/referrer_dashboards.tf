@@ -19,6 +19,15 @@
 #                          tab shows up here on the next apply. A tenant card
 #                          missing from referrer_tenant_ga_cards fails the plan.
 #
+# Multi-state partners: `tenant = "all"` (Propel). The Overview cards then run on
+# the global connection (metabase_database.postgres) instead of a tenant's, so
+# they see every white label, and a "Screeners and Value by State" table is added.
+# That connection is the RLS-exempt dbt owner login, so the partner scope
+# predicate is the ONLY row filter; the viewer group still has no ad-hoc query
+# access, so a viewer cannot widen it. "all" is Overview-only (engagement_tabs
+# must be false): the engagement tabs copy one tenant's cards and layouts. It
+# also includes cesn and co_tax_calculator unless extra_predicate excludes them.
+#
 # To add a partner:
 #   1. Add a chained metabase_collection in metabase.tf (collections can't use
 #      for_each — Metabase races on concurrent creates, see the note there).
@@ -65,7 +74,37 @@ locals {
       audience        = "the Denver Preschool Program"
       engagement_tabs = true
     }
+    # Multi-state partner: tenant = "all" reads every white label through the
+    # global connection (see the header note) and adds a by-state card.
+    propel = {
+      display_name    = "Propel"
+      tenant          = "all"
+      collection_id   = metabase_collection.propel.id
+      referrer_codes  = ["propel"]
+      extra_predicate = null
+      launch_date     = null
+      audience        = "Propel"
+      engagement_tabs = false
+    }
   }
+
+  # Connection each dashboard's Overview cards run on. A tenant key uses that
+  # tenant's RLS-scoped connection; "all" uses the global connection, which is
+  # the RLS-exempt dbt owner login, so the partner scope predicate is the only
+  # row filter there.
+  referrer_db_id = {
+    for key, d in local.referrer_dashboards :
+    key => d.tenant == "all" ? metabase_database.postgres.id : metabase_database.tenant_postgres[d.tenant].id
+  }
+
+  # SQL mapping white_label_id to its display name, generated from var.tenants so
+  # a new tenant shows up in the by-state card without an edit here. Unknown ids
+  # fall through to a labelled id rather than disappearing.
+  referrer_state_case = join(" ", concat(
+    ["CASE white_label_id"],
+    [for k, t in var.tenants : "WHEN ${t.white_label_id} THEN '${replace(t.display_name, "'", "''")}'"],
+    ["ELSE 'White label ' || white_label_id::text END"],
+  ))
 
   # SQL IN-list of each dashboard's codes. Codes are admin-entered slugs; the
   # check below keeps a quote from breaking out of the literal.
@@ -108,7 +147,7 @@ locals {
           collection_id = tonumber(d.collection_id)
           dataset_query = {
             type     = "native"
-            database = tonumber(metabase_database.tenant_postgres[d.tenant].id)
+            database = tonumber(local.referrer_db_id[key])
             native = {
               query = "SELECT ${s.select} AS value FROM analytics.mart_screener_data WHERE ${local.referrer_scope[key]}${s.having_value ? " AND (non_tax_credit_benefits_annual + tax_credits_annual) > 0" : ""}"
             }
@@ -127,7 +166,7 @@ locals {
           display       = "bar"
           dataset_query = {
             type     = "native"
-            database = tonumber(metabase_database.tenant_postgres[d.tenant].id)
+            database = tonumber(local.referrer_db_id[key])
             native = {
               query = "WITH vals AS (SELECT non_tax_credit_benefits_annual + tax_credits_annual AS v FROM analytics.mart_screener_data WHERE ${local.referrer_scope[key]}) SELECT CASE WHEN v = 0 THEN '$0' WHEN v < 5000 THEN '$1-$4,999' WHEN v < 10000 THEN '$5,000-$9,999' WHEN v < 20000 THEN '$10,000-$19,999' WHEN v < 40000 THEN '$20,000-$39,999' ELSE '$40,000+' END AS bucket, count(*) AS households FROM vals GROUP BY 1 ORDER BY MIN(CASE WHEN v = 0 THEN 0 WHEN v < 5000 THEN 1 WHEN v < 10000 THEN 2 WHEN v < 20000 THEN 3 WHEN v < 40000 THEN 4 ELSE 5 END)"
             }
@@ -147,7 +186,7 @@ locals {
           display       = "bar"
           dataset_query = {
             type     = "native"
-            database = tonumber(metabase_database.tenant_postgres[d.tenant].id)
+            database = tonumber(local.referrer_db_id[key])
             native = {
               query = "SELECT DATE_TRUNC('month', submission_date)::date AS month, count(*) AS screeners FROM analytics.mart_screener_data WHERE ${local.referrer_scope[key]} GROUP BY 1 ORDER BY 1"
             }
@@ -170,7 +209,7 @@ locals {
           collection_id = tonumber(d.collection_id)
           dataset_query = {
             type     = "native"
-            database = tonumber(metabase_database.tenant_postgres[d.tenant].id)
+            database = tonumber(local.referrer_db_id[key])
             native = {
               query = replace(
                 replace(templatefile("${path.module}/sql/qualified_benefits.sql", {}), local._optional_clause_regex, ""),
@@ -188,7 +227,38 @@ locals {
             "column_settings" = local.benefits_column_settings
           })
         }))
-      }
+      },
+      # By-state breakdown, only on "all" dashboards (a single-state dashboard
+      # has nothing to split). A for expression rather than a conditional object
+      # so the two branches share one type. The medians use the same "of those
+      # matched" rule as the scorecards: households with no value are left out.
+      {
+        for card in(d.tenant == "all" ? ["by_state"] : []) : "${key}/${card}" => jsonencode(merge(local.global_table_card_config, {
+          name          = "Screeners and Value by State"
+          description   = "Completed screeners and annual value identified for households reaching MyFriendBen through ${d.audience}, split by the state (white label) they screened in."
+          collection_id = tonumber(d.collection_id)
+          dataset_query = {
+            type     = "native"
+            database = tonumber(local.referrer_db_id[key])
+            native = {
+              query = "SELECT ${local.referrer_state_case} AS \"State\", count(*) AS \"Completed Screeners\", COALESCE(SUM(non_tax_credit_benefits_annual + tax_credits_annual), 0) AS \"Total Annual Value\", PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY non_tax_credit_benefits_annual + tax_credits_annual) FILTER (WHERE non_tax_credit_benefits_annual + tax_credits_annual > 0) AS \"Median Annual Value / Household\" FROM analytics.mart_screener_data WHERE ${local.referrer_scope[key]} GROUP BY white_label_id ORDER BY count(*) DESC, 1"
+            }
+          }
+          visualization_settings = merge(local.global_table_card_config.visualization_settings, {
+            "table.column_widths" = [
+              { "name" = "State", "width" = 220 },
+              { "name" = "Completed Screeners", "width" = 160 },
+              { "name" = "Total Annual Value", "width" = 160 },
+              { "name" = "Median Annual Value / Household", "width" = 220 },
+            ]
+            "column_settings" = {
+              "[\"name\",\"Completed Screeners\"]"             = local.show_minibar_true
+              "[\"name\",\"Total Annual Value\"]"              = local.currency_format_0
+              "[\"name\",\"Median Annual Value / Household\"]" = local.currency_format_0
+            }
+          })
+        }))
+      },
     )
   ]...)
 
@@ -295,6 +365,14 @@ locals {
     # Row 14 — program mix
     { card = "qualified_benefits_table", row = 14, col = 0, size_x = 24, size_y = 8 },
   ]
+
+  # Layout for tenant = "all" dashboards: the grid above with the by-state table
+  # slotted in at row 14 and everything from there down pushed 8 rows lower.
+  referrer_dashboard_layout_all = concat(
+    [for c in local.referrer_dashboard_layout : c if c.row < 14],
+    [{ card = "by_state", row = 14, col = 0, size_x = 24, size_y = 8 }],
+    [for c in local.referrer_dashboard_layout : merge(c, { row = c.row + 8 }) if c.row >= 14],
+  )
 }
 
 resource "metabase_permissions_group" "referrer" {
@@ -306,6 +384,13 @@ resource "metabase_permissions_group" "referrer" {
     precondition {
       condition     = alltrue([for c in each.value.referrer_codes : can(regex("^[A-Za-z0-9_-]+$", c))])
       error_message = "Referrer codes for '${each.key}' must be letters, digits, '_' or '-'; they are interpolated into card SQL."
+    }
+
+    # Fails with a readable message instead of a missing-key error deep in a card.
+    # "all" has no tenant layouts or GA state filter to copy, so it is Overview-only.
+    precondition {
+      condition     = each.value.tenant == "all" ? !each.value.engagement_tabs : contains(keys(var.tenants), each.value.tenant)
+      error_message = "Referrer dashboard '${each.key}': tenant must be a key in var.tenants, or \"all\" with engagement_tabs = false."
     }
   }
 }
@@ -331,7 +416,7 @@ locals {
   referrer_dashboard_cards = {
     for key, d in local.referrer_dashboards : key => concat(
       [
-        for c in local.referrer_dashboard_layout : {
+        for c in(d.tenant == "all" ? tolist(local.referrer_dashboard_layout_all) : tolist(local.referrer_dashboard_layout)) : {
           card_id                = tonumber(metabase_card.referrer["${key}/${c.card}"].id)
           dashboard_tab_id       = 1
           row                    = c.row
@@ -346,9 +431,12 @@ locals {
       # Engagement tabs: the tenant grids, note first (row 0), with each tenant
       # card swapped for the partner copy.
       flatten([
+        # The layouts are keyed by tenant, so "all" (and any non-GA dashboard) has
+        # none: null here, and the `if` below skips those dashboards before the
+        # layout is read. A GA dashboard still fails the plan on a missing key.
         for tab in [
-          { id = 2, layout = local.tenant_dashboard_screener_overview_layout[d.tenant] },
-          { id = 3, layout = local.tenant_dashboard_screener_results_layout[d.tenant] },
+          { id = 2, layout = contains(keys(local.referrer_ga_dashboards), key) ? local.tenant_dashboard_screener_overview_layout[d.tenant] : null },
+          { id = 3, layout = contains(keys(local.referrer_ga_dashboards), key) ? local.tenant_dashboard_screener_results_layout[d.tenant] : null },
           ] : concat(
           [{
             card_id                = null
