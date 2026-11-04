@@ -108,9 +108,9 @@ base_table_1 AS (
         CASE
             WHEN ss.referral_source ~* '^(testOrProspect|stagingTest|test)$' THEN 'Test'
             WHEN ss.referrer_code IS NOT NULL AND TRIM(ss.referrer_code) <> ''
-                THEN COALESCE(drc1.partner, 'Other')
+                THEN COALESCE(drc1.partner, drd1.partner, 'Other')
             WHEN ss.referral_source IS NOT NULL AND TRIM(ss.referral_source) <> ''
-                THEN COALESCE(drc2.partner, 'Other')
+                THEN COALESCE(drc2.partner, drd2.partner, 'Other')
             ELSE 'No Partner'
         END AS partner,
         TO_CHAR(ss.start_date, 'ID') AS start_day,
@@ -226,6 +226,12 @@ base_table_1 AS (
         ON ss.referrer_code = drc1.referrer_code AND ss.white_label_id = drc1.white_label_id
     LEFT JOIN {{ ref('stg_referrer_codes') }} AS drc2
         ON ss.referral_source = drc2.referrer_code AND ss.white_label_id = drc2.white_label_id
+    -- Fallback: multi-state referrers (e.g. propel) live on the _default white label
+    -- while their screens are stored under each state's own white label.
+    LEFT JOIN {{ ref('stg_default_referrer_codes') }} AS drd1
+        ON ss.referrer_code = drd1.referrer_code
+    LEFT JOIN {{ ref('stg_default_referrer_codes') }} AS drd2
+        ON ss.referral_source = drd2.referrer_code
     LEFT JOIN {{ ref('stg_latest_eligibility_snapshot') }} AS les ON ss.id = les.screen_id
     LEFT JOIN {{ ref('stg_monthly_income') }} AS mi ON ss.id = mi.screen_id
     LEFT JOIN {{ ref('stg_monthly_expenses') }} AS me ON ss.id = me.screen_id
