@@ -64,6 +64,14 @@ models:
         tests:
           - not_null
 
+      - name: annual_value
+        description: >
+          Estimated annual value of this program for this screen, in USD (from
+          stg_program_eligibility.annual_value). Always > 0 in this mart. One-time
+          payments and tax credits are stored at their full amount.
+        tests:
+          - not_null
+
       - name: county
         description: "County grouping dimension. Null/blank source values are normalized to 'Unspecified'."
         tests:
