@@ -240,7 +240,7 @@ missing entry fails the plan rather than falling back to a default.
 locals {
   tenant_features = {
     # Standard state tenant — copy an existing state's flags (e.g. il / wa)
-    mo = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true }
+    mo = { has_tax_credits = true, has_immediate_needs = true, has_assets = true, has_expenses = true, has_partners = true, has_summary_metrics = false, has_utm_filters = false, has_demographics_card = false, has_total_individuals = true, has_benefit_value_chart = false }
   }
 
   tenant_tabs = {

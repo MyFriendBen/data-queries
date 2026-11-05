@@ -105,6 +105,32 @@ resource "metabase_card" "tenant_qualified_benefits_table" {
   }))
 }
 
+# Table: What is the estimated annual value of benefits by program?
+# NC only (has_benefit_value_chart). Same filtered for_each pattern as tenant_utm_campaign_values.
+resource "metabase_card" "tenant_benefit_value_by_program_table" {
+  for_each = { for k, v in var.tenants : k => v if local.tenant_features[k].has_benefit_value_chart }
+  json = jsonencode(merge(local.tenant_table_card_config, {
+    name          = "What is the estimated annual value of benefits by program?"
+    description   = "Sum of the estimated annual value per program across completed screeners, and each program's share of the total. Shares are recalculated for the selected filters. The total of this table is the same as the Total Benefits card on the Summary tab."
+    collection_id = tonumber(local.tenant_collection_map[each.key].id)
+    dataset_query = {
+      type     = "native"
+      database = tonumber(metabase_database.tenant_postgres[each.key].id)
+      native = {
+        query           = templatefile("${path.module}/sql/benefit_value_by_program.sql", {})
+        "template-tags" = local.filter_template_tags[each.key]
+      }
+    }
+    visualization_settings = merge(local.tenant_table_card_config.visualization_settings, {
+      "table.row_index" = true
+      "column_settings" = {
+        "[\"name\",\"Estimated Annual Value\"]" = merge(local.show_minibar_true, local.currency_format_0)
+        "[\"name\",\"% of Total Value\"]"       = merge(local.show_minibar_true, { "number_style" = "percent", "decimals" = 1 })
+      }
+    })
+  }))
+}
+
 # Table: What percentage of users sought each immediate need?
 resource "metabase_card" "tenant_immediate_needs_table" {
   for_each = var.tenants
@@ -390,6 +416,40 @@ locals {
             { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_immediate_needs_table[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
             { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_immediate_needs_table[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
             { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_immediate_needs_table[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
+          ] : []
+        )
+        series                 = []
+        visualization_settings = {}
+      }] : [],
+      local.tenant_features[k].has_benefit_value_chart ? [{
+        card_id          = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id)
+        dashboard_tab_id = 5
+        row              = 26
+        col              = 0
+        size_x           = 24
+        size_y           = 10
+        parameter_mappings = concat(
+          [
+            {
+              parameter_id = "date_range_filter"
+              card_id      = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id)
+              target       = ["dimension", ["template-tag", "submission_date"]]
+            },
+            {
+              parameter_id = "partner_filter"
+              card_id      = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id)
+              target       = ["dimension", ["template-tag", "partner"]]
+            },
+            {
+              parameter_id = "county_filter"
+              card_id      = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id)
+              target       = ["dimension", ["template-tag", "county"]]
+            }
+          ],
+          local.tenant_features[k].has_utm_filters ? [
+            { parameter_id = "utm_campaign_filter", card_id = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id), target = ["dimension", ["template-tag", "utm_campaign"]] },
+            { parameter_id = "utm_medium_filter", card_id = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id), target = ["dimension", ["template-tag", "utm_medium"]] },
+            { parameter_id = "utm_source_filter", card_id = tonumber(metabase_card.tenant_benefit_value_by_program_table[k].id), target = ["dimension", ["template-tag", "utm_source"]] }
           ] : []
         )
         series                 = []
