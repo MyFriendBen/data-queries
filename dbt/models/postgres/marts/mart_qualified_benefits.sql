@@ -15,6 +15,7 @@ SELECT
     msd.id                                              AS screen_id,
     COALESCE(pn.text, pe.name_abbreviated)              AS benefit_display_name,
     pe.name_abbreviated                                 AS benefit_name,
+    pe.annual_value,
     msd.white_label_id,
     msd.partner,
     msd.county,
