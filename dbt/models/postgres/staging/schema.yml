@@ -35,6 +35,17 @@ models:
             - referrer_code
             - white_label_id
 
+  - name: stg_default_referrer_codes
+    description: "Referrer codes defined on the _default white label, used as a fallback partner lookup for screens on state white labels."
+    columns:
+      - name: referrer_code
+        tests:
+          - unique
+          - not_null
+      - name: partner
+        tests:
+          - not_null
+
   - name: stg_white_label_programs
     description: "One row per white label × program name it sees: its own programs plus the federal ones. For a shared name the active row wins, then the federal one. Join on (white_label_id, name_abbreviated) to resolve a screen's program without fanning out."
     tests:
