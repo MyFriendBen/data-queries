@@ -251,10 +251,15 @@ resource "metabase_collection" "chicago211" {
 
 # Referrer dashboard collections — one per entry in local.referrer_dashboards
 # (referrer_dashboards.tf), chained like the ones above. Chain the next one off
-# metabase_collection.dpp.
+# metabase_collection.propel.
 resource "metabase_collection" "dpp" {
   name       = "Denver Preschool Program"
   depends_on = [metabase_collection.chicago211]
+}
+
+resource "metabase_collection" "propel" {
+  name       = "Propel"
+  depends_on = [metabase_collection.dpp]
 }
 
 # Map for other resources to reference tenant collections by key
