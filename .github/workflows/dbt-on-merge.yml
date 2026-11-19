@@ -8,6 +8,14 @@ on:
       - "!dbt/README.md"
       - ".github/workflows/dbt-on-merge.yml"
 
+# Serialize prod deploys: terraform-apply shares this group, so a dbt build and a
+# terraform apply never overlap. Don't cancel in progress - a partial dbt build
+# would leave stale marts for terraform to read. (Only one pending run is kept
+# per group; see terraform-apply.yml.)
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
 jobs:
   dbt-build:
     runs-on: ubuntu-latest
