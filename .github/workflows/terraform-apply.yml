@@ -1,6 +1,16 @@
 name: Terraform Apply
 
+# Terraform apply publishes Metabase cards that read the dbt-built mart_*
+# tables, so it must run AFTER dbt finishes. Rather than racing "dbt Build on
+# Merge" on push, a merge that touches dbt/ runs terraform when dbt completes
+# (workflow_run, only if dbt succeeded). The push trigger stays for
+# dashboards-only merges; the gate job skips it when the commit also changed
+# dbt/, so that case is handled by the workflow_run path alone.
 on:
+  workflow_run:
+    workflows: ["dbt Build on Merge"]
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -16,9 +26,63 @@ on:
 permissions:
   contents: read
 
+# Serialize prod deploys with "dbt Build on Merge" (same group), so a dbt build
+# and a terraform apply never overlap. Nothing is cancelled mid-run: a
+# half-applied terraform state is worse than waiting. GitHub keeps only ONE
+# pending run per group and replaces an older pending run with a newer one, so a
+# burst of merges is collapsed, not queued. That is why the apply below checks
+# out the tip of main rather than the commit that triggered it: whichever run
+# survives then applies the newest config.
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
+
 jobs:
+  # Decide whether an apply should run for this trigger:
+  #  - workflow_run: only after "dbt Build on Merge" succeeded on main
+  #  - workflow_dispatch: always
+  #  - push: only when the commit changed dashboards/ but NOT dbt/ (a
+  #    dbt-touching push is covered by the workflow_run path, so running here
+  #    too would bring back the race with dbt).
+  gate:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      # Full history: `before` can be several commits back on a multi-commit
+      # push, and a shallow clone would make the diff below fail.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'push'
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether to apply
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            if ! changed=$(git diff --name-only "$BEFORE" "$SHA"); then
+              # Can't tell what changed (e.g. a force push). Apply: a redundant
+              # apply is harmless, a skipped one would leave dashboards stale.
+              echo "::warning::Could not diff $BEFORE..$SHA; applying anyway."
+            elif echo "$changed" | grep -q '^dbt/'; then
+              echo "Push changed dbt/ - deferring to the workflow_run trigger."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
   apply:
-    if: github.ref == 'refs/heads/main'
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     environment: production
     defaults:
