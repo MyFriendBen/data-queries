@@ -8,6 +8,9 @@ on:
       - "**/*.yaml"
       - "dashboards/**/*.tf"
 
+permissions:
+  contents: read
+
 jobs:
   sqlfluff:
     name: SQLFluff (dbt SQL models)

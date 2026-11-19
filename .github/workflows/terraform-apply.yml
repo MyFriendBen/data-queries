@@ -13,6 +13,9 @@ on:
       - ".github/workflows/terraform-apply.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   apply:
     if: github.ref == 'refs/heads/main'
